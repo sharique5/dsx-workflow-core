@@ -33,7 +33,7 @@ export function LoginPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="identifier" className="block text-sm font-medium text-gray-700">
-              Email or Phone ..testv2
+              Email or Phone ..testv3
             </label>
             <input
               id="identifier"
