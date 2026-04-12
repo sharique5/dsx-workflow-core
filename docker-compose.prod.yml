@@ -7,7 +7,7 @@ services:
   api:
     # Image pushed by GitHub Actions deploy-api workflow
     # Replace GITHUB_ORG with your GitHub username/org
-    image: ghcr.io/GITHUB_ORG/dsx-workflow-api:latest
+    image: ghcr.io/sharique5/dsx-workflow-api:latest
     container_name: dsx-workflow-api
     ports:
       - '3000:3000'
