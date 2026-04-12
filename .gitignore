@@ -1,3 +1,9 @@
+# Monorepo
+node_modules/
+.turbo/
+dist/
+build/
+
 # Logs
 logs
 *.log
