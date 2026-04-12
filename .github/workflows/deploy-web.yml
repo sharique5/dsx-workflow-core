@@ -21,9 +21,9 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        # npm install (not ci) — rolldown uses platform-specific native binaries;
-        # package-lock.json generated on Windows omits linux-x64 bindings.
-        run: npm install --no-audit
+        # Delete lock file so npm resolves rolldown's linux native binding fresh.
+        # The lock was generated on Windows and omits @rolldown/binding-linux-x64-gnu.
+        run: rm -f package-lock.json && npm install --no-audit
 
       - name: Build web app
         run: npx turbo run build --filter=@dsx/web...
