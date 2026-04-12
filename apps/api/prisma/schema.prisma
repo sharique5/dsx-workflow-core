@@ -1,0 +1,332 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Tenants ──────────────────────────────────────────────────────────────────
+
+model Tenant {
+  id             String   @id @default(uuid())
+  name           String
+  industry       String   @default("legal")
+  industryConfig Json     @default("{}") @map("industry_config")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  users                 User[]
+  matters               Matter[]
+  scheduledEvents       ScheduledEvent[]
+  notes                 Note[]
+  documents             Document[]
+  documentRequests      DocumentRequest[]
+  fees                  Fee[]
+  notificationTemplates NotificationTemplate[]
+  notificationLogs      NotificationLog[]
+  reminders             Reminder[]
+  auditLogs             AuditLog[]
+
+  @@map("tenants")
+}
+
+// ─── Users ────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  admin
+  staff
+  client
+}
+
+enum PortalInviteStatus {
+  not_invited
+  invited
+  active
+}
+
+model User {
+  id                 String             @id @default(uuid())
+  tenantId           String             @map("tenant_id")
+  name               String
+  email              String?
+  phone              String?
+  role               UserRole
+  isActive           Boolean            @default(true) @map("is_active")
+  portalInviteStatus PortalInviteStatus @default(not_invited) @map("portal_invite_status")
+  portalInviteToken  String?            @map("portal_invite_token")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+  deletedAt          DateTime?          @map("deleted_at")
+
+  tenant           Tenant             @relation(fields: [tenantId], references: [id])
+  mattersAsClient  Matter[]           @relation("MatterParticipant")
+  mattersCreated   Matter[]           @relation("MatterCreatedBy")
+  scheduledEvents  ScheduledEvent[]
+  notes            Note[]
+  documents        Document[]
+  documentRequests DocumentRequest[]
+  auditLogs        AuditLog[]
+  notificationLogs NotificationLog[]
+
+  @@unique([tenantId, email])
+  @@unique([tenantId, phone])
+  @@index([tenantId])
+  @@map("users")
+}
+
+// ─── Matters (Cases) ──────────────────────────────────────────────────────────
+
+model Matter {
+  id            String    @id @default(uuid())
+  tenantId      String    @map("tenant_id")
+  internalRef   String    @map("internal_ref")
+  externalRef   String?   @map("external_ref")
+  title         String
+  participantId String?   @map("participant_id")
+  statusKey     String    @map("status_key")
+  metadata      Json      @default("{}")
+  createdBy     String    @map("created_by")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id])
+  participant     User?            @relation("MatterParticipant", fields: [participantId], references: [id])
+  creator         User             @relation("MatterCreatedBy", fields: [createdBy], references: [id])
+  scheduledEvents ScheduledEvent[]
+  notes           Note[]
+  documents       Document[]
+  documentRequests DocumentRequest[]
+  fees            Fee[]
+  reminders       Reminder[]
+  notificationLogs NotificationLog[]
+  auditLogs       AuditLog[]
+
+  @@unique([tenantId, internalRef])
+  @@index([tenantId])
+  @@index([tenantId, statusKey])
+  @@map("matters")
+}
+
+// ─── Scheduled Events (Hearings) ──────────────────────────────────────────────
+
+model ScheduledEvent {
+  id           String   @id @default(uuid())
+  tenantId     String   @map("tenant_id")
+  matterId     String   @map("matter_id")
+  scheduledAt  DateTime @map("scheduled_at")
+  outcomeNotes String?  @map("outcome_notes")
+  createdBy    String   @map("created_by")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  matter    Matter     @relation(fields: [matterId], references: [id])
+  creator   User       @relation(fields: [createdBy], references: [id])
+  reminders Reminder[]
+
+  @@index([tenantId])
+  @@index([matterId])
+  @@map("scheduled_events")
+}
+
+// ─── Notes ────────────────────────────────────────────────────────────────────
+
+model Note {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  matterId    String   @map("matter_id")
+  content     String
+  isPublished Boolean  @default(false) @map("is_published")
+  createdBy   String   @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant  Tenant @relation(fields: [tenantId], references: [id])
+  matter  Matter @relation(fields: [matterId], references: [id])
+  creator User   @relation(fields: [createdBy], references: [id])
+
+  @@index([tenantId])
+  @@index([matterId])
+  @@map("notes")
+}
+
+// ─── Documents ────────────────────────────────────────────────────────────────
+
+model Document {
+  id            String   @id @default(uuid())
+  tenantId      String   @map("tenant_id")
+  matterId      String   @map("matter_id")
+  fileName      String   @map("file_name")
+  storageKey    String   @map("storage_key")
+  fileSizeBytes Int      @map("file_size_bytes")
+  mimeType      String   @map("mime_type")
+  uploadedBy    String   @map("uploaded_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  matter   Matter @relation(fields: [matterId], references: [id])
+  uploader User   @relation(fields: [uploadedBy], references: [id])
+
+  @@index([tenantId])
+  @@index([matterId])
+  @@map("documents")
+}
+
+// ─── Document Requests ────────────────────────────────────────────────────────
+
+enum DocumentRequestStatus {
+  pending
+  received
+}
+
+model DocumentRequest {
+  id          String                @id @default(uuid())
+  tenantId    String                @map("tenant_id")
+  matterId    String                @map("matter_id")
+  description String
+  requestedBy String                @map("requested_by")
+  status      DocumentRequestStatus @default(pending)
+  dueDate     DateTime?             @map("due_date") @db.Date
+  createdAt   DateTime              @default(now()) @map("created_at")
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+  matter    Matter @relation(fields: [matterId], references: [id])
+  requester User   @relation(fields: [requestedBy], references: [id])
+
+  @@index([tenantId])
+  @@index([matterId])
+  @@map("document_requests")
+}
+
+// ─── Fees ─────────────────────────────────────────────────────────────────────
+
+enum FeeType {
+  one_time      @map("one-time")
+  periodic
+  per_hearing   @map("per-hearing")
+  per_consultation @map("per-consultation")
+}
+
+model Fee {
+  id             String   @id @default(uuid())
+  tenantId       String   @map("tenant_id")
+  matterId       String   @map("matter_id")
+  type           FeeType
+  totalAmount    Decimal  @map("total_amount") @db.Decimal(12, 2)
+  paidAmount     Decimal  @default(0) @map("paid_amount") @db.Decimal(12, 2)
+  paymentHistory Json     @default("[]") @map("payment_history")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  matter Matter @relation(fields: [matterId], references: [id])
+
+  @@index([tenantId])
+  @@index([matterId])
+  @@map("fees")
+}
+
+// ─── Notification Templates ───────────────────────────────────────────────────
+
+enum NotificationTriggerType {
+  status_change
+  hearing_added
+  fee_due
+  reminder
+  custom
+}
+
+enum NotificationChannel {
+  whatsapp
+  email
+}
+
+model NotificationTemplate {
+  id           String                  @id @default(uuid())
+  tenantId     String?                 @map("tenant_id")
+  triggerType  NotificationTriggerType @map("trigger_type")
+  channel      NotificationChannel
+  templateBody String                  @map("template_body")
+  isSystem     Boolean                 @default(false) @map("is_system")
+  createdAt    DateTime                @default(now()) @map("created_at")
+
+  tenant           Tenant?           @relation(fields: [tenantId], references: [id])
+  notificationLogs NotificationLog[]
+
+  @@index([tenantId])
+  @@map("notification_templates")
+}
+
+// ─── Notification Logs ────────────────────────────────────────────────────────
+
+enum NotificationStatus {
+  pending
+  sent
+  delivered
+  failed
+}
+
+model NotificationLog {
+  id            String              @id @default(uuid())
+  tenantId      String              @map("tenant_id")
+  matterId      String?             @map("matter_id")
+  recipientId   String              @map("recipient_id")
+  channel       NotificationChannel
+  templateId    String?             @map("template_id")
+  customMessage String?             @map("custom_message")
+  status        NotificationStatus  @default(pending)
+  sentAt        DateTime?           @map("sent_at")
+  createdAt     DateTime            @default(now()) @map("created_at")
+
+  tenant    Tenant                @relation(fields: [tenantId], references: [id])
+  matter    Matter?               @relation(fields: [matterId], references: [id])
+  recipient User                  @relation(fields: [recipientId], references: [id])
+  template  NotificationTemplate? @relation(fields: [templateId], references: [id])
+
+  @@index([tenantId])
+  @@index([recipientId])
+  @@map("notification_logs")
+}
+
+// ─── Reminders ────────────────────────────────────────────────────────────────
+
+model Reminder {
+  id               String   @id @default(uuid())
+  tenantId         String   @map("tenant_id")
+  matterId         String   @map("matter_id")
+  scheduledEventId String   @map("scheduled_event_id")
+  remindAt         DateTime @map("remind_at")
+  isSent           Boolean  @default(false) @map("is_sent")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  tenant         Tenant         @relation(fields: [tenantId], references: [id])
+  matter         Matter         @relation(fields: [matterId], references: [id])
+  scheduledEvent ScheduledEvent @relation(fields: [scheduledEventId], references: [id])
+
+  @@index([tenantId])
+  @@index([isSent, remindAt])
+  @@map("reminders")
+}
+
+// ─── Audit Logs ───────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  tenantId   String   @map("tenant_id")
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  action     String
+  actorId    String   @map("actor_id")
+  matterId   String?  @map("matter_id")
+  diff       Json     @default("{}")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id])
+  actor  User    @relation(fields: [actorId], references: [id])
+  matter Matter? @relation(fields: [matterId], references: [id])
+
+  @@index([tenantId])
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@map("audit_logs")
+}
