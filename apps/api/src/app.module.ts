@@ -7,6 +7,7 @@ import { StorageModule } from './shared/storage/storage.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { MattersModule } from './modules/matters/matters.module';
 import { ScheduledEventsModule } from './modules/scheduled-events/scheduled-events.module';
+import { NotesModule } from './modules/notes/notes.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { ScheduledEventsModule } from './modules/scheduled-events/scheduled-even
     AuthModule,
     MattersModule,
     ScheduledEventsModule,
+    NotesModule,
     // Phase 2+ modules will be added here:
     // NotesModule,
     // DocumentsModule,

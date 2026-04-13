@@ -124,13 +124,18 @@ export interface NoteDto {
   content: string;
   isPublished: boolean;
   createdBy: string;
+  creator?: { id: string; name: string };
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreateNoteDto {
-  matterId: string;
   content: string;
+  isPublished?: boolean;
+}
+
+export interface UpdateNoteDto {
+  content?: string;
   isPublished?: boolean;
 }
 
