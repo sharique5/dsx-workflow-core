@@ -3,9 +3,10 @@ import { Link, useParams } from 'react-router-dom';
 import { useMatter, useCloseMatter, useDeleteMatter } from '../hooks/useMatters';
 import { useScheduledEvents, useCreateScheduledEvent, useDeleteScheduledEvent } from '../hooks/useScheduledEvents';
 import { useNotes, useCreateNote, useUpdateNote, useDeleteNote } from '../hooks/useNotes';
+import { useAuditLogs } from '../hooks/useAuditLogs';
 import { useVocabulary } from '../../../shared/hooks/useVocabulary';
 import { useAuthStore } from '../../../store/auth.store';
-import type { ScheduledEventDto, NoteDto } from '@dsx/shared';
+import type { ScheduledEventDto, NoteDto, AuditLogDto } from '@dsx/shared';
 
 function StatusBadge({ statusKey, statuses }: { statusKey: string; statuses: { key: string; label: string; isTerminal: boolean }[] }) {
   const status = statuses.find((s) => s.key === statusKey);
@@ -48,6 +49,9 @@ export function CaseDetailPage() {
   const [newNoteContent, setNewNoteContent] = useState('');
   const [newNotePublished, setNewNotePublished] = useState(false);
   const [showAddNote, setShowAddNote] = useState(false);
+
+  // Audit trail
+  const { data: auditLogs } = useAuditLogs(id!);
 
   if (isLoading) {
     return (
@@ -360,6 +364,43 @@ export function CaseDetailPage() {
             </ul>
           )}
         </div>
+
+        {/* Audit Trail */}
+        {isAdmin && (
+          <div className="rounded-lg border bg-white p-6 shadow-sm">
+            <h3 className="font-medium text-gray-900">Activity</h3>
+
+            {(!auditLogs || auditLogs.length === 0) && (
+              <p className="mt-3 text-sm text-gray-400">No activity recorded yet.</p>
+            )}
+
+            {auditLogs && auditLogs.length > 0 && (
+              <ol className="mt-4 relative border-l border-gray-200 ml-3 space-y-4">
+                {auditLogs.map((log: AuditLogDto) => (
+                  <li key={log.id} className="ml-4">
+                    <div className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border-2 border-white bg-gray-300" />
+                    <p className="text-sm text-gray-800">
+                      <span className="font-medium">{log.actor?.name ?? 'Unknown'}</span>
+                      {' '}
+                      <span className="text-gray-500">{log.action}</span>
+                      {' '}
+                      <span className="text-gray-500">{log.entityType.replace('_', ' ')}</span>
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {new Date(log.createdAt).toLocaleString('en-IN', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+        )}
 
         {/* Danger zone */}
         {isAdmin && (
