@@ -77,6 +77,7 @@ export interface MatterDto {
 
 export interface CreateMatterDto {
   title: string;
+  internalRef: string;
   externalRef?: string;
   participantId?: string;
   statusKey: string;

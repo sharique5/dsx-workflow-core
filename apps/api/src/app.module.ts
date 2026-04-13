@@ -5,6 +5,7 @@ import { RedisModule } from './shared/redis/redis.module';
 import { EmailModule } from './shared/email/email.module';
 import { StorageModule } from './shared/storage/storage.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { MattersModule } from './modules/matters/matters.module';
 
 @Module({
   imports: [
@@ -19,8 +20,8 @@ import { AuthModule } from './modules/auth/auth.module';
 
     // Feature modules
     AuthModule,
+    MattersModule,
     // Phase 2+ modules will be added here:
-    // MattersModule,
     // ScheduledEventsModule,
     // NotesModule,
     // DocumentsModule,
