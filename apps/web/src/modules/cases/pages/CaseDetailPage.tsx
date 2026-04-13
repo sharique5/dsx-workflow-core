@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMatter, useCloseMatter, useDeleteMatter } from '../hooks/useMatters';
 import { useScheduledEvents, useCreateScheduledEvent, useDeleteScheduledEvent } from '../hooks/useScheduledEvents';
+import { useNotes, useCreateNote, useUpdateNote, useDeleteNote } from '../hooks/useNotes';
 import { useVocabulary } from '../../../shared/hooks/useVocabulary';
 import { useAuthStore } from '../../../store/auth.store';
-import type { ScheduledEventDto } from '@dsx/shared';
+import type { ScheduledEventDto, NoteDto } from '@dsx/shared';
 
 function StatusBadge({ statusKey, statuses }: { statusKey: string; statuses: { key: string; label: string; isTerminal: boolean }[] }) {
   const status = statuses.find((s) => s.key === statusKey);
@@ -38,6 +39,15 @@ export function CaseDetailPage() {
   const { mutate: deleteEvent } = useDeleteScheduledEvent(id!);
   const [showAddHearing, setShowAddHearing] = useState(false);
   const [hearingDate, setHearingDate] = useState('');
+
+  // Notes
+  const { data: notes } = useNotes(id!);
+  const { mutate: createNote, isPending: isCreatingNote } = useCreateNote(id!);
+  const { mutate: updateNote } = useUpdateNote(id!);
+  const { mutate: deleteNote } = useDeleteNote(id!);
+  const [newNoteContent, setNewNoteContent] = useState('');
+  const [newNotePublished, setNewNotePublished] = useState(false);
+  const [showAddNote, setShowAddNote] = useState(false);
 
   if (isLoading) {
     return (
@@ -238,9 +248,117 @@ export function CaseDetailPage() {
           <p className="mt-2 text-sm text-gray-400">Coming soon.</p>
         </div>
 
+        {/* Notes */}
         <div className="rounded-lg border bg-white p-6 shadow-sm">
-          <h3 className="font-medium text-gray-900">Notes</h3>
-          <p className="mt-2 text-sm text-gray-400">Coming soon.</p>
+          <div className="flex items-center justify-between">
+            <h3 className="font-medium text-gray-900">Notes</h3>
+            <button
+              onClick={() => setShowAddNote((v) => !v)}
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+            >
+              {showAddNote ? 'Cancel' : '+ Add Note'}
+            </button>
+          </div>
+
+          {showAddNote && (
+            <form
+              className="mt-4 border-t pt-4 space-y-3"
+              onSubmit={(e: React.FormEvent) => {
+                e.preventDefault();
+                if (!newNoteContent.trim()) return;
+                createNote(
+                  { content: newNoteContent.trim(), isPublished: newNotePublished },
+                  {
+                    onSuccess: () => {
+                      setNewNoteContent('');
+                      setNewNotePublished(false);
+                      setShowAddNote(false);
+                    },
+                  },
+                );
+              }}
+            >
+              <textarea
+                value={newNoteContent}
+                onChange={(e) => setNewNoteContent(e.target.value)}
+                rows={3}
+                placeholder="Write a note…"
+                required
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black resize-none"
+              />
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={newNotePublished}
+                    onChange={(e) => setNewNotePublished(e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  Visible to client
+                </label>
+                <button
+                  type="submit"
+                  disabled={isCreatingNote}
+                  className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {isCreatingNote ? 'Saving…' : 'Save Note'}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {(!notes || notes.length === 0) && !showAddNote && (
+            <p className="mt-3 text-sm text-gray-400">No notes yet.</p>
+          )}
+
+          {notes && notes.length > 0 && (
+            <ul className="mt-4 divide-y divide-gray-100">
+              {notes.map((note: NoteDto) => (
+                <li key={note.id} className="py-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-800 whitespace-pre-wrap">{note.content}</p>
+                      <div className="mt-1.5 flex items-center gap-3">
+                        <span className="text-xs text-gray-400">
+                          {note.creator?.name} · {new Date(note.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </span>
+                        <span
+                          className={`text-xs font-medium px-1.5 py-0.5 rounded ${
+                            note.isPublished
+                              ? 'bg-green-50 text-green-700'
+                              : 'bg-gray-100 text-gray-500'
+                          }`}
+                        >
+                          {note.isPublished ? 'Visible to client' : 'Internal'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <button
+                        onClick={() =>
+                          updateNote({ id: note.id, data: { isPublished: !note.isPublished } })
+                        }
+                        className="text-xs text-gray-400 hover:text-gray-600"
+                        title={note.isPublished ? 'Make internal' : 'Publish to client'}
+                      >
+                        {note.isPublished ? 'Unpublish' : 'Publish'}
+                      </button>
+                      {(note.createdBy === user?.id || isAdmin) && (
+                        <button
+                          onClick={() => {
+                            if (confirm('Delete this note?')) deleteNote(note.id);
+                          }}
+                          className="text-xs text-red-400 hover:text-red-600"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         {/* Danger zone */}
