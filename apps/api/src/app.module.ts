@@ -6,6 +6,7 @@ import { EmailModule } from './shared/email/email.module';
 import { StorageModule } from './shared/storage/storage.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { MattersModule } from './modules/matters/matters.module';
+import { ScheduledEventsModule } from './modules/scheduled-events/scheduled-events.module';
 
 @Module({
   imports: [
@@ -21,8 +22,8 @@ import { MattersModule } from './modules/matters/matters.module';
     // Feature modules
     AuthModule,
     MattersModule,
+    ScheduledEventsModule,
     // Phase 2+ modules will be added here:
-    // ScheduledEventsModule,
     // NotesModule,
     // DocumentsModule,
     // DocumentRequestsModule,

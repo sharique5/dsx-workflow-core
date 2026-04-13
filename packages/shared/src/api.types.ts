@@ -101,12 +101,17 @@ export interface ScheduledEventDto {
   scheduledAt: string;
   outcomeNotes: string | null;
   createdBy: string;
+  creator?: { id: string; name: string };
   createdAt: string;
 }
 
 export interface CreateScheduledEventDto {
-  matterId: string;
   scheduledAt: string;
+  outcomeNotes?: string;
+}
+
+export interface UpdateScheduledEventDto {
+  scheduledAt?: string;
   outcomeNotes?: string;
 }
 
