@@ -1,7 +1,10 @@
+import React, { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMatter, useCloseMatter, useDeleteMatter } from '../hooks/useMatters';
+import { useScheduledEvents, useCreateScheduledEvent, useDeleteScheduledEvent } from '../hooks/useScheduledEvents';
 import { useVocabulary } from '../../../shared/hooks/useVocabulary';
 import { useAuthStore } from '../../../store/auth.store';
+import type { ScheduledEventDto } from '@dsx/shared';
 
 function StatusBadge({ statusKey, statuses }: { statusKey: string; statuses: { key: string; label: string; isTerminal: boolean }[] }) {
   const status = statuses.find((s) => s.key === statusKey);
@@ -28,6 +31,13 @@ export function CaseDetailPage() {
   const { data: matter, isLoading, isError } = useMatter(id!);
   const { mutate: closeMatter, isPending: isClosing } = useCloseMatter();
   const { mutate: deleteMatter, isPending: isDeleting } = useDeleteMatter();
+
+  // Hearings
+  const { data: events } = useScheduledEvents(id!);
+  const { mutate: createEvent, isPending: isCreatingEvent } = useCreateScheduledEvent(id!);
+  const { mutate: deleteEvent } = useDeleteScheduledEvent(id!);
+  const [showAddHearing, setShowAddHearing] = useState(false);
+  const [hearingDate, setHearingDate] = useState('');
 
   if (isLoading) {
     return (
@@ -136,22 +146,101 @@ export function CaseDetailPage() {
           )}
         </div>
 
-        {/* Placeholder sections for Phase 2+ */}
+        {/* Hearings */}
         <div className="rounded-lg border bg-white p-6 shadow-sm">
-          <h3 className="font-medium text-gray-900">
-            {vocab.scheduled_event_label}s
-          </h3>
-          <p className="mt-2 text-sm text-gray-400">Coming soon — Phase 3.</p>
+          <div className="flex items-center justify-between">
+            <h3 className="font-medium text-gray-900">{vocab.scheduled_event_label}s</h3>
+            {!isClosed && (
+              <button
+                onClick={() => setShowAddHearing((v) => !v)}
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
+                {showAddHearing ? 'Cancel' : `+ Add ${vocab.scheduled_event_label}`}
+              </button>
+            )}
+          </div>
+
+          {showAddHearing && (
+            <form
+              className="mt-4 flex gap-3 items-end border-t pt-4"
+              onSubmit={(e: React.FormEvent) => {
+                e.preventDefault();
+                if (!hearingDate) return;
+                createEvent(
+                  { scheduledAt: hearingDate },
+                  { onSuccess: () => { setShowAddHearing(false); setHearingDate(''); } },
+                );
+              }}
+            >
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Date &amp; Time
+                </label>
+                <input
+                  type="datetime-local"
+                  value={hearingDate}
+                  onChange={(e) => setHearingDate(e.target.value)}
+                  required
+                  className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={isCreatingEvent}
+                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {isCreatingEvent ? 'Saving…' : 'Save'}
+              </button>
+            </form>
+          )}
+
+          {(!events || events.length === 0) && !showAddHearing && (
+            <p className="mt-3 text-sm text-gray-400">No {vocab.scheduled_event_label.toLowerCase()}s yet.</p>
+          )}
+
+          {events && events.length > 0 && (
+            <ul className="mt-4 divide-y divide-gray-100">
+              {events.map((event: ScheduledEventDto) => (
+                <li key={event.id} className="py-3 flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">
+                      {new Date(event.scheduledAt).toLocaleString('en-IN', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </p>
+                    {event.outcomeNotes && (
+                      <p className="mt-0.5 text-sm text-gray-500">{event.outcomeNotes}</p>
+                    )}
+                    <p className="mt-0.5 text-xs text-gray-400">Added by {event.creator?.name}</p>
+                  </div>
+                  {isAdmin && (
+                    <button
+                      onClick={() => {
+                        if (confirm('Delete this hearing?')) deleteEvent(event.id);
+                      }}
+                      className="text-xs text-red-400 hover:text-red-600 shrink-0"
+                    >
+                      Delete
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         <div className="rounded-lg border bg-white p-6 shadow-sm">
           <h3 className="font-medium text-gray-900">Documents</h3>
-          <p className="mt-2 text-sm text-gray-400">Coming soon — Phase 3.</p>
+          <p className="mt-2 text-sm text-gray-400">Coming soon.</p>
         </div>
 
         <div className="rounded-lg border bg-white p-6 shadow-sm">
           <h3 className="font-medium text-gray-900">Notes</h3>
-          <p className="mt-2 text-sm text-gray-400">Coming soon — Phase 3.</p>
+          <p className="mt-2 text-sm text-gray-400">Coming soon.</p>
         </div>
 
         {/* Danger zone */}
