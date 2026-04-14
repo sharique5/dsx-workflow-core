@@ -11,6 +11,7 @@ import { MattersModule } from './modules/matters/matters.module';
 import { ScheduledEventsModule } from './modules/scheduled-events/scheduled-events.module';
 import { NotesModule } from './modules/notes/notes.module';
 import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
+import { StaffModule } from './modules/staff/staff.module';
 
 @Module({
   imports: [
@@ -29,7 +30,8 @@ import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
     ScheduledEventsModule,
     NotesModule,
     AuditLogsModule,
-    // Phase 2+ modules will be added here:
+    StaffModule,
+    // Phase 3+ modules will be added here:
     // DocumentsModule,
     // DocumentRequestsModule,
     // FeesModule,

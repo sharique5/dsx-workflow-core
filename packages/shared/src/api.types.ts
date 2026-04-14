@@ -32,6 +32,13 @@ export interface UserDto {
   updatedAt: string;
 }
 
+export interface CreateStaffDto {
+  name: string;
+  email: string;
+  phone?: string;
+  role: 'staff' | 'admin';
+}
+
 // ─── Tenant ──────────────────────────────────────────────────────────────────
 
 export interface StatusConfig {
