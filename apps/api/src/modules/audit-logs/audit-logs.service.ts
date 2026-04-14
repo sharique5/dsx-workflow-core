@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../shared/database/prisma.service';
-import { AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
 
 @Injectable()
 export class AuditLogsService {

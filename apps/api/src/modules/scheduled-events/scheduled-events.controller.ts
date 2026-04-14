@@ -14,7 +14,8 @@ import {
 import { ScheduledEventsService } from './scheduled-events.service';
 import { CreateScheduledEventDto, UpdateScheduledEventDto } from './dto/scheduled-events.dto';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
-import { CurrentUser, AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
+import { CurrentUser } from '../../shared/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
 
 @Controller('matters/:matterId/events')
 @UseGuards(JwtAuthGuard)

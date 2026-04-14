@@ -4,8 +4,9 @@ import {
   ConflictException,
   ForbiddenException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../shared/database/prisma.service';
-import { AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
 import { CreateMatterDto, UpdateMatterDto } from './dto/matters.dto';
 
 @Injectable()
@@ -53,7 +54,7 @@ export class MattersService {
         externalRef: dto.externalRef,
         participantId: dto.participantId,
         statusKey: dto.statusKey,
-        metadata: dto.metadata ?? {},
+        metadata: (dto.metadata ?? {}) as Prisma.InputJsonValue,
         createdBy: user.id,
       },
       include: {
@@ -73,8 +74,8 @@ export class MattersService {
         ...(dto.externalRef !== undefined && { externalRef: dto.externalRef }),
         ...(dto.participantId !== undefined && { participantId: dto.participantId }),
         ...(dto.statusKey !== undefined && { statusKey: dto.statusKey }),
-        ...(dto.metadata !== undefined && { metadata: dto.metadata }),
-      },
+        ...(dto.metadata !== undefined && { metadata: dto.metadata as Prisma.InputJsonValue }),
+      } as Prisma.MatterUncheckedUpdateInput,
       include: {
         participant: { select: { id: true, name: true, email: true } },
         creator: { select: { id: true, name: true } },

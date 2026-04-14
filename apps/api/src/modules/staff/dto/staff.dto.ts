@@ -1,5 +1,4 @@
 import { IsString, IsNotEmpty, IsOptional, IsEmail, IsEnum, MaxLength } from 'class-validator';
-import { UserRole } from '@prisma/client';
 
 export class CreateStaffDto {
   @IsString()
@@ -16,6 +15,6 @@ export class CreateStaffDto {
   @MaxLength(20)
   phone?: string;
 
-  @IsEnum([UserRole.staff, UserRole.admin])
-  role!: UserRole.staff | UserRole.admin;
+  @IsEnum(['staff', 'admin'])
+  role!: 'staff' | 'admin';
 }

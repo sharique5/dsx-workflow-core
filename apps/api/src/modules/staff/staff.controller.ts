@@ -13,7 +13,8 @@ import {
 import { StaffService } from './staff.service';
 import { CreateStaffDto } from './dto/staff.dto';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
-import { CurrentUser, AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
+import { CurrentUser } from '../../shared/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
 
 @Controller('staff')
 @UseGuards(JwtAuthGuard)

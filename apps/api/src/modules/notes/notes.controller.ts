@@ -14,7 +14,8 @@ import {
 import { NotesService } from './notes.service';
 import { CreateNoteDto, UpdateNoteDto } from './dto/notes.dto';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
-import { CurrentUser, AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
+import { CurrentUser } from '../../shared/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
 
 @Controller('matters/:matterId/notes')
 @UseGuards(JwtAuthGuard)

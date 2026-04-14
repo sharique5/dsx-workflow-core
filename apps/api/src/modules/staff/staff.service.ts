@@ -7,7 +7,7 @@ import {
 import { UserRole } from '@prisma/client';
 import { PrismaService } from '../../shared/database/prisma.service';
 import { EmailService } from '../../shared/email/email.service';
-import { AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
 import { CreateStaffDto } from './dto/staff.dto';
 
 const STAFF_SELECT = {

@@ -1,7 +1,8 @@
 import { Controller, Get, Param, UseGuards, ParseUUIDPipe } from '@nestjs/common';
 import { AuditLogsService } from './audit-logs.service';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
-import { CurrentUser, AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
+import { CurrentUser } from '../../shared/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
 
 @Controller('matters/:matterId/audit')
 @UseGuards(JwtAuthGuard)
