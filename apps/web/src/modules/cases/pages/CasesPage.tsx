@@ -1,3 +1,4 @@
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useMatters } from '../hooks/useMatters';
 import { useVocabulary } from '../../../shared/hooks/useVocabulary';
@@ -51,6 +52,24 @@ export function CasesPage() {
   const vocab = useVocabulary();
   const { data: matters, isLoading, isError } = useMatters();
 
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+
+  const filtered = useMemo(() => {
+    if (!matters) return [];
+    const q = search.trim().toLowerCase();
+    return matters.filter((m) => {
+      const matchesSearch =
+        !q ||
+        m.internalRef.toLowerCase().includes(q) ||
+        m.title.toLowerCase().includes(q) ||
+        (m.participant?.name ?? '').toLowerCase().includes(q) ||
+        (m.externalRef ?? '').toLowerCase().includes(q);
+      const matchesStatus = !statusFilter || m.statusKey === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [matters, search, statusFilter]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="border-b bg-white px-6 py-4 flex items-center justify-between">
@@ -70,8 +89,41 @@ export function CasesPage() {
       </header>
 
       <main className="px-6 py-8 max-w-6xl mx-auto">
+        {/* Search + filter bar */}
+        {matters && matters.length > 0 && (
+          <div className="mb-4 flex gap-3">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={`Search by ref, title, or ${vocab.participant_label.toLowerCase()}…`}
+              className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+            />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+            >
+              <option value="">All statuses</option>
+              {vocab.statuses.map((s) => (
+                <option key={s.key} value={s.key}>{s.label}</option>
+              ))}
+            </select>
+            {(search || statusFilter) && (
+              <button
+                onClick={() => { setSearch(''); setStatusFilter(''); }}
+                className="text-sm text-gray-400 hover:text-gray-600 px-2"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        )}
+
         {isLoading && (
-          <div className="text-center py-12 text-gray-400 text-sm">Loading {vocab.matter_plural.toLowerCase()}…</div>
+          <div className="text-center py-12 text-gray-400 text-sm">
+            Loading {vocab.matter_plural.toLowerCase()}…
+          </div>
         )}
 
         {isError && (
@@ -92,7 +144,13 @@ export function CasesPage() {
           </div>
         )}
 
-        {matters && matters.length > 0 && (
+        {matters && matters.length > 0 && filtered.length === 0 && (
+          <div className="text-center py-12 text-gray-400 text-sm">
+            No {vocab.matter_plural.toLowerCase()} match your search.
+          </div>
+        )}
+
+        {filtered.length > 0 && (
           <div className="rounded-lg border bg-white overflow-hidden shadow-sm">
             <table className="w-full text-left">
               <thead>
@@ -105,11 +163,16 @@ export function CasesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {matters.map((matter) => (
+                {filtered.map((matter) => (
                   <MatterRow key={matter.id} matter={matter} vocab={vocab} />
                 ))}
               </tbody>
             </table>
+            {filtered.length < (matters?.length ?? 0) && (
+              <div className="border-t px-4 py-2 text-xs text-gray-400">
+                Showing {filtered.length} of {matters?.length} {vocab.matter_plural.toLowerCase()}
+              </div>
+            )}
           </div>
         )}
       </main>
