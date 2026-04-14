@@ -41,6 +41,16 @@ export function DashboardPage() {
               View and manage all {vocab.matter_plural.toLowerCase()}
             </p>
           </Link>
+
+          {user?.role === 'admin' && (
+            <Link
+              to="/staff"
+              className="rounded-lg border bg-white p-6 shadow-sm hover:shadow-md transition-shadow group"
+            >
+              <h3 className="font-semibold text-gray-900 group-hover:text-blue-600">Team</h3>
+              <p className="mt-1 text-sm text-gray-500">Manage staff and admin accounts</p>
+            </Link>
+          )}
         </div>
       </main>
     </div>

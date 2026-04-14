@@ -9,6 +9,7 @@ const DashboardPage = () => import('../modules/dashboard/pages/DashboardPage').t
 const CasesPage = () => import('../modules/cases/pages/CasesPage').then((m) => ({ Component: m.CasesPage }));
 const CreateCasePage = () => import('../modules/cases/pages/CreateCasePage').then((m) => ({ Component: m.CreateCasePage }));
 const CaseDetailPage = () => import('../modules/cases/pages/CaseDetailPage').then((m) => ({ Component: m.CaseDetailPage }));
+const StaffPage = () => import('../modules/staff/pages/StaffPage').then((m) => ({ Component: m.StaffPage }));
 
 export const router = createBrowserRouter([
   // ─── Public routes ────────────────────────────────────────────────────────
@@ -23,6 +24,7 @@ export const router = createBrowserRouter([
       { path: '/cases', lazy: CasesPage },
       { path: '/cases/new', lazy: CreateCasePage },
       { path: '/cases/:id', lazy: CaseDetailPage },
+      { path: '/staff', lazy: StaffPage },
       // Phase 3+ routes:
       // { path: '/clients', lazy: ... },
       // { path: '/notifications', lazy: ... },
