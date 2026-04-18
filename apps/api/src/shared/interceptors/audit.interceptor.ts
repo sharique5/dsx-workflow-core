@@ -38,13 +38,13 @@ export class AuditInterceptor implements NestInterceptor {
     if (!user) return next.handle();
 
     return next.handle().pipe(
-      tap(async (responseData) => {
+      tap((responseData) => {
         const action = this.resolveAction(method);
         const { entityType, entityId, matterId } = this.resolveEntity(request, responseData);
 
         if (!entityType || !entityId) return;
 
-        await this.prisma.auditLog.create({
+        void this.prisma.auditLog.create({
           data: {
             tenantId: user.tenantId,
             entityType,

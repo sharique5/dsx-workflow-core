@@ -47,6 +47,7 @@ export class AzureStorageService implements IStorageService {
     return { storageKey };
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async getSignedUrl(storageKey: string, expiresInSeconds = 900): Promise<string> {
     const credential = new StorageSharedKeyCredential(this.accountName, this.accountKey);
     const expiresOn = new Date(Date.now() + expiresInSeconds * 1000);
