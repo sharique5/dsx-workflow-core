@@ -1,10 +1,17 @@
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { DatabaseModule } from './shared/database/database.module';
 import { RedisModule } from './shared/redis/redis.module';
 import { EmailModule } from './shared/email/email.module';
 import { StorageModule } from './shared/storage/storage.module';
+import { AuditInterceptor } from './shared/interceptors/audit.interceptor';
 import { AuthModule } from './modules/auth/auth.module';
+import { MattersModule } from './modules/matters/matters.module';
+import { ScheduledEventsModule } from './modules/scheduled-events/scheduled-events.module';
+import { NotesModule } from './modules/notes/notes.module';
+import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
+import { StaffModule } from './modules/staff/staff.module';
 
 @Module({
   imports: [
@@ -19,16 +26,21 @@ import { AuthModule } from './modules/auth/auth.module';
 
     // Feature modules
     AuthModule,
-    // Phase 2+ modules will be added here:
-    // MattersModule,
-    // ScheduledEventsModule,
-    // NotesModule,
+    MattersModule,
+    ScheduledEventsModule,
+    NotesModule,
+    AuditLogsModule,
+    StaffModule,
+    // Phase 3+ modules will be added here:
     // DocumentsModule,
     // DocumentRequestsModule,
     // FeesModule,
     // NotificationsModule,
-    // AuditModule,
     // UsersModule,
+  ],
+  providers: [
+    // Auto-logs all POST/PATCH/DELETE mutations globally
+    { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
   ],
 })
 export class AppModule {}

@@ -32,6 +32,13 @@ export interface UserDto {
   updatedAt: string;
 }
 
+export interface CreateStaffDto {
+  name: string;
+  email: string;
+  phone?: string;
+  role: 'staff' | 'admin';
+}
+
 // ─── Tenant ──────────────────────────────────────────────────────────────────
 
 export interface StatusConfig {
@@ -67,6 +74,7 @@ export interface MatterDto {
   title: string;
   participantId: string | null;
   participant?: UserDto;
+  creator?: { id: string; name: string };
   statusKey: string;
   metadata: Record<string, string>;
   createdBy: string;
@@ -77,6 +85,7 @@ export interface MatterDto {
 
 export interface CreateMatterDto {
   title: string;
+  internalRef: string;
   externalRef?: string;
   participantId?: string;
   statusKey: string;
@@ -100,12 +109,17 @@ export interface ScheduledEventDto {
   scheduledAt: string;
   outcomeNotes: string | null;
   createdBy: string;
+  creator?: { id: string; name: string };
   createdAt: string;
 }
 
 export interface CreateScheduledEventDto {
-  matterId: string;
   scheduledAt: string;
+  outcomeNotes?: string;
+}
+
+export interface UpdateScheduledEventDto {
+  scheduledAt?: string;
   outcomeNotes?: string;
 }
 
@@ -118,13 +132,18 @@ export interface NoteDto {
   content: string;
   isPublished: boolean;
   createdBy: string;
+  creator?: { id: string; name: string };
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreateNoteDto {
-  matterId: string;
   content: string;
+  isPublished?: boolean;
+}
+
+export interface UpdateNoteDto {
+  content?: string;
   isPublished?: boolean;
 }
 

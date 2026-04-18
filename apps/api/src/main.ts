@@ -44,4 +44,4 @@ async function bootstrap() {
   console.warn(`[DSX Workflow API] Running on http://localhost:${port}/api/v1`);
 }
 
-bootstrap();
+void bootstrap();

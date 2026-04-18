@@ -46,4 +46,26 @@ export class EmailService {
       throw new InternalServerErrorException('Failed to send portal invite');
     }
   }
+
+  async sendStaffWelcome(to: string, name: string): Promise<void> {
+    const loginUrl = `${process.env.WEB_APP_URL ?? 'http://localhost:5173'}/login`;
+
+    const { error } = await this.resend.emails.send({
+      from: process.env.EMAIL_FROM ?? 'onboarding@resend.dev',
+      to,
+      subject: 'You have been added to DSX Workflow',
+      html: `
+        <p>Hi ${name},</p>
+        <p>An admin has added you to the DSX Workflow workspace.</p>
+        <p>You can sign in using this email address and a one-time login code:</p>
+        <p><a href="${loginUrl}" style="padding: 10px 20px; background: #000; color: #fff; text-decoration: none; border-radius: 4px;">Sign in to DSX Workflow</a></p>
+        <p>If you were not expecting this, please ignore this email.</p>
+      `,
+    });
+
+    if (error) {
+      this.logger.error(`Failed to send staff welcome to ${to}: ${JSON.stringify(error)}`);
+      // Intentionally not throwing — staff is created regardless of email delivery
+    }
+  }
 }
