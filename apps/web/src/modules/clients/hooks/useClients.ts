@@ -42,3 +42,15 @@ export function useUpdateClient(id: string) {
     },
   });
 }
+
+export function useInviteClient() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => clientsApi.invite(id).then((r) => r.data),
+    onSuccess: (updated) => {
+      void queryClient.invalidateQueries({ queryKey: CLIENTS_KEY });
+      void queryClient.invalidateQueries({ queryKey: clientKey(updated.id) });
+    },
+  });
+}

@@ -1,11 +1,14 @@
+import { randomBytes } from 'crypto';
 import {
   Injectable,
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import { UserRole } from '@prisma/client';
+import { PortalInviteStatus, UserRole } from '@prisma/client';
 import { PrismaService } from '../../shared/database/prisma.service';
+import { EmailService } from '../../shared/email/email.service';
 import type { AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
 import { CreateClientDto, UpdateClientDto } from './dto/client.dto';
 
@@ -24,7 +27,10 @@ const CLIENT_SELECT = {
 
 @Injectable()
 export class ClientsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private email: EmailService,
+  ) {}
 
   /** List all clients for the authenticated user's tenant */
   async findAll(user: AuthenticatedUser) {
@@ -126,5 +132,50 @@ export class ClientsService {
       },
       select: CLIENT_SELECT,
     });
+  }
+
+  /**
+   * Send a portal invite to a client.
+   * Generates a secure random token, stores it, and emails the invite link.
+   * Admin only. Client must have an email address.
+   */
+  async invite(id: string, user: AuthenticatedUser) {
+    if (user.role !== 'admin') {
+      throw new ForbiddenException('Only admins can invite clients');
+    }
+
+    const client = await this.prisma.user.findFirst({
+      where: { id, tenantId: user.tenantId, role: UserRole.client, deletedAt: null },
+    });
+    if (!client) throw new NotFoundException('Client not found');
+
+    if (!client.email) {
+      throw new BadRequestException(
+        'Client must have an email address to receive a portal invite',
+      );
+    }
+
+    // Generate a 32-byte hex token (64 chars) — secure and unguessable
+    const token = randomBytes(32).toString('hex');
+
+    const portalUrl = process.env.PORTAL_APP_URL ?? 'http://localhost:5174';
+    const inviteUrl = `${portalUrl}/accept-invite?token=${token}`;
+
+    // Persist token and flip status to 'invited'
+    const updated = await this.prisma.user.update({
+      where: { id },
+      data: {
+        portalInviteToken: token,
+        portalInviteStatus: PortalInviteStatus.invited,
+      },
+      select: CLIENT_SELECT,
+    });
+
+    // Send invite email (fire-and-forget — don't fail the request on email error)
+    await this.email
+      .sendPortalInvite(client.email, inviteUrl, user.name)
+      .catch(() => null);
+
+    return updated;
   }
 }

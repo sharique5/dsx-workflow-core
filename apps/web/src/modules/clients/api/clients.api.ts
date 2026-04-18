@@ -10,4 +10,6 @@ export const clientsApi = {
 
   update: (id: string, data: UpdateClientDto) =>
     api.patch<UserDto>(`/clients/${id}`, data),
+
+  invite: (id: string) => api.post<UserDto>(`/clients/${id}/invite`),
 };

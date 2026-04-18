@@ -52,4 +52,14 @@ export class ClientsController {
   ) {
     return this.clientsService.update(id, dto, user);
   }
+
+  /** POST /api/v1/clients/:id/invite */
+  @Post(':id/invite')
+  @HttpCode(HttpStatus.OK)
+  invite(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.clientsService.invite(id, user);
+  }
 }

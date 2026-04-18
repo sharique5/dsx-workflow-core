@@ -53,6 +53,8 @@ export interface UpdateClientDto {
   phone?: string;
 }
 
+// POST /clients/:id/invite — no body needed, returns updated UserDto
+
 // ─── Tenant ──────────────────────────────────────────────────────────────────
 
 export interface StatusConfig {
