@@ -47,10 +47,16 @@ export class StaffService {
     }
 
     const existing = await this.prisma.user.findFirst({
-      where: { tenantId: user.tenantId, email: dto.email.toLowerCase(), deletedAt: null },
+      where: {
+        tenantId: user.tenantId,
+        email: dto.email.toLowerCase(),
+        deletedAt: null,
+      },
     });
     if (existing) {
-      throw new ConflictException('A user with this email already exists in your workspace');
+      throw new ConflictException(
+        'A user with this email already exists in your workspace',
+      );
     }
 
     const newUser = await this.prisma.user.create({
@@ -66,7 +72,9 @@ export class StaffService {
     });
 
     // Send welcome / first-login email (best-effort — don't fail the request)
-    await this.email.sendStaffWelcome(newUser.email!, newUser.name).catch(() => null);
+    await this.email
+      .sendStaffWelcome(newUser.email!, newUser.name)
+      .catch(() => null);
 
     return newUser;
   }

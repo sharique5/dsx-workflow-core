@@ -40,7 +40,8 @@ export class AuthService {
     }
 
     const otp = this.generateOtp();
-    const expirySeconds = parseInt(process.env.OTP_EXPIRY_MINUTES ?? '10', 10) * 60;
+    const expirySeconds =
+      parseInt(process.env.OTP_EXPIRY_MINUTES ?? '10', 10) * 60;
 
     await this.redis.set(`${OTP_PREFIX}${identifier}`, otp, expirySeconds);
 
@@ -54,9 +55,10 @@ export class AuthService {
     return { message: 'If your account exists, a code has been sent.' };
   }
 
-  async verifyOtp(
-    dto: VerifyOtpDto,
-  ): Promise<{ accessToken: string; user: Omit<AuthenticatedUser, 'role'> & { role: string } }> {
+  async verifyOtp(dto: VerifyOtpDto): Promise<{
+    accessToken: string;
+    user: Omit<AuthenticatedUser, 'role'> & { role: string };
+  }> {
     const identifier = dto.identifier.trim().toLowerCase();
     const storedOtp = await this.redis.get(`${OTP_PREFIX}${identifier}`);
 

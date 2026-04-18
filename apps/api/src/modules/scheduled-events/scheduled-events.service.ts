@@ -1,7 +1,14 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../../shared/database/prisma.service';
 import type { AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
-import { CreateScheduledEventDto, UpdateScheduledEventDto } from './dto/scheduled-events.dto';
+import {
+  CreateScheduledEventDto,
+  UpdateScheduledEventDto,
+} from './dto/scheduled-events.dto';
 
 @Injectable()
 export class ScheduledEventsService {
@@ -25,7 +32,11 @@ export class ScheduledEventsService {
     });
   }
 
-  async create(matterId: string, dto: CreateScheduledEventDto, user: AuthenticatedUser) {
+  async create(
+    matterId: string,
+    dto: CreateScheduledEventDto,
+    user: AuthenticatedUser,
+  ) {
     await this.assertMatterAccess(matterId, user.tenantId);
 
     return this.prisma.scheduledEvent.create({
@@ -40,7 +51,12 @@ export class ScheduledEventsService {
     });
   }
 
-  async update(matterId: string, id: string, dto: UpdateScheduledEventDto, user: AuthenticatedUser) {
+  async update(
+    matterId: string,
+    id: string,
+    dto: UpdateScheduledEventDto,
+    user: AuthenticatedUser,
+  ) {
     await this.assertMatterAccess(matterId, user.tenantId);
 
     const event = await this.prisma.scheduledEvent.findFirst({
@@ -51,8 +67,12 @@ export class ScheduledEventsService {
     return this.prisma.scheduledEvent.update({
       where: { id },
       data: {
-        ...(dto.scheduledAt !== undefined && { scheduledAt: new Date(dto.scheduledAt) }),
-        ...(dto.outcomeNotes !== undefined && { outcomeNotes: dto.outcomeNotes }),
+        ...(dto.scheduledAt !== undefined && {
+          scheduledAt: new Date(dto.scheduledAt),
+        }),
+        ...(dto.outcomeNotes !== undefined && {
+          outcomeNotes: dto.outcomeNotes,
+        }),
       },
       include: { creator: { select: { id: true, name: true } } },
     });

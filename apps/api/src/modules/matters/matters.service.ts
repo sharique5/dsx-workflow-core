@@ -28,7 +28,9 @@ export class MattersService {
     const matter = await this.prisma.matter.findFirst({
       where: { id, tenantId: user.tenantId, deletedAt: null },
       include: {
-        participant: { select: { id: true, name: true, email: true, phone: true } },
+        participant: {
+          select: { id: true, name: true, email: true, phone: true },
+        },
         creator: { select: { id: true, name: true } },
       },
     });
@@ -40,10 +42,16 @@ export class MattersService {
   async create(dto: CreateMatterDto, user: AuthenticatedUser) {
     // Check internalRef is unique within this tenant
     const existing = await this.prisma.matter.findFirst({
-      where: { tenantId: user.tenantId, internalRef: dto.internalRef, deletedAt: null },
+      where: {
+        tenantId: user.tenantId,
+        internalRef: dto.internalRef,
+        deletedAt: null,
+      },
     });
     if (existing) {
-      throw new ConflictException(`A matter with ref "${dto.internalRef}" already exists`);
+      throw new ConflictException(
+        `A matter with ref "${dto.internalRef}" already exists`,
+      );
     }
 
     return this.prisma.matter.create({
@@ -72,9 +80,13 @@ export class MattersService {
       data: {
         ...(dto.title !== undefined && { title: dto.title }),
         ...(dto.externalRef !== undefined && { externalRef: dto.externalRef }),
-        ...(dto.participantId !== undefined && { participantId: dto.participantId }),
+        ...(dto.participantId !== undefined && {
+          participantId: dto.participantId,
+        }),
         ...(dto.statusKey !== undefined && { statusKey: dto.statusKey }),
-        ...(dto.metadata !== undefined && { metadata: dto.metadata as Prisma.InputJsonValue }),
+        ...(dto.metadata !== undefined && {
+          metadata: dto.metadata as Prisma.InputJsonValue,
+        }),
       } as Prisma.MatterUncheckedUpdateInput,
       include: {
         participant: { select: { id: true, name: true, email: true } },

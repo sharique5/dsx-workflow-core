@@ -29,7 +29,10 @@ export class AuthController {
   /** POST /api/v1/auth/verify-otp */
   @Post('verify-otp')
   @HttpCode(HttpStatus.OK)
-  async verifyOtp(@Body() dto: VerifyOtpDto, @Res({ passthrough: true }) res: Response) {
+  async verifyOtp(
+    @Body() dto: VerifyOtpDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const result = await this.authService.verifyOtp(dto);
 
     // Set JWT as httpOnly cookie (primary) — also return in body for API clients

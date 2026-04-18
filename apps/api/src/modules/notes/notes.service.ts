@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../../shared/database/prisma.service';
 import type { AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
 import { CreateNoteDto, UpdateNoteDto } from './dto/notes.dto';
@@ -40,7 +44,12 @@ export class NotesService {
     });
   }
 
-  async update(matterId: string, id: string, dto: UpdateNoteDto, user: AuthenticatedUser) {
+  async update(
+    matterId: string,
+    id: string,
+    dto: UpdateNoteDto,
+    user: AuthenticatedUser,
+  ) {
     await this.assertMatterAccess(matterId, user.tenantId);
 
     const note = await this.prisma.note.findFirst({
