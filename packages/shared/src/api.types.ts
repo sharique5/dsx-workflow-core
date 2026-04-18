@@ -39,6 +39,20 @@ export interface CreateStaffDto {
   role: 'staff' | 'admin';
 }
 
+// ─── Client ──────────────────────────────────────────────────────────────────
+
+export interface CreateClientDto {
+  name: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface UpdateClientDto {
+  name?: string;
+  email?: string;
+  phone?: string;
+}
+
 // ─── Tenant ──────────────────────────────────────────────────────────────────
 
 export interface StatusConfig {

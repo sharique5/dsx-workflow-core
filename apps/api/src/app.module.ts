@@ -12,6 +12,7 @@ import { ScheduledEventsModule } from './modules/scheduled-events/scheduled-even
 import { NotesModule } from './modules/notes/notes.module';
 import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
 import { StaffModule } from './modules/staff/staff.module';
+import { ClientsModule } from './modules/clients/clients.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { StaffModule } from './modules/staff/staff.module';
     NotesModule,
     AuditLogsModule,
     StaffModule,
+    ClientsModule,
     // Phase 3+ modules will be added here:
     // DocumentsModule,
     // DocumentRequestsModule,
