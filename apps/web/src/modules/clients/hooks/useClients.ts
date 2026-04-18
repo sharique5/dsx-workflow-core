@@ -1,0 +1,44 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { clientsApi } from '../api/clients.api';
+import type { CreateClientDto, UpdateClientDto } from '@dsx/shared';
+
+export const CLIENTS_KEY = ['clients'] as const;
+export const clientKey = (id: string) => ['clients', id] as const;
+
+export function useClients() {
+  return useQuery({
+    queryKey: CLIENTS_KEY,
+    queryFn: () => clientsApi.list().then((r) => r.data),
+  });
+}
+
+export function useClient(id: string) {
+  return useQuery({
+    queryKey: clientKey(id),
+    queryFn: () => clientsApi.get(id).then((r) => r.data),
+    enabled: !!id,
+  });
+}
+
+export function useCreateClient() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreateClientDto) => clientsApi.create(data).then((r) => r.data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: CLIENTS_KEY });
+    },
+  });
+}
+
+export function useUpdateClient(id: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: UpdateClientDto) => clientsApi.update(id, data).then((r) => r.data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: CLIENTS_KEY });
+      void queryClient.invalidateQueries({ queryKey: clientKey(id) });
+    },
+  });
+}
