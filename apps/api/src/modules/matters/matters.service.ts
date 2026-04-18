@@ -17,7 +17,7 @@ export class MattersService {
     return this.prisma.matter.findMany({
       where: { tenantId: user.tenantId, deletedAt: null },
       include: {
-        participant: { select: { id: true, name: true, email: true } },
+        participant: { select: { id: true, name: true, email: true, portalInviteStatus: true } },
         creator: { select: { id: true, name: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -29,7 +29,7 @@ export class MattersService {
       where: { id, tenantId: user.tenantId, deletedAt: null },
       include: {
         participant: {
-          select: { id: true, name: true, email: true, phone: true },
+          select: { id: true, name: true, email: true, phone: true, portalInviteStatus: true },
         },
         creator: { select: { id: true, name: true } },
       },
@@ -66,7 +66,7 @@ export class MattersService {
         createdBy: user.id,
       },
       include: {
-        participant: { select: { id: true, name: true, email: true } },
+        participant: { select: { id: true, name: true, email: true, portalInviteStatus: true } },
         creator: { select: { id: true, name: true } },
       },
     });
@@ -89,7 +89,7 @@ export class MattersService {
         }),
       } as Prisma.MatterUncheckedUpdateInput,
       include: {
-        participant: { select: { id: true, name: true, email: true } },
+        participant: { select: { id: true, name: true, email: true, portalInviteStatus: true } },
         creator: { select: { id: true, name: true } },
       },
     });
@@ -110,7 +110,7 @@ export class MattersService {
       where: { id },
       data: { statusKey: 'closed' },
       include: {
-        participant: { select: { id: true, name: true, email: true } },
+        participant: { select: { id: true, name: true, email: true, portalInviteStatus: true } },
         creator: { select: { id: true, name: true } },
       },
     });

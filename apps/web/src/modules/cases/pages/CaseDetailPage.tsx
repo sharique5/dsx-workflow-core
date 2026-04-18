@@ -4,6 +4,7 @@ import { useMatter, useCloseMatter, useDeleteMatter } from '../hooks/useMatters'
 import { useScheduledEvents, useCreateScheduledEvent, useDeleteScheduledEvent } from '../hooks/useScheduledEvents';
 import { useNotes, useCreateNote, useUpdateNote, useDeleteNote } from '../hooks/useNotes';
 import { useAuditLogs } from '../hooks/useAuditLogs';
+import { useInviteClient } from '../../clients/hooks/useClients';
 import { useVocabulary } from '../../../shared/hooks/useVocabulary';
 import { useAuthStore } from '../../../store/auth.store';
 import type { ScheduledEventDto, NoteDto, AuditLogDto } from '@dsx/shared';
@@ -33,6 +34,7 @@ export function CaseDetailPage() {
   const { data: matter, isLoading, isError } = useMatter(id!);
   const { mutate: closeMatter, isPending: isClosing } = useCloseMatter();
   const { mutate: deleteMatter, isPending: isDeleting } = useDeleteMatter();
+  const { mutate: inviteClient, isPending: isInviting } = useInviteClient();
 
   // Hearings
   const { data: events } = useScheduledEvents(id!);
@@ -116,6 +118,51 @@ export function CaseDetailPage() {
               <dt className="font-medium text-gray-500">{vocab.participant_label}</dt>
               <dd className="mt-1 text-gray-900">{matter.participant?.name ?? '—'}</dd>
             </div>
+
+            {/* Portal invite — admin only */}
+            {isAdmin && matter.participant && (
+              <div>
+                <dt className="font-medium text-gray-500">Portal Access</dt>
+                <dd className="mt-1 flex items-center gap-2">
+                  {matter.participant.portalInviteStatus === 'active' ? (
+                    <span className="inline-flex items-center rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">
+                      Active
+                    </span>
+                  ) : matter.participant.portalInviteStatus === 'invited' ? (
+                    <>
+                      <span className="inline-flex items-center rounded-full bg-yellow-50 px-2.5 py-0.5 text-xs font-medium text-yellow-700">
+                        Invited
+                      </span>
+                      <button
+                        onClick={() => inviteClient(matter.participant!.id)}
+                        disabled={isInviting}
+                        className="text-xs text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+                      >
+                        {isInviting ? 'Resending…' : 'Resend invite'}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
+                        Not invited
+                      </span>
+                      {matter.participant.email && (
+                        <button
+                          onClick={() => inviteClient(matter.participant!.id)}
+                          disabled={isInviting}
+                          className="rounded-md bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                        >
+                          {isInviting ? 'Sending…' : `Invite ${vocab.participant_label}`}
+                        </button>
+                      )}
+                      {!matter.participant.email && (
+                        <span className="text-xs text-gray-400">(add email to invite)</span>
+                      )}
+                    </>
+                  )}
+                </dd>
+              </div>
+            )}
 
             <div>
               <dt className="font-medium text-gray-500">Created by</dt>

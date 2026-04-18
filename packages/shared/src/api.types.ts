@@ -89,7 +89,7 @@ export interface MatterDto {
   externalRef: string | null;
   title: string;
   participantId: string | null;
-  participant?: UserDto;
+  participant?: Pick<UserDto, 'id' | 'name' | 'email' | 'phone' | 'portalInviteStatus'>;
   creator?: { id: string; name: string };
   statusKey: string;
   metadata: Record<string, string>;
