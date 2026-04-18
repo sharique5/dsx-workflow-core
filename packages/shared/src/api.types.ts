@@ -198,9 +198,23 @@ export interface CreateDocumentRequestDto {
   dueDate?: string;
 }
 
+export interface UpdateDocumentRequestDto {
+  status?: DocumentRequestStatus;
+}
+
 // ─── Fee ─────────────────────────────────────────────────────────────────────
 
 export type FeeType = 'one-time' | 'periodic' | 'per-hearing' | 'per-consultation';
+
+export interface CreateFeeDto {
+  type: FeeType;
+  totalAmount: number;
+}
+
+export interface LogPaymentDto {
+  amount: number;
+  note?: string;
+}
 
 export interface PaymentRecord {
   amount: number;

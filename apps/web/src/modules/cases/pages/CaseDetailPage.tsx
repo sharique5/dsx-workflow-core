@@ -4,10 +4,12 @@ import { useMatter, useCloseMatter, useDeleteMatter } from '../hooks/useMatters'
 import { useScheduledEvents, useCreateScheduledEvent, useDeleteScheduledEvent } from '../hooks/useScheduledEvents';
 import { useNotes, useCreateNote, useUpdateNote, useDeleteNote } from '../hooks/useNotes';
 import { useAuditLogs } from '../hooks/useAuditLogs';
+import { useDocumentRequests, useCreateDocumentRequest, useMarkDocumentRequestReceived } from '../hooks/useDocumentRequests';
+import { useFees, useCreateFee, useLogPayment } from '../hooks/useFees';
 import { useInviteClient } from '../../clients/hooks/useClients';
 import { useVocabulary } from '../../../shared/hooks/useVocabulary';
 import { useAuthStore } from '../../../store/auth.store';
-import type { ScheduledEventDto, NoteDto, AuditLogDto } from '@dsx/shared';
+import type { ScheduledEventDto, NoteDto, AuditLogDto, FeeType } from '@dsx/shared';
 
 function StatusBadge({ statusKey, statuses }: { statusKey: string; statuses: { key: string; label: string; isTerminal: boolean }[] }) {
   const status = statuses.find((s) => s.key === statusKey);
@@ -54,6 +56,25 @@ export function CaseDetailPage() {
 
   // Audit trail
   const { data: auditLogs } = useAuditLogs(id!);
+
+  // Document requests
+  const { data: documentRequests = [] } = useDocumentRequests(id!);
+  const { mutate: createDocumentRequest, isPending: isCreatingDR } = useCreateDocumentRequest(id!);
+  const { mutate: markReceived } = useMarkDocumentRequestReceived(id!);
+  const [showAddDR, setShowAddDR] = useState(false);
+  const [drDescription, setDrDescription] = useState('');
+  const [drDueDate, setDrDueDate] = useState('');
+
+  // Fees
+  const { data: fees = [] } = useFees(id!);
+  const { mutate: createFee, isPending: isCreatingFee } = useCreateFee(id!);
+  const { mutate: logPayment, isPending: isLoggingPayment } = useLogPayment(id!);
+  const [showAddFee, setShowAddFee] = useState(false);
+  const [feeType, setFeeType] = useState<FeeType>('one-time');
+  const [feeTotalAmount, setFeeTotalAmount] = useState('');
+  const [payingFeeId, setPayingFeeId] = useState<string | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentNote, setPaymentNote] = useState('');
 
   if (isLoading) {
     return (
@@ -405,6 +426,270 @@ export function CaseDetailPage() {
                         </button>
                       )}
                     </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Document Requests */}
+        <div className="rounded-lg border bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h3 className="font-medium text-gray-900">Document Requests</h3>
+            {!isClosed && (
+              <button
+                onClick={() => setShowAddDR((v) => !v)}
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
+                {showAddDR ? 'Cancel' : '+ Request document'}
+              </button>
+            )}
+          </div>
+
+          {showAddDR && (
+            <div className="mt-4 rounded-md bg-gray-50 border p-4 space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700">Description *</label>
+                <input
+                  type="text"
+                  value={drDescription}
+                  onChange={(e) => setDrDescription(e.target.value)}
+                  placeholder="e.g. Proof of address"
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700">Due date (optional)</label>
+                <input
+                  type="date"
+                  value={drDueDate}
+                  onChange={(e) => setDrDueDate(e.target.value)}
+                  className="mt-1 block w-48 rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none"
+                />
+              </div>
+              <button
+                disabled={isCreatingDR || !drDescription.trim()}
+                onClick={() => {
+                  createDocumentRequest(
+                    { matterId: id!, description: drDescription.trim(), dueDate: drDueDate || undefined },
+                    {
+                      onSuccess: () => {
+                        setDrDescription('');
+                        setDrDueDate('');
+                        setShowAddDR(false);
+                      },
+                    },
+                  );
+                }}
+                className="rounded-md bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              >
+                {isCreatingDR ? 'Saving…' : 'Save request'}
+              </button>
+            </div>
+          )}
+
+          {documentRequests.length === 0 && !showAddDR && (
+            <p className="mt-3 text-sm text-gray-400">No document requests yet.</p>
+          )}
+
+          {documentRequests.length > 0 && (
+            <ul className="mt-4 divide-y divide-gray-100">
+              {documentRequests.map((dr) => (
+                <li key={dr.id} className="py-3 flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm text-gray-900">{dr.description}</p>
+                    {dr.dueDate && (
+                      <p className="mt-0.5 text-xs text-gray-400">
+                        Due: {new Date(dr.dueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        dr.status === 'received'
+                          ? 'bg-green-50 text-green-700'
+                          : 'bg-yellow-50 text-yellow-700'
+                      }`}
+                    >
+                      {dr.status === 'received' ? 'Received' : 'Pending'}
+                    </span>
+                    {dr.status === 'pending' && !isClosed && (
+                      <button
+                        onClick={() => markReceived(dr.id)}
+                        className="text-xs text-gray-400 hover:text-gray-600"
+                      >
+                        Mark received
+                      </button>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Fees */}
+        <div className="rounded-lg border bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h3 className="font-medium text-gray-900">Fees</h3>
+            {isAdmin && !isClosed && (
+              <button
+                onClick={() => setShowAddFee((v) => !v)}
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
+                {showAddFee ? 'Cancel' : '+ Add Fee'}
+              </button>
+            )}
+          </div>
+
+          {showAddFee && (
+            <form
+              className="mt-4 border-t pt-4 flex flex-wrap gap-3 items-end"
+              onSubmit={(e: React.FormEvent) => {
+                e.preventDefault();
+                const amount = parseFloat(feeTotalAmount);
+                if (!amount || amount <= 0) return;
+                createFee(
+                  { type: feeType, totalAmount: amount },
+                  {
+                    onSuccess: () => {
+                      setFeeTotalAmount('');
+                      setFeeType('one-time');
+                      setShowAddFee(false);
+                    },
+                  },
+                );
+              }}
+            >
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Type</label>
+                <select
+                  value={feeType}
+                  onChange={(e) => setFeeType(e.target.value as FeeType)}
+                  className="block rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none"
+                >
+                  <option value="one-time">One-time</option>
+                  <option value="periodic">Periodic</option>
+                  <option value="per-hearing">Per hearing</option>
+                  <option value="per-consultation">Per consultation</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Total Amount (₹)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={feeTotalAmount}
+                  onChange={(e) => setFeeTotalAmount(e.target.value)}
+                  required
+                  placeholder="0.00"
+                  className="block w-36 rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={isCreatingFee}
+                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {isCreatingFee ? 'Saving…' : 'Save'}
+              </button>
+            </form>
+          )}
+
+          {fees.length === 0 && !showAddFee && (
+            <p className="mt-3 text-sm text-gray-400">No fees recorded yet.</p>
+          )}
+
+          {fees.length > 0 && (
+            <ul className="mt-4 divide-y divide-gray-100">
+              {fees.map((fee) => (
+                <li key={fee.id} className="py-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-900 capitalize">
+                        {fee.type.replace(/-/g, ' ')}
+                      </p>
+                      <div className="mt-1 flex gap-4 text-xs text-gray-500">
+                        <span>Total: ₹{fee.totalAmount.toLocaleString('en-IN')}</span>
+                        <span>Paid: ₹{fee.paidAmount.toLocaleString('en-IN')}</span>
+                        <span className={fee.dueAmount > 0 ? 'text-red-600 font-medium' : 'text-green-600 font-medium'}>
+                          Due: ₹{fee.dueAmount.toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                      {fee.paymentHistory.length > 0 && (
+                        <ul className="mt-2 space-y-0.5">
+                          {fee.paymentHistory.map((p, i) => (
+                            <li key={i} className="text-xs text-gray-400">
+                              ₹{p.amount.toLocaleString('en-IN')} on {new Date(p.paidAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              {p.note ? ` — ${p.note}` : ''}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {payingFeeId === fee.id && (
+                        <div className="mt-3 flex gap-2 items-end flex-wrap">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Amount (₹)</label>
+                            <input
+                              type="number"
+                              min="0.01"
+                              step="0.01"
+                              value={paymentAmount}
+                              onChange={(e) => setPaymentAmount(e.target.value)}
+                              placeholder="0.00"
+                              className="block w-28 rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-black focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Note (optional)</label>
+                            <input
+                              type="text"
+                              value={paymentNote}
+                              onChange={(e) => setPaymentNote(e.target.value)}
+                              placeholder="e.g. Cheque #123"
+                              className="block w-48 rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-black focus:outline-none"
+                            />
+                          </div>
+                          <button
+                            disabled={isLoggingPayment || !paymentAmount}
+                            onClick={() => {
+                              const amt = parseFloat(paymentAmount);
+                              if (!amt || amt <= 0) return;
+                              logPayment(
+                                { feeId: fee.id, data: { amount: amt, note: paymentNote || undefined } },
+                                {
+                                  onSuccess: () => {
+                                    setPayingFeeId(null);
+                                    setPaymentAmount('');
+                                    setPaymentNote('');
+                                  },
+                                },
+                              );
+                            }}
+                            className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50"
+                          >
+                            {isLoggingPayment ? 'Saving…' : 'Log payment'}
+                          </button>
+                          <button
+                            onClick={() => { setPayingFeeId(null); setPaymentAmount(''); setPaymentNote(''); }}
+                            className="text-xs text-gray-400 hover:text-gray-600"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    {isAdmin && fee.dueAmount > 0 && !isClosed && payingFeeId !== fee.id && (
+                      <button
+                        onClick={() => { setPayingFeeId(fee.id); setPaymentAmount(''); setPaymentNote(''); }}
+                        className="shrink-0 text-xs text-blue-600 hover:text-blue-700 font-medium"
+                      >
+                        Log payment
+                      </button>
+                    )}
                   </div>
                 </li>
               ))}

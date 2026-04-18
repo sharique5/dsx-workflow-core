@@ -1,5 +1,11 @@
 import { Link, useParams } from 'react-router-dom';
-import { usePortalCase, usePortalCaseEvents, usePortalCaseNotes } from '../hooks/usePortalCases';
+import {
+  usePortalCase,
+  usePortalCaseEvents,
+  usePortalCaseNotes,
+  usePortalCaseDocumentRequests,
+  usePortalCaseFees,
+} from '../hooks/usePortalCases';
 
 function formatStatusKey(key: string) {
   return key
@@ -32,6 +38,8 @@ export function PortalCaseDetailPage() {
   const { data: matter, isLoading } = usePortalCase(id!);
   const { data: events = [] } = usePortalCaseEvents(id!);
   const { data: notes = [] } = usePortalCaseNotes(id!);
+  const { data: documentRequests = [] } = usePortalCaseDocumentRequests(id!);
+  const { data: fees = [] } = usePortalCaseFees(id!);
 
   if (isLoading) {
     return (
@@ -150,6 +158,74 @@ export function PortalCaseDetailPage() {
               <li key={n.id} className="py-3">
                 <p className="text-sm text-gray-900 whitespace-pre-wrap">{n.content}</p>
                 <p className="mt-1 text-xs text-gray-400">{formatDate(n.createdAt)}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      {/* Document requests — read-only */}
+      <div className="rounded-lg border bg-white p-4 shadow-sm">
+        <h2 className="font-medium text-gray-900 text-sm mb-3">Document Requests</h2>
+        {documentRequests.length === 0 ? (
+          <p className="text-sm text-gray-400">No document requests.</p>
+        ) : (
+          <ul className="divide-y divide-gray-100">
+            {documentRequests.map((dr) => (
+              <li key={dr.id} className="py-2.5 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm text-gray-900">{dr.description}</p>
+                  {dr.dueDate && (
+                    <p className="mt-0.5 text-xs text-gray-400">
+                      Due: {formatDate(dr.dueDate)}
+                    </p>
+                  )}
+                </div>
+                <span
+                  className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                    dr.status === 'received'
+                      ? 'bg-green-50 text-green-700'
+                      : 'bg-yellow-50 text-yellow-700'
+                  }`}
+                >
+                  {dr.status === 'received' ? 'Received' : 'Pending'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Fees — read-only with full payment history (decision #38) */}
+      <div className="rounded-lg border bg-white p-4 shadow-sm">
+        <h2 className="font-medium text-gray-900 text-sm mb-3">Fees</h2>
+        {fees.length === 0 ? (
+          <p className="text-sm text-gray-400">No fees on file.</p>
+        ) : (
+          <ul className="divide-y divide-gray-100">
+            {fees.map((fee) => (
+              <li key={fee.id} className="py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-sm font-medium text-gray-900 capitalize">
+                    {fee.type.replace(/-/g, ' ')}
+                  </p>
+                  <div className="text-right shrink-0">
+                    <p className="text-xs text-gray-500">Total: ₹{fee.totalAmount.toLocaleString('en-IN')}</p>
+                    <p className="text-xs text-gray-500">Paid: ₹{fee.paidAmount.toLocaleString('en-IN')}</p>
+                    <p className={`text-xs font-medium ${fee.dueAmount > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      Due: ₹{fee.dueAmount.toLocaleString('en-IN')}
+                    </p>
+                  </div>
+                </div>
+                {fee.paymentHistory.length > 0 && (
+                  <ul className="mt-2 space-y-0.5">
+                    {fee.paymentHistory.map((p, i) => (
+                      <li key={i} className="text-xs text-gray-400">
+                        ₹{p.amount.toLocaleString('en-IN')} — {formatDate(p.paidAt)}
+                        {p.note ? ` · ${p.note}` : ''}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </li>
             ))}
           </ul>
