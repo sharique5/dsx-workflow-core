@@ -15,7 +15,11 @@ export class MattersService {
 
   async findAll(user: AuthenticatedUser) {
     return this.prisma.matter.findMany({
-      where: { tenantId: user.tenantId, deletedAt: null },
+      where: {
+        tenantId: user.tenantId,
+        deletedAt: null,
+        ...(user.role === 'client' && { participantId: user.id }),
+      },
       include: {
         participant: { select: { id: true, name: true, email: true, portalInviteStatus: true } },
         creator: { select: { id: true, name: true } },
@@ -26,7 +30,12 @@ export class MattersService {
 
   async findOne(id: string, user: AuthenticatedUser) {
     const matter = await this.prisma.matter.findFirst({
-      where: { id, tenantId: user.tenantId, deletedAt: null },
+      where: {
+        id,
+        tenantId: user.tenantId,
+        deletedAt: null,
+        ...(user.role === 'client' && { participantId: user.id }),
+      },
       include: {
         participant: {
           select: { id: true, name: true, email: true, phone: true, portalInviteStatus: true },

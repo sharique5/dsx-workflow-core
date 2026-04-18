@@ -14,16 +14,21 @@ import {
 export class ScheduledEventsService {
   constructor(private prisma: PrismaService) {}
 
-  private async assertMatterAccess(matterId: string, tenantId: string) {
+  private async assertMatterAccess(matterId: string, user: AuthenticatedUser) {
     const matter = await this.prisma.matter.findFirst({
-      where: { id: matterId, tenantId, deletedAt: null },
+      where: {
+        id: matterId,
+        tenantId: user.tenantId,
+        deletedAt: null,
+        ...(user.role === 'client' && { participantId: user.id }),
+      },
     });
     if (!matter) throw new NotFoundException('Matter not found');
     return matter;
   }
 
   async findAll(matterId: string, user: AuthenticatedUser) {
-    await this.assertMatterAccess(matterId, user.tenantId);
+    await this.assertMatterAccess(matterId, user);
 
     return this.prisma.scheduledEvent.findMany({
       where: { matterId, tenantId: user.tenantId },
@@ -37,7 +42,7 @@ export class ScheduledEventsService {
     dto: CreateScheduledEventDto,
     user: AuthenticatedUser,
   ) {
-    await this.assertMatterAccess(matterId, user.tenantId);
+    await this.assertMatterAccess(matterId, user);
 
     return this.prisma.scheduledEvent.create({
       data: {
@@ -57,7 +62,7 @@ export class ScheduledEventsService {
     dto: UpdateScheduledEventDto,
     user: AuthenticatedUser,
   ) {
-    await this.assertMatterAccess(matterId, user.tenantId);
+    await this.assertMatterAccess(matterId, user);
 
     const event = await this.prisma.scheduledEvent.findFirst({
       where: { id, matterId, tenantId: user.tenantId },
@@ -79,7 +84,7 @@ export class ScheduledEventsService {
   }
 
   async remove(matterId: string, id: string, user: AuthenticatedUser) {
-    await this.assertMatterAccess(matterId, user.tenantId);
+    await this.assertMatterAccess(matterId, user);
 
     const event = await this.prisma.scheduledEvent.findFirst({
       where: { id, matterId, tenantId: user.tenantId },
