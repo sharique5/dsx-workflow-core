@@ -74,6 +74,7 @@ export interface MatterDto {
   title: string;
   participantId: string | null;
   participant?: UserDto;
+  creator?: { id: string; name: string };
   statusKey: string;
   metadata: Record<string, string>;
   createdBy: string;
