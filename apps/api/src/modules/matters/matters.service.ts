@@ -15,9 +15,20 @@ export class MattersService {
 
   async findAll(user: AuthenticatedUser) {
     return this.prisma.matter.findMany({
-      where: { tenantId: user.tenantId, deletedAt: null },
+      where: {
+        tenantId: user.tenantId,
+        deletedAt: null,
+        ...(user.role === 'client' && { participantId: user.id }),
+      },
       include: {
-        participant: { select: { id: true, name: true, email: true } },
+        participant: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            portalInviteStatus: true,
+          },
+        },
         creator: { select: { id: true, name: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -26,9 +37,22 @@ export class MattersService {
 
   async findOne(id: string, user: AuthenticatedUser) {
     const matter = await this.prisma.matter.findFirst({
-      where: { id, tenantId: user.tenantId, deletedAt: null },
+      where: {
+        id,
+        tenantId: user.tenantId,
+        deletedAt: null,
+        ...(user.role === 'client' && { participantId: user.id }),
+      },
       include: {
-        participant: { select: { id: true, name: true, email: true, phone: true } },
+        participant: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            portalInviteStatus: true,
+          },
+        },
         creator: { select: { id: true, name: true } },
       },
     });
@@ -40,10 +64,16 @@ export class MattersService {
   async create(dto: CreateMatterDto, user: AuthenticatedUser) {
     // Check internalRef is unique within this tenant
     const existing = await this.prisma.matter.findFirst({
-      where: { tenantId: user.tenantId, internalRef: dto.internalRef, deletedAt: null },
+      where: {
+        tenantId: user.tenantId,
+        internalRef: dto.internalRef,
+        deletedAt: null,
+      },
     });
     if (existing) {
-      throw new ConflictException(`A matter with ref "${dto.internalRef}" already exists`);
+      throw new ConflictException(
+        `A matter with ref "${dto.internalRef}" already exists`,
+      );
     }
 
     return this.prisma.matter.create({
@@ -58,7 +88,14 @@ export class MattersService {
         createdBy: user.id,
       },
       include: {
-        participant: { select: { id: true, name: true, email: true } },
+        participant: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            portalInviteStatus: true,
+          },
+        },
         creator: { select: { id: true, name: true } },
       },
     });
@@ -72,12 +109,23 @@ export class MattersService {
       data: {
         ...(dto.title !== undefined && { title: dto.title }),
         ...(dto.externalRef !== undefined && { externalRef: dto.externalRef }),
-        ...(dto.participantId !== undefined && { participantId: dto.participantId }),
+        ...(dto.participantId !== undefined && {
+          participantId: dto.participantId,
+        }),
         ...(dto.statusKey !== undefined && { statusKey: dto.statusKey }),
-        ...(dto.metadata !== undefined && { metadata: dto.metadata as Prisma.InputJsonValue }),
+        ...(dto.metadata !== undefined && {
+          metadata: dto.metadata as Prisma.InputJsonValue,
+        }),
       } as Prisma.MatterUncheckedUpdateInput,
       include: {
-        participant: { select: { id: true, name: true, email: true } },
+        participant: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            portalInviteStatus: true,
+          },
+        },
         creator: { select: { id: true, name: true } },
       },
     });
@@ -98,7 +146,14 @@ export class MattersService {
       where: { id },
       data: { statusKey: 'closed' },
       include: {
-        participant: { select: { id: true, name: true, email: true } },
+        participant: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            portalInviteStatus: true,
+          },
+        },
         creator: { select: { id: true, name: true } },
       },
     });

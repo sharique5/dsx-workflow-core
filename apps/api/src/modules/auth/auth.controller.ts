@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
-import { RequestOtpDto, VerifyOtpDto } from './dto/auth.dto';
+import { RequestOtpDto, VerifyOtpDto, AcceptInviteDto } from './dto/auth.dto';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { CurrentUser } from '../../shared/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
@@ -29,7 +29,10 @@ export class AuthController {
   /** POST /api/v1/auth/verify-otp */
   @Post('verify-otp')
   @HttpCode(HttpStatus.OK)
-  async verifyOtp(@Body() dto: VerifyOtpDto, @Res({ passthrough: true }) res: Response) {
+  async verifyOtp(
+    @Body() dto: VerifyOtpDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const result = await this.authService.verifyOtp(dto);
 
     // Set JWT as httpOnly cookie (primary) — also return in body for API clients
@@ -44,6 +47,25 @@ export class AuthController {
       user: result.user,
       accessToken: result.accessToken,
     };
+  }
+
+  /** POST /api/v1/auth/accept-invite — validate invite token, log client in */
+  @Post('accept-invite')
+  @HttpCode(HttpStatus.OK)
+  async acceptInvite(
+    @Body() dto: AcceptInviteDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.acceptInvite(dto);
+
+    res.cookie('access_token', result.accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return { user: result.user, accessToken: result.accessToken };
   }
 
   /** POST /api/v1/auth/logout */

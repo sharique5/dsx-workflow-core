@@ -39,6 +39,22 @@ export interface CreateStaffDto {
   role: 'staff' | 'admin';
 }
 
+// ─── Client ──────────────────────────────────────────────────────────────────
+
+export interface CreateClientDto {
+  name: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface UpdateClientDto {
+  name?: string;
+  email?: string;
+  phone?: string;
+}
+
+// POST /clients/:id/invite — no body needed, returns updated UserDto
+
 // ─── Tenant ──────────────────────────────────────────────────────────────────
 
 export interface StatusConfig {
@@ -73,7 +89,7 @@ export interface MatterDto {
   externalRef: string | null;
   title: string;
   participantId: string | null;
-  participant?: UserDto;
+  participant?: Pick<UserDto, 'id' | 'name' | 'email' | 'phone' | 'portalInviteStatus'>;
   creator?: { id: string; name: string };
   statusKey: string;
   metadata: Record<string, string>;
@@ -182,9 +198,23 @@ export interface CreateDocumentRequestDto {
   dueDate?: string;
 }
 
+export interface UpdateDocumentRequestDto {
+  status?: DocumentRequestStatus;
+}
+
 // ─── Fee ─────────────────────────────────────────────────────────────────────
 
 export type FeeType = 'one-time' | 'periodic' | 'per-hearing' | 'per-consultation';
+
+export interface CreateFeeDto {
+  type: FeeType;
+  totalAmount: number;
+}
+
+export interface LogPaymentDto {
+  amount: number;
+  note?: string;
+}
 
 export interface PaymentRecord {
   amount: number;

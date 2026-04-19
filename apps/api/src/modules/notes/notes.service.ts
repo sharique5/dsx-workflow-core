@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../../shared/database/prisma.service';
 import type { AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
 import { CreateNoteDto, UpdateNoteDto } from './dto/notes.dto';
@@ -7,26 +11,35 @@ import { CreateNoteDto, UpdateNoteDto } from './dto/notes.dto';
 export class NotesService {
   constructor(private prisma: PrismaService) {}
 
-  private async assertMatterAccess(matterId: string, tenantId: string) {
+  private async assertMatterAccess(matterId: string, user: AuthenticatedUser) {
     const matter = await this.prisma.matter.findFirst({
-      where: { id: matterId, tenantId, deletedAt: null },
+      where: {
+        id: matterId,
+        tenantId: user.tenantId,
+        deletedAt: null,
+        ...(user.role === 'client' && { participantId: user.id }),
+      },
     });
     if (!matter) throw new NotFoundException('Matter not found');
     return matter;
   }
 
   async findAll(matterId: string, user: AuthenticatedUser) {
-    await this.assertMatterAccess(matterId, user.tenantId);
+    await this.assertMatterAccess(matterId, user);
 
     return this.prisma.note.findMany({
-      where: { matterId, tenantId: user.tenantId },
+      where: {
+        matterId,
+        tenantId: user.tenantId,
+        ...(user.role === 'client' && { isPublished: true }),
+      },
       include: { creator: { select: { id: true, name: true } } },
       orderBy: { createdAt: 'desc' },
     });
   }
 
   async create(matterId: string, dto: CreateNoteDto, user: AuthenticatedUser) {
-    await this.assertMatterAccess(matterId, user.tenantId);
+    await this.assertMatterAccess(matterId, user);
 
     return this.prisma.note.create({
       data: {
@@ -40,8 +53,13 @@ export class NotesService {
     });
   }
 
-  async update(matterId: string, id: string, dto: UpdateNoteDto, user: AuthenticatedUser) {
-    await this.assertMatterAccess(matterId, user.tenantId);
+  async update(
+    matterId: string,
+    id: string,
+    dto: UpdateNoteDto,
+    user: AuthenticatedUser,
+  ) {
+    await this.assertMatterAccess(matterId, user);
 
     const note = await this.prisma.note.findFirst({
       where: { id, matterId, tenantId: user.tenantId },
@@ -64,7 +82,7 @@ export class NotesService {
   }
 
   async remove(matterId: string, id: string, user: AuthenticatedUser) {
-    await this.assertMatterAccess(matterId, user.tenantId);
+    await this.assertMatterAccess(matterId, user);
 
     const note = await this.prisma.note.findFirst({
       where: { id, matterId, tenantId: user.tenantId },

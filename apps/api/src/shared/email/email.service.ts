@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { Resend } from 'resend';
 
 @Injectable()
@@ -24,12 +28,18 @@ export class EmailService {
     });
 
     if (error) {
-      this.logger.error(`Failed to send OTP email to ${to}: ${JSON.stringify(error)}`);
+      this.logger.error(
+        `Failed to send OTP email to ${to}: ${JSON.stringify(error)}`,
+      );
       throw new InternalServerErrorException('Failed to send login code');
     }
   }
 
-  async sendPortalInvite(to: string, inviteUrl: string, lawyerName: string): Promise<void> {
+  async sendPortalInvite(
+    to: string,
+    inviteUrl: string,
+    lawyerName: string,
+  ): Promise<void> {
     const { error } = await this.resend.emails.send({
       from: process.env.EMAIL_FROM ?? 'onboarding@resend.dev',
       to,
@@ -42,7 +52,9 @@ export class EmailService {
     });
 
     if (error) {
-      this.logger.error(`Failed to send portal invite to ${to}: ${JSON.stringify(error)}`);
+      this.logger.error(
+        `Failed to send portal invite to ${to}: ${JSON.stringify(error)}`,
+      );
       throw new InternalServerErrorException('Failed to send portal invite');
     }
   }
@@ -64,7 +76,9 @@ export class EmailService {
     });
 
     if (error) {
-      this.logger.error(`Failed to send staff welcome to ${to}: ${JSON.stringify(error)}`);
+      this.logger.error(
+        `Failed to send staff welcome to ${to}: ${JSON.stringify(error)}`,
+      );
       // Intentionally not throwing — staff is created regardless of email delivery
     }
   }

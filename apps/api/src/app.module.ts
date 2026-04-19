@@ -12,6 +12,9 @@ import { ScheduledEventsModule } from './modules/scheduled-events/scheduled-even
 import { NotesModule } from './modules/notes/notes.module';
 import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
 import { StaffModule } from './modules/staff/staff.module';
+import { ClientsModule } from './modules/clients/clients.module';
+import { DocumentRequestsModule } from './modules/document-requests/document-requests.module';
+import { FeesModule } from './modules/fees/fees.module';
 
 @Module({
   imports: [
@@ -31,10 +34,12 @@ import { StaffModule } from './modules/staff/staff.module';
     NotesModule,
     AuditLogsModule,
     StaffModule,
+    ClientsModule,
+    DocumentRequestsModule,
+    FeesModule,
     // Phase 3+ modules will be added here:
     // DocumentsModule,
-    // DocumentRequestsModule,
-    // FeesModule,
+    // FeesModule (already added),
     // NotificationsModule,
     // UsersModule,
   ],

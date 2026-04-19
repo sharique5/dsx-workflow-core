@@ -63,6 +63,14 @@
 | 29 | Custom domain | Squarespace domain → CNAME to Azure Static Web Apps. SSL managed by Azure (free). |
 | 30 | AI features | All deferred to Phase 4+. Three features: internal assistant, client chatbot, WhatsApp AI agent. |
 | 31 | Frontend deployment | Two separate React apps in monorepo. `team.abc.in` (lawyer/staff) + `clients.abc.in` (client portal). Shared `packages/shared` for types + utilities. |
+| 32 | Client required at case creation | `participantId` is mandatory when creating a case. Client may not be onboarded yet (portalInviteStatus = not_invited) but the record must exist first. |
+| 33 | Client linked to multiple cases | One `User` row (role=client) reused across multiple matters. Lawyer selects existing client or creates new one at case creation. |
+| 34 | Client portal auth channels | Both email OTP and phone (WhatsApp OTP once WhatsApp is wired). Client can update their name/email on first login. |
+| 35 | Portal home screen | Single case → auto-open case detail. Multiple cases → show cases list/dashboard. |
+| 36 | Document request notifications | Send notification immediately on creation. Delay/batching can be introduced later as a cost optimisation. |
+| 37 | Document request fulfilment | Client brings document in person or sends via WhatsApp. Lawyer manually marks request as received in the UI. No client-side upload in Phase 3. |
+| 38 | Fee portal view | Full payment history shown on portal for transparency (amount, paid_at, note per payment). |
+| 39 | Client fee visibility | Fees only visible to client post-invite. Fee structure is case-specific (lawyer configures per matter), not a fixed rate. |
 
 ---
 

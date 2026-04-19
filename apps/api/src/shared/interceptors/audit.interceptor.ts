@@ -10,7 +10,8 @@ import { Request } from 'express';
 import { PrismaService } from '../database/prisma.service';
 import { AuthenticatedUser } from '../decorators/current-user.decorator';
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const ENTITY_MAP: Record<string, string> = {
   matters: 'matter',
@@ -27,7 +28,9 @@ export class AuditInterceptor implements NestInterceptor {
   constructor(private prisma: PrismaService) {}
 
   intercept(ctx: ExecutionContext, next: CallHandler): Observable<unknown> {
-    const request = ctx.switchToHttp().getRequest<Request & { user: AuthenticatedUser }>();
+    const request = ctx
+      .switchToHttp()
+      .getRequest<Request & { user: AuthenticatedUser }>();
     const method = request.method;
 
     if (!['POST', 'PATCH', 'DELETE'].includes(method)) {
@@ -40,7 +43,10 @@ export class AuditInterceptor implements NestInterceptor {
     return next.handle().pipe(
       tap((responseData) => {
         const action = this.resolveAction(method);
-        const { entityType, entityId, matterId } = this.resolveEntity(request, responseData);
+        const { entityType, entityId, matterId } = this.resolveEntity(
+          request,
+          responseData,
+        );
 
         if (!entityType || !entityId) return;
 
@@ -61,19 +67,29 @@ export class AuditInterceptor implements NestInterceptor {
 
   private resolveAction(method: string): string {
     switch (method) {
-      case 'POST':   return 'created';
-      case 'PATCH':  return 'updated';
-      case 'DELETE': return 'deleted';
-      default:       return 'unknown';
+      case 'POST':
+        return 'created';
+      case 'PATCH':
+        return 'updated';
+      case 'DELETE':
+        return 'deleted';
+      default:
+        return 'unknown';
     }
   }
 
   private resolveEntity(
     request: Request,
     responseData: unknown,
-  ): { entityType: string | null; entityId: string | null; matterId: string | null } {
+  ): {
+    entityType: string | null;
+    entityId: string | null;
+    matterId: string | null;
+  } {
     // URL segments stripped of prefix e.g. ['matters', '{uuid}', 'events', '{uuid}']
-    const segments = request.path.split('/').filter((s) => s && s !== 'api' && !/^v\d+$/.test(s));
+    const segments = request.path
+      .split('/')
+      .filter((s) => s && s !== 'api' && !/^v\d+$/.test(s));
 
     // Find entity type from the last named (non-UUID) segment
     const resourceSegment = [...segments].reverse().find((s) => ENTITY_MAP[s]);
@@ -91,7 +107,7 @@ export class AuditInterceptor implements NestInterceptor {
       entityType === 'matter' &&
       responseData &&
       typeof responseData === 'object' &&
-      'id' in (responseData as object)
+      'id' in responseData
         ? (responseData as { id: string }).id
         : null;
 
@@ -101,7 +117,7 @@ export class AuditInterceptor implements NestInterceptor {
     const rawParam = request.params['id'];
     const entityId: string | null =
       (responseData && typeof responseData === 'object'
-        ? (responseData as { id?: string }).id ?? null
+        ? ((responseData as { id?: string }).id ?? null)
         : null) ??
       (Array.isArray(rawParam) ? rawParam[0] : rawParam) ??
       null;
@@ -109,4 +125,3 @@ export class AuditInterceptor implements NestInterceptor {
     return { entityType, entityId, matterId };
   }
 }
-

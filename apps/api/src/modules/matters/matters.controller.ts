@@ -30,7 +30,10 @@ export class MattersController {
 
   /** GET /api/v1/matters/:id */
   @Get(':id')
-  findOne(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.mattersService.findOne(id, user);
   }
 
@@ -53,14 +56,20 @@ export class MattersController {
 
   /** PATCH /api/v1/matters/:id/close */
   @Patch(':id/close')
-  close(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
+  close(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.mattersService.close(id, user);
   }
 
   /** DELETE /api/v1/matters/:id */
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.mattersService.remove(id, user);
   }
 }

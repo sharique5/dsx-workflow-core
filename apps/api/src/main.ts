@@ -28,10 +28,9 @@ async function bootstrap() {
   );
 
   // CORS — allow team and portal apps
-  const corsOrigins = process.env.CORS_ORIGIN?.split(',').map((o) => o.trim()) ?? [
-    'http://localhost:5173',
-    'http://localhost:5174',
-  ];
+  const corsOrigins = process.env.CORS_ORIGIN?.split(',').map((o) =>
+    o.trim(),
+  ) ?? ['http://localhost:5173', 'http://localhost:5174'];
   app.enableCors({
     origin: corsOrigins,
     credentials: true,

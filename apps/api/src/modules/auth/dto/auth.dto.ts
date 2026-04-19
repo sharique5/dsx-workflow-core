@@ -1,5 +1,11 @@
 import { IsString, IsNotEmpty, Length } from 'class-validator';
 
+export class AcceptInviteDto {
+  @IsString()
+  @IsNotEmpty()
+  token!: string;
+}
+
 export class RequestOtpDto {
   @IsString()
   @IsNotEmpty()

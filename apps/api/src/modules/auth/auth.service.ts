@@ -7,9 +7,10 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../shared/database/prisma.service';
 import { RedisService } from '../../shared/redis/redis.service';
 import { EmailService } from '../../shared/email/email.service';
-import { RequestOtpDto, VerifyOtpDto } from './dto/auth.dto';
+import { RequestOtpDto, VerifyOtpDto, AcceptInviteDto } from './dto/auth.dto';
 import { AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
 import crypto from 'crypto';
+import { PortalInviteStatus } from '@prisma/client';
 
 const OTP_PREFIX = 'otp:';
 
@@ -40,7 +41,8 @@ export class AuthService {
     }
 
     const otp = this.generateOtp();
-    const expirySeconds = parseInt(process.env.OTP_EXPIRY_MINUTES ?? '10', 10) * 60;
+    const expirySeconds =
+      parseInt(process.env.OTP_EXPIRY_MINUTES ?? '10', 10) * 60;
 
     await this.redis.set(`${OTP_PREFIX}${identifier}`, otp, expirySeconds);
 
@@ -54,9 +56,10 @@ export class AuthService {
     return { message: 'If your account exists, a code has been sent.' };
   }
 
-  async verifyOtp(
-    dto: VerifyOtpDto,
-  ): Promise<{ accessToken: string; user: Omit<AuthenticatedUser, 'role'> & { role: string } }> {
+  async verifyOtp(dto: VerifyOtpDto): Promise<{
+    accessToken: string;
+    user: Omit<AuthenticatedUser, 'role'> & { role: string };
+  }> {
     const identifier = dto.identifier.trim().toLowerCase();
     const storedOtp = await this.redis.get(`${OTP_PREFIX}${identifier}`);
 
@@ -115,6 +118,41 @@ export class AuthService {
     }
 
     return user;
+  }
+
+  async acceptInvite(
+    dto: AcceptInviteDto,
+  ): Promise<{ accessToken: string; user: AuthenticatedUser }> {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        portalInviteToken: dto.token,
+        isActive: true,
+        deletedAt: null,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid or expired invite link');
+    }
+
+    // Flip status to active and clear the single-use token
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        portalInviteStatus: PortalInviteStatus.active,
+        portalInviteToken: null,
+      },
+    });
+
+    const payload: AuthenticatedUser = {
+      id: user.id,
+      tenantId: user.tenantId,
+      role: user.role,
+      name: user.name,
+    };
+
+    const accessToken = this.jwt.sign(payload);
+    return { accessToken, user: payload };
   }
 
   private generateOtp(): string {

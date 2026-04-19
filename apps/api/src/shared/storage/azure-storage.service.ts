@@ -17,13 +17,19 @@ export class AzureStorageService implements IStorageService {
   constructor() {
     this.accountName = process.env.AZURE_STORAGE_ACCOUNT ?? '';
     this.accountKey = process.env.AZURE_STORAGE_KEY ?? '';
-    this.containerName = process.env.AZURE_STORAGE_CONTAINER ?? 'dsx-workflow-files';
+    this.containerName =
+      process.env.AZURE_STORAGE_CONTAINER ?? 'dsx-workflow-files';
 
     if (!this.accountName || !this.accountKey) {
-      throw new NotImplementedException('Azure Storage credentials not configured');
+      throw new NotImplementedException(
+        'Azure Storage credentials not configured',
+      );
     }
 
-    const credential = new StorageSharedKeyCredential(this.accountName, this.accountKey);
+    const credential = new StorageSharedKeyCredential(
+      this.accountName,
+      this.accountKey,
+    );
     this.client = new BlobServiceClient(
       `https://${this.accountName}.blob.core.windows.net`,
       credential,
@@ -48,8 +54,14 @@ export class AzureStorageService implements IStorageService {
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
-  async getSignedUrl(storageKey: string, expiresInSeconds = 900): Promise<string> {
-    const credential = new StorageSharedKeyCredential(this.accountName, this.accountKey);
+  async getSignedUrl(
+    storageKey: string,
+    expiresInSeconds = 900,
+  ): Promise<string> {
+    const credential = new StorageSharedKeyCredential(
+      this.accountName,
+      this.accountKey,
+    );
     const expiresOn = new Date(Date.now() + expiresInSeconds * 1000);
 
     const sas = generateBlobSASQueryParameters(
