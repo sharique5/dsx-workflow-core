@@ -15,6 +15,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,json}\" --ignore-path .gitignore"
   },
   "devDependencies": {
+    "@types/multer": "^2.1.0",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
     "eslint": "^8.57.0",
@@ -24,5 +25,8 @@
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@azure/identity": "^4.13.1"
   }
 }

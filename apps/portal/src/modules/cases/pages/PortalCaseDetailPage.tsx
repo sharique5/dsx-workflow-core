@@ -5,6 +5,8 @@ import {
   usePortalCaseNotes,
   usePortalCaseDocumentRequests,
   usePortalCaseFees,
+  usePortalCaseDocuments,
+  usePortalDocumentDownloadUrl,
 } from '../hooks/usePortalCases';
 
 function formatStatusKey(key: string) {
@@ -40,6 +42,8 @@ export function PortalCaseDetailPage() {
   const { data: notes = [] } = usePortalCaseNotes(id!);
   const { data: documentRequests = [] } = usePortalCaseDocumentRequests(id!);
   const { data: fees = [] } = usePortalCaseFees(id!);
+  const { data: documents = [] } = usePortalCaseDocuments(id!);
+  const { mutate: downloadDocument, isPending: isDownloading } = usePortalDocumentDownloadUrl(id!);
 
   if (isLoading) {
     return (
@@ -189,6 +193,34 @@ export function PortalCaseDetailPage() {
                 >
                   {dr.status === 'received' ? 'Received' : 'Pending'}
                 </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Documents — read-only with download */}
+      <div className="rounded-lg border bg-white p-4 shadow-sm">
+        <h2 className="font-medium text-gray-900 text-sm mb-3">Documents</h2>
+        {documents.length === 0 ? (
+          <p className="text-sm text-gray-400">No documents on file.</p>
+        ) : (
+          <ul className="divide-y divide-gray-100">
+            {documents.map((doc) => (
+              <li key={doc.id} className="py-2.5 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm text-gray-900 truncate">{doc.fileName}</p>
+                  <p className="text-xs text-gray-400">
+                    {(doc.fileSizeBytes / 1024).toFixed(1)} KB
+                  </p>
+                </div>
+                <button
+                  onClick={() => downloadDocument(doc.id)}
+                  disabled={isDownloading}
+                  className="shrink-0 text-xs text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+                >
+                  Download
+                </button>
               </li>
             ))}
           </ul>

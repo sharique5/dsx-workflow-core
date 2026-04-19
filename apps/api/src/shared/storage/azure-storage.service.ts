@@ -1,10 +1,10 @@
-import { Injectable, NotImplementedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   BlobServiceClient,
-  StorageSharedKeyCredential,
   generateBlobSASQueryParameters,
   BlobSASPermissions,
 } from '@azure/storage-blob';
+import { DefaultAzureCredential } from '@azure/identity';
 import { IStorageService, StorageUploadResult } from './storage.interface';
 
 @Injectable()
@@ -12,24 +12,17 @@ export class AzureStorageService implements IStorageService {
   private client: BlobServiceClient;
   private containerName: string;
   private accountName: string;
-  private accountKey: string;
 
   constructor() {
     this.accountName = process.env.AZURE_STORAGE_ACCOUNT ?? '';
-    this.accountKey = process.env.AZURE_STORAGE_KEY ?? '';
     this.containerName =
       process.env.AZURE_STORAGE_CONTAINER ?? 'dsx-workflow-files';
 
-    if (!this.accountName || !this.accountKey) {
-      throw new NotImplementedException(
-        'Azure Storage credentials not configured',
-      );
+    if (!this.accountName) {
+      throw new Error('AZURE_STORAGE_ACCOUNT is not configured');
     }
 
-    const credential = new StorageSharedKeyCredential(
-      this.accountName,
-      this.accountKey,
-    );
+    const credential = new DefaultAzureCredential();
     this.client = new BlobServiceClient(
       `https://${this.accountName}.blob.core.windows.net`,
       credential,
@@ -53,25 +46,28 @@ export class AzureStorageService implements IStorageService {
     return { storageKey };
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await
   async getSignedUrl(
     storageKey: string,
     expiresInSeconds = 900,
   ): Promise<string> {
-    const credential = new StorageSharedKeyCredential(
-      this.accountName,
-      this.accountKey,
-    );
+    const startsOn = new Date();
     const expiresOn = new Date(Date.now() + expiresInSeconds * 1000);
+
+    const userDelegationKey = await this.client.getUserDelegationKey(
+      startsOn,
+      expiresOn,
+    );
 
     const sas = generateBlobSASQueryParameters(
       {
         containerName: this.containerName,
         blobName: storageKey,
         permissions: BlobSASPermissions.parse('r'),
+        startsOn,
         expiresOn,
       },
-      credential,
+      userDelegationKey,
+      this.accountName,
     ).toString();
 
     return `https://${this.accountName}.blob.core.windows.net/${this.containerName}/${storageKey}?${sas}`;
