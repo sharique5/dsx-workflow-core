@@ -1,7 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { portalCasesApi } from '../api/portal-cases.api';
 import { portalDocumentRequestsApi } from '../api/portal-document-requests.api';
 import { portalFeesApi } from '../api/portal-fees.api';
+import { portalDocumentsApi } from '../api/portal-documents.api';
 
 export const PORTAL_MATTERS_KEY = ['portal', 'matters'] as const;
 export const portalMatterKey = (id: string) => ['portal', 'matters', id] as const;
@@ -13,6 +14,8 @@ export const portalMatterDRKey = (id: string) =>
   ['portal', 'matters', id, 'document-requests'] as const;
 export const portalMatterFeesKey = (id: string) =>
   ['portal', 'matters', id, 'fees'] as const;
+export const portalMatterDocsKey = (id: string) =>
+  ['portal', 'matters', id, 'documents'] as const;
 
 export function usePortalCases() {
   return useQuery({
@@ -58,5 +61,25 @@ export function usePortalCaseFees(matterId: string) {
     queryKey: portalMatterFeesKey(matterId),
     queryFn: () => portalFeesApi.list(matterId).then((r) => r.data),
     enabled: !!matterId,
+  });
+}
+
+export function usePortalCaseDocuments(matterId: string) {
+  return useQuery({
+    queryKey: portalMatterDocsKey(matterId),
+    queryFn: () => portalDocumentsApi.list(matterId).then((r) => r.data),
+    enabled: !!matterId,
+  });
+}
+
+export function usePortalDocumentDownloadUrl(matterId: string) {
+  return useMutation({
+    mutationFn: (docId: string) =>
+      portalDocumentsApi
+        .getDownloadUrl(matterId, docId)
+        .then((r) => r.data.downloadUrl),
+    onSuccess: (url) => {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    },
   });
 }

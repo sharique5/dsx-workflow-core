@@ -6,6 +6,7 @@ import { useNotes, useCreateNote, useUpdateNote, useDeleteNote } from '../hooks/
 import { useAuditLogs } from '../hooks/useAuditLogs';
 import { useDocumentRequests, useCreateDocumentRequest, useMarkDocumentRequestReceived } from '../hooks/useDocumentRequests';
 import { useFees, useCreateFee, useLogPayment } from '../hooks/useFees';
+import { useDocuments, useUploadDocument, useDocumentDownloadUrl, useDeleteDocument } from '../hooks/useDocuments';
 import { useInviteClient } from '../../clients/hooks/useClients';
 import { useVocabulary } from '../../../shared/hooks/useVocabulary';
 import { useAuthStore } from '../../../store/auth.store';
@@ -75,6 +76,13 @@ export function CaseDetailPage() {
   const [payingFeeId, setPayingFeeId] = useState<string | null>(null);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentNote, setPaymentNote] = useState('');
+
+  // Documents
+  const { data: documents = [] } = useDocuments(id!);
+  const { mutate: uploadDocument, isPending: isUploading } = useUploadDocument(id!);
+  const { mutate: downloadDocument, isPending: isDownloading } = useDocumentDownloadUrl(id!);
+  const { mutate: deleteDocument } = useDeleteDocument(id!);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   if (isLoading) {
     return (
@@ -315,9 +323,76 @@ export function CaseDetailPage() {
           )}
         </div>
 
+        {/* Documents */}
         <div className="rounded-lg border bg-white p-6 shadow-sm">
-          <h3 className="font-medium text-gray-900">Documents</h3>
-          <p className="mt-2 text-sm text-gray-400">Coming soon.</p>
+          <div className="flex items-center justify-between">
+            <h3 className="font-medium text-gray-900">Documents</h3>
+            {!isClosed && user?.role !== 'client' && (
+              <label className="cursor-pointer text-sm text-blue-600 hover:text-blue-700 font-medium">
+                {isUploading ? 'Uploading…' : '+ Upload'}
+                <input
+                  type="file"
+                  className="sr-only"
+                  disabled={isUploading}
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setUploadError(null);
+                    uploadDocument(file, {
+                      onError: (err: unknown) => {
+                        const msg = err instanceof Error ? err.message : 'Upload failed';
+                        setUploadError(msg);
+                      },
+                    });
+                    e.target.value = '';
+                  }}
+                />
+              </label>
+            )}
+          </div>
+
+          {uploadError && (
+            <p className="mt-2 text-xs text-red-500">{uploadError}</p>
+          )}
+
+          {documents.length === 0 && !isUploading && (
+            <p className="mt-3 text-sm text-gray-400">No documents uploaded yet.</p>
+          )}
+
+          {documents.length > 0 && (
+            <ul className="mt-4 divide-y divide-gray-100">
+              {documents.map((doc) => (
+                <li key={doc.id} className="py-3 flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{doc.fileName}</p>
+                    <p className="mt-0.5 text-xs text-gray-400">
+                      {doc.mimeType} · {(doc.fileSizeBytes / 1024).toFixed(1)} KB
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <button
+                      onClick={() => downloadDocument(doc.id)}
+                      disabled={isDownloading}
+                      className="text-xs text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+                    >
+                      Download
+                    </button>
+                    {isAdmin && (
+                      <button
+                        onClick={() => {
+                          if (confirm(`Delete "${doc.fileName}"?`)) deleteDocument(doc.id);
+                        }}
+                        className="text-xs text-red-400 hover:text-red-600"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         {/* Notes */}
