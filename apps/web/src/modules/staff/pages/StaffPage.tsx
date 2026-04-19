@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useStaff, useCreateStaff, useDeactivateStaff, useReactivateStaff } from '../hooks/useStaff';
 import { useAuthStore } from '../../../store/auth.store';
@@ -27,22 +26,26 @@ function StaffRow({
   const isSelf = member.id === currentUserId;
 
   return (
-    <tr className="hover:bg-gray-50 transition-colors">
-      <td className="px-4 py-3 text-sm font-medium text-gray-900">{member.name}</td>
-      <td className="px-4 py-3 text-sm text-gray-500">{member.email ?? '—'}</td>
-      <td className="px-4 py-3 text-sm text-gray-500">{member.phone ?? '—'}</td>
+    <tr className="hover:bg-slate-50 transition-colors">
+      <td className="px-4 py-3 text-sm font-medium text-slate-900">{member.name}</td>
+      <td className="px-4 py-3 text-sm text-slate-500">{member.email ?? '—'}</td>
+      <td className="px-4 py-3 text-sm text-slate-500">{member.phone ?? '—'}</td>
       <td className="px-4 py-3 text-sm">
-        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-700">
+        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-slate-100 text-slate-700">
           {ROLE_LABELS[member.role] ?? member.role}
         </span>
       </td>
       <td className="px-4 py-3 text-sm">
         <span
           className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-            member.isActive ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-500'
+            member.isActive
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+              : 'bg-red-50 text-red-500 border border-red-100'
           }`}
         >
-          {member.isActive ? 'Active' : 'Inactive'}
+          {member.isActive ? (
+            <><span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500" />Active</>
+          ) : 'Inactive'}
         </span>
       </td>
       {isAdmin && (
@@ -62,7 +65,7 @@ function StaffRow({
             ) : (
               <button
                 onClick={() => onReactivate(member.id)}
-                className="text-xs text-blue-500 hover:text-blue-700"
+                className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
               >
                 Reactivate
               </button>
@@ -98,77 +101,77 @@ export function StaffPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="border-b bg-white px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link to="/dashboard" className="text-sm text-gray-400 hover:text-gray-600">
-            Dashboard
-          </Link>
-          <span className="text-gray-300">/</span>
-          <h1 className="font-semibold text-lg">Team</h1>
+    <div className="px-6 py-8 max-w-4xl mx-auto">
+      {/* Page header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Team</h1>
+          <p className="mt-1 text-sm text-slate-500">Manage your firm's staff members and access levels.</p>
         </div>
         {isAdmin && (
           <button
             onClick={() => setShowForm((v) => !v)}
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
           >
             {showForm ? 'Cancel' : '+ Add Member'}
           </button>
         )}
-      </header>
+      </div>
 
-      <main className="px-6 py-8 max-w-4xl mx-auto space-y-6">
+      <div className="space-y-5">
         {/* Add staff form */}
         {isAdmin && showForm && (
           <form
             onSubmit={handleSubmit(onSubmit)}
-            className="rounded-lg border bg-white p-6 shadow-sm space-y-4"
+            className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden"
           >
-            <h2 className="font-medium text-gray-900">Add team member</h2>
-
+            <div className="px-6 py-4 border-b border-slate-100">
+              <h2 className="text-sm font-semibold text-slate-900">Add team member</h2>
+            </div>
+            <div className="px-6 py-5 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
                   Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   placeholder="Full name"
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+                  className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                   {...register('name', { required: 'Name is required' })}
                 />
                 {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name.message}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
                   Email <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="email"
                   placeholder="staff@firm.com"
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+                  className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                   {...register('email', { required: 'Email is required' })}
                 />
                 {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Phone</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">Phone</label>
                 <input
                   type="tel"
                   placeholder="+91 98000 00000"
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+                  className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                   {...register('phone')}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
                   Role <span className="text-red-500">*</span>
                 </label>
                 <select
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+                  className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                   {...register('role', { required: true })}
                 >
                   <option value="staff">Staff</option>
@@ -187,17 +190,70 @@ export function StaffPage() {
               <button
                 type="submit"
                 disabled={isCreating}
-                className="rounded-md bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
               >
                 {isCreating ? 'Adding…' : 'Add Member'}
               </button>
               <button
                 type="button"
                 onClick={() => { reset(); setShowForm(false); }}
-                className="rounded-md border border-gray-300 px-5 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                className="rounded-lg border border-slate-300 px-5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
               >
                 Cancel
               </button>
+            </div>
+            </div>
+          </form>
+        )}
+
+        {/* Staff table */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-16 text-slate-400 text-sm gap-2">
+            <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+            </svg>
+            Loading team…
+          </div>
+        )}
+
+        {isError && (
+          <div className="text-center py-12 text-red-500 text-sm">
+            Failed to load team. Please refresh.
+          </div>
+        )}
+
+        {staff && staff.length > 0 && (
+          <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-500 tracking-wider">
+                  <th className="px-4 py-3">Name</th>
+                  <th className="px-4 py-3">Email</th>
+                  <th className="px-4 py-3">Phone</th>
+                  <th className="px-4 py-3">Role</th>
+                  <th className="px-4 py-3">Status</th>
+                  {isAdmin && <th className="px-4 py-3" />}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {staff.map((member) => (
+                  <StaffRow
+                    key={member.id}
+                    member={member}
+                    currentUserId={user?.id}
+                    isAdmin={isAdmin}
+                    onDeactivate={deactivate}
+                    onReactivate={reactivate}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
             </div>
           </form>
         )}

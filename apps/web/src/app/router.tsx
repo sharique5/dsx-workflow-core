@@ -3,6 +3,7 @@ import { createBrowserRouter } from 'react-router-dom';
 import { ProtectedRoute } from '../modules/auth/components/ProtectedRoute';
 import { LoginPage } from '../modules/auth/pages/LoginPage';
 import { OTPPage } from '../modules/auth/pages/OTPPage';
+import { AppShell } from './AppShell';
 
 // Lazy load dashboard + feature pages to keep initial bundle small
 // React Router's lazy() expects { Component } — NOT { default }
@@ -17,19 +18,20 @@ export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/verify-otp', element: <OTPPage /> },
 
-  // ─── Protected routes ─────────────────────────────────────────────────────
+  // ─── Protected routes (wrapped in AppShell) ───────────────────────────────
   {
     element: <ProtectedRoute />,
     children: [
-      { path: '/dashboard', lazy: DashboardPage },
-      { path: '/cases', lazy: CasesPage },
-      { path: '/cases/new', lazy: CreateCasePage },
-      { path: '/cases/:id', lazy: CaseDetailPage },
-      { path: '/staff', lazy: StaffPage },
-      // Phase 3+ routes:
-      // { path: '/clients', lazy: ... },
-      // { path: '/notifications', lazy: ... },
-      // { path: '/settings', lazy: ... },
+      {
+        element: <AppShell />,
+        children: [
+          { path: '/dashboard', lazy: DashboardPage },
+          { path: '/cases', lazy: CasesPage },
+          { path: '/cases/new', lazy: CreateCasePage },
+          { path: '/cases/:id', lazy: CaseDetailPage },
+          { path: '/staff', lazy: StaffPage },
+        ],
+      },
     ],
   },
 
@@ -37,3 +39,4 @@ export const router = createBrowserRouter([
   { path: '/', element: <LoginPage /> },
   { path: '*', element: <LoginPage /> },
 ]);
+

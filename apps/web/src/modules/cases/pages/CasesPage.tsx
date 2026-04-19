@@ -13,6 +13,228 @@ function StatusBadge({ statusKey, statuses }: { statusKey: string; statuses: { k
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
         isTerminal
+          ? 'bg-slate-100 text-slate-500'
+          : 'bg-indigo-50 text-indigo-700 border border-indigo-100'
+      }`}
+    >
+      {!isTerminal && (
+        <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-indigo-500" />
+      )}
+      {label}
+    </span>
+  );
+}
+
+function MatterRow({ matter, vocab }: { matter: MatterDto; vocab: ReturnType<typeof useVocabulary> }) {
+  return (
+    <tr className="hover:bg-slate-50 transition-colors group">
+      <td className="px-5 py-3.5 text-sm font-mono font-medium text-slate-700">
+        <Link to={`/cases/${matter.id}`} className="hover:text-indigo-600">
+          {matter.internalRef}
+        </Link>
+      </td>
+      <td className="px-5 py-3.5 text-sm text-slate-800 font-medium">
+        <Link to={`/cases/${matter.id}`} className="hover:text-indigo-600">
+          {matter.title}
+        </Link>
+      </td>
+      <td className="px-5 py-3.5 text-sm text-slate-500">
+        {matter.participant?.name ?? <span className="text-slate-300">—</span>}
+      </td>
+      <td className="px-5 py-3.5 text-sm">
+        <StatusBadge statusKey={matter.statusKey} statuses={vocab.statuses} />
+      </td>
+      <td className="px-5 py-3.5 text-sm text-slate-400">
+        {new Date(matter.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+      </td>
+      <td className="px-5 py-3.5 text-sm text-right">
+        <Link
+          to={`/cases/${matter.id}`}
+          className="text-slate-400 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"
+        >
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </Link>
+      </td>
+    </tr>
+  );
+}
+
+export function CasesPage() {
+  const vocab = useVocabulary();
+  const { data: matters, isLoading, isError } = useMatters();
+
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+
+  const filtered = useMemo(() => {
+    if (!matters) return [];
+    const q = search.trim().toLowerCase();
+    return matters.filter((m) => {
+      const matchesSearch =
+        !q ||
+        m.internalRef.toLowerCase().includes(q) ||
+        m.title.toLowerCase().includes(q) ||
+        (m.participant?.name ?? '').toLowerCase().includes(q) ||
+        (m.externalRef ?? '').toLowerCase().includes(q);
+      const matchesStatus = !statusFilter || m.statusKey === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [matters, search, statusFilter]);
+
+  return (
+    <div className="px-6 py-8 max-w-7xl mx-auto">
+      {/* Page header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">{vocab.matter_plural}</h1>
+          {matters && (
+            <p className="mt-0.5 text-sm text-slate-500">
+              {matters.length} {matters.length === 1 ? vocab.matter_label.toLowerCase() : vocab.matter_plural.toLowerCase()} total
+            </p>
+          )}
+        </div>
+        <Link
+          to="/cases/new"
+          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition-colors"
+        >
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          New {vocab.matter_label}
+        </Link>
+      </div>
+
+      {/* Search + filter bar */}
+      {matters && matters.length > 0 && (
+        <div className="mb-4 flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={`Search ${vocab.matter_plural.toLowerCase()}…`}
+              className="w-full rounded-lg border border-slate-300 pl-9 pr-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white"
+          >
+            <option value="">All statuses</option>
+            {vocab.statuses.map((s) => (
+              <option key={s.key} value={s.key}>{s.label}</option>
+            ))}
+          </select>
+          {(search || statusFilter) && (
+            <button
+              onClick={() => { setSearch(''); setStatusFilter(''); }}
+              className="text-sm text-slate-500 hover:text-slate-700 px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* States */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-24 text-slate-400 text-sm gap-2">
+          <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+          </svg>
+          Loading {vocab.matter_plural.toLowerCase()}…
+        </div>
+      )}
+
+      {isError && (
+        <div className="flex items-center justify-center py-24">
+          <div className="text-center">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-50 mb-3">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#ef4444" strokeWidth={1.75}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <p className="text-sm text-slate-600">Failed to load {vocab.matter_plural.toLowerCase()}.</p>
+          </div>
+        </div>
+      )}
+
+      {matters && matters.length === 0 && (
+        <div className="flex items-center justify-center py-24">
+          <div className="text-center">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-slate-100 mb-4">
+              <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="#94a3b8" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
+              </svg>
+            </div>
+            <h3 className="text-sm font-semibold text-slate-800 mb-1">No {vocab.matter_plural.toLowerCase()} yet</h3>
+            <p className="text-sm text-slate-500 mb-4">Get started by creating your first {vocab.matter_label.toLowerCase()}.</p>
+            <Link
+              to="/cases/new"
+              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+            >
+              <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              Create {vocab.matter_label.toLowerCase()}
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {matters && matters.length > 0 && filtered.length === 0 && (
+        <div className="text-center py-16 text-slate-400 text-sm">
+          No {vocab.matter_plural.toLowerCase()} match your search.
+        </div>
+      )}
+
+      {filtered.length > 0 && (
+        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-50/80">
+                <th className="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Ref</th>
+                <th className="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Title</th>
+                <th className="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">{vocab.participant_label}</th>
+                <th className="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                <th className="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Filed</th>
+                <th className="px-5 py-3 w-10" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filtered.map((matter) => (
+                <MatterRow key={matter.id} matter={matter} vocab={vocab} />
+              ))}
+            </tbody>
+          </table>
+          {filtered.length < (matters?.length ?? 0) && (
+            <div className="border-t border-slate-100 px-5 py-2.5 text-xs text-slate-400">
+              Showing {filtered.length} of {matters?.length} {vocab.matter_plural.toLowerCase()}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+function StatusBadge({ statusKey, statuses }: { statusKey: string; statuses: { key: string; label: string; isTerminal: boolean }[] }) {
+  const status = statuses.find((s) => s.key === statusKey);
+  const label = status?.label ?? statusKey;
+  const isTerminal = status?.isTerminal ?? false;
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+        isTerminal
           ? 'bg-gray-100 text-gray-600'
           : 'bg-blue-50 text-blue-700'
       }`}

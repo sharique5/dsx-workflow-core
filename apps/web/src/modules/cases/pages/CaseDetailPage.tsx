@@ -20,9 +20,10 @@ function StatusBadge({ statusKey, statuses }: { statusKey: string; statuses: { k
   return (
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-        isTerminal ? 'bg-gray-100 text-gray-600' : 'bg-blue-50 text-blue-700'
+        isTerminal ? 'bg-slate-100 text-slate-500' : 'bg-indigo-50 text-indigo-700 border border-indigo-100'
       }`}
     >
+      {!isTerminal && <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-indigo-500" />}
       {label}
     </span>
   );
@@ -86,15 +87,18 @@ export function CaseDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-sm text-gray-400">Loading…</p>
+      <div className="flex items-center justify-center py-24 text-slate-400 text-sm gap-2">
+        <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+        </svg>
+        Loading…
       </div>
     );
   }
 
   if (isError || !matter) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex items-center justify-center py-24">
         <p className="text-sm text-red-500">{vocab.matter_label} not found.</p>
       </div>
     );
@@ -103,89 +107,96 @@ export function CaseDetailPage() {
   const isClosed = matter.statusKey === 'closed';
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="border-b bg-white px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link to="/cases" className="text-sm text-gray-400 hover:text-gray-600">
-            {vocab.matter_plural}
-          </Link>
-          <span className="text-gray-300">/</span>
-          <h1 className="font-semibold text-lg">{matter.internalRef}</h1>
-          <StatusBadge statusKey={matter.statusKey} statuses={vocab.statuses} />
+    <div className="px-6 py-8 max-w-4xl mx-auto">
+      {/* Page header */}
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <div className="flex items-center gap-2 mb-2 text-sm text-slate-500">
+            <Link to="/cases" className="hover:text-indigo-600 transition-colors">{vocab.matter_plural}</Link>
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+            <span className="font-mono text-slate-700">{matter.internalRef}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-slate-900">{matter.title}</h1>
+            <StatusBadge statusKey={matter.statusKey} statuses={vocab.statuses} />
+          </div>
         </div>
-
         {isAdmin && !isClosed && (
           <button
             onClick={() => closeMatter(matter.id)}
             disabled={isClosing}
-            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-colors"
           >
             {isClosing ? 'Closing…' : `Close ${vocab.matter_label}`}
           </button>
         )}
-      </header>
+      </div>
 
-      <main className="px-6 py-8 max-w-4xl mx-auto space-y-6">
+      <div className="space-y-5">
         {/* Core details */}
-        <div className="rounded-lg border bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-gray-900">{matter.title}</h2>
-
-          <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="px-6 py-5 border-b border-slate-100">
+            <h2 className="text-base font-semibold text-slate-900">Case Details</h2>
+          </div>
+          <div className="px-6 py-5">
+          <dl className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
             <div>
-              <dt className="font-medium text-gray-500">Internal Ref</dt>
-              <dd className="mt-1 text-gray-900">{matter.internalRef}</dd>
+              <dt className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Internal Ref</dt>
+              <dd className="font-mono text-slate-800">{matter.internalRef}</dd>
             </div>
 
             {matter.externalRef && (
               <div>
-                <dt className="font-medium text-gray-500">External Ref</dt>
-                <dd className="mt-1 text-gray-900">{matter.externalRef}</dd>
+                <dt className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Court Ref</dt>
+                <dd className="font-mono text-slate-800">{matter.externalRef}</dd>
               </div>
             )}
 
             <div>
-              <dt className="font-medium text-gray-500">{vocab.participant_label}</dt>
-              <dd className="mt-1 text-gray-900">{matter.participant?.name ?? '—'}</dd>
+              <dt className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">{vocab.participant_label}</dt>
+              <dd className="text-slate-800 font-medium">{matter.participant?.name ?? '—'}</dd>
             </div>
 
             {/* Portal invite — admin only */}
             {isAdmin && matter.participant && (
               <div>
-                <dt className="font-medium text-gray-500">Portal Access</dt>
-                <dd className="mt-1 flex items-center gap-2">
+                <dt className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Portal Access</dt>
+                <dd className="flex items-center gap-2">
                   {matter.participant.portalInviteStatus === 'active' ? (
-                    <span className="inline-flex items-center rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">
-                      Active
+                    <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+                      • Active
                     </span>
                   ) : matter.participant.portalInviteStatus === 'invited' ? (
                     <>
-                      <span className="inline-flex items-center rounded-full bg-yellow-50 px-2.5 py-0.5 text-xs font-medium text-yellow-700">
+                      <span className="inline-flex items-center rounded-full bg-amber-50 border border-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">
                         Invited
                       </span>
                       <button
                         onClick={() => inviteClient(matter.participant!.id)}
                         disabled={isInviting}
-                        className="text-xs text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+                        className="text-xs text-indigo-600 hover:text-indigo-700 font-medium disabled:opacity-50"
                       >
                         {isInviting ? 'Resending…' : 'Resend invite'}
                       </button>
                     </>
                   ) : (
                     <>
-                      <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
+                      <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">
                         Not invited
                       </span>
                       {matter.participant.email && (
                         <button
                           onClick={() => inviteClient(matter.participant!.id)}
                           disabled={isInviting}
-                          className="rounded-md bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                          className="rounded-lg bg-indigo-600 px-3 py-1 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
                         >
                           {isInviting ? 'Sending…' : `Invite ${vocab.participant_label}`}
                         </button>
                       )}
                       {!matter.participant.email && (
-                        <span className="text-xs text-gray-400">(add email to invite)</span>
+                        <span className="text-xs text-slate-400">(add email to invite)</span>
                       )}
                     </>
                   )}
@@ -194,13 +205,13 @@ export function CaseDetailPage() {
             )}
 
             <div>
-              <dt className="font-medium text-gray-500">Created by</dt>
-              <dd className="mt-1 text-gray-900">{matter.creator?.name ?? '—'}</dd>
+              <dt className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Created by</dt>
+              <dd className="text-slate-800">{matter.creator?.name ?? '—'}</dd>
             </div>
 
             <div>
-              <dt className="font-medium text-gray-500">Created</dt>
-              <dd className="mt-1 text-gray-900">
+              <dt className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Filed</dt>
+              <dd className="text-slate-800">
                 {new Date(matter.createdAt).toLocaleDateString('en-IN', {
                   day: '2-digit',
                   month: 'short',
@@ -210,8 +221,8 @@ export function CaseDetailPage() {
             </div>
 
             <div>
-              <dt className="font-medium text-gray-500">Last updated</dt>
-              <dd className="mt-1 text-gray-900">
+              <dt className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Last updated</dt>
+              <dd className="text-slate-800">
                 {new Date(matter.updatedAt).toLocaleDateString('en-IN', {
                   day: '2-digit',
                   month: 'short',
@@ -223,36 +234,39 @@ export function CaseDetailPage() {
 
           {/* Metadata fields (court, judge, etc.) */}
           {Object.keys(vocab.metadata_fields).length > 0 && (
-            <div className="mt-6 border-t pt-4 grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+            <div className="mt-5 pt-5 border-t border-slate-100 grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
               {Object.entries(vocab.metadata_fields).map(([key, label]) => (
                 <div key={key}>
-                  <dt className="font-medium text-gray-500">{label}</dt>
-                  <dd className="mt-1 text-gray-900">
+                  <dt className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">{label}</dt>
+                  <dd className="text-slate-800">
                     {(matter.metadata as Record<string, string>)[key] ?? '—'}
                   </dd>
                 </div>
               ))}
             </div>
           )}
+          </div>
         </div>
 
         {/* Hearings */}
-        <div className="rounded-lg border bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <h3 className="font-medium text-gray-900">{vocab.scheduled_event_label}s</h3>
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+            <h3 className="text-sm font-semibold text-slate-900">{vocab.scheduled_event_label}s</h3>
             {!isClosed && (
               <button
                 onClick={() => setShowAddHearing((v) => !v)}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
               >
                 {showAddHearing ? 'Cancel' : `+ Add ${vocab.scheduled_event_label}`}
               </button>
             )}
           </div>
 
+          <div className="px-6 py-4">
+
           {showAddHearing && (
             <form
-              className="mt-4 flex gap-3 items-end border-t pt-4"
+              className="mb-4 flex gap-3 items-end rounded-lg bg-slate-50 border border-slate-200 p-4"
               onSubmit={(e: React.FormEvent) => {
                 e.preventDefault();
                 if (!hearingDate) return;
@@ -263,7 +277,7 @@ export function CaseDetailPage() {
               }}
             >
               <div className="flex-1">
-                <label className="block text-xs font-medium text-gray-600 mb-1">
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">
                   Date &amp; Time
                 </label>
                 <input
@@ -271,13 +285,13 @@ export function CaseDetailPage() {
                   value={hearingDate}
                   onChange={(e) => setHearingDate(e.target.value)}
                   required
-                  className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+                  className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 />
               </div>
               <button
                 type="submit"
                 disabled={isCreatingEvent}
-                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                className="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
               >
                 {isCreatingEvent ? 'Saving…' : 'Save'}
               </button>
@@ -285,15 +299,15 @@ export function CaseDetailPage() {
           )}
 
           {(!events || events.length === 0) && !showAddHearing && (
-            <p className="mt-3 text-sm text-gray-400">No {vocab.scheduled_event_label.toLowerCase()}s yet.</p>
+            <p className="text-sm text-slate-400 py-2">No {vocab.scheduled_event_label.toLowerCase()}s yet.</p>
           )}
 
           {events && events.length > 0 && (
-            <ul className="mt-4 divide-y divide-gray-100">
+            <ul className="divide-y divide-slate-100">
               {events.map((event: ScheduledEventDto) => (
                 <li key={event.id} className="py-3 flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-slate-900">
                       {new Date(event.scheduledAt).toLocaleString('en-IN', {
                         day: '2-digit',
                         month: 'short',
@@ -303,9 +317,9 @@ export function CaseDetailPage() {
                       })}
                     </p>
                     {event.outcomeNotes && (
-                      <p className="mt-0.5 text-sm text-gray-500">{event.outcomeNotes}</p>
+                      <p className="mt-0.5 text-sm text-slate-500">{event.outcomeNotes}</p>
                     )}
-                    <p className="mt-0.5 text-xs text-gray-400">Added by {event.creator?.name}</p>
+                    <p className="mt-0.5 text-xs text-slate-400">Added by {event.creator?.name}</p>
                   </div>
                   {isAdmin && (
                     <button
@@ -321,15 +335,23 @@ export function CaseDetailPage() {
               ))}
             </ul>
           )}
+          </div>
         </div>
 
         {/* Documents */}
-        <div className="rounded-lg border bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <h3 className="font-medium text-gray-900">Documents</h3>
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+            <h3 className="text-sm font-semibold text-slate-900">Documents</h3>
             {!isClosed && user?.role !== 'client' && (
-              <label className="cursor-pointer text-sm text-blue-600 hover:text-blue-700 font-medium">
-                {isUploading ? 'Uploading…' : '+ Upload'}
+              <label className="cursor-pointer text-sm text-indigo-600 hover:text-indigo-700 font-medium inline-flex items-center gap-1.5">
+                {isUploading ? 'Uploading…' : (
+                  <>
+                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Upload
+                  </>
+                )}
                 <input
                   type="file"
                   className="sr-only"
@@ -352,29 +374,35 @@ export function CaseDetailPage() {
             )}
           </div>
 
+          <div className="px-6 py-4">
           {uploadError && (
-            <p className="mt-2 text-xs text-red-500">{uploadError}</p>
+            <p className="mb-3 text-xs text-red-500">{uploadError}</p>
           )}
 
           {documents.length === 0 && !isUploading && (
-            <p className="mt-3 text-sm text-gray-400">No documents uploaded yet.</p>
+            <p className="text-sm text-slate-400 py-2">No documents uploaded yet.</p>
           )}
 
           {documents.length > 0 && (
-            <ul className="mt-4 divide-y divide-gray-100">
+            <ul className="divide-y divide-slate-100">
               {documents.map((doc) => (
                 <li key={doc.id} className="py-3 flex items-center justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{doc.fileName}</p>
-                    <p className="mt-0.5 text-xs text-gray-400">
-                      {doc.mimeType} · {(doc.fileSizeBytes / 1024).toFixed(1)} KB
-                    </p>
+                  <div className="min-w-0 flex items-center gap-3">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
+                      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#64748b" strokeWidth={1.75}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-slate-900 truncate">{doc.fileName}</p>
+                      <p className="mt-0.5 text-xs text-slate-400">{(doc.fileSizeBytes / 1024).toFixed(1)} KB</p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
                     <button
                       onClick={() => downloadDocument(doc.id)}
                       disabled={isDownloading}
-                      className="text-xs text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+                      className="text-xs text-indigo-600 hover:text-indigo-700 font-medium disabled:opacity-50"
                     >
                       Download
                     </button>
@@ -393,23 +421,26 @@ export function CaseDetailPage() {
               ))}
             </ul>
           )}
+          </div>
         </div>
 
         {/* Notes */}
-        <div className="rounded-lg border bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <h3 className="font-medium text-gray-900">Notes</h3>
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+            <h3 className="text-sm font-semibold text-slate-900">Notes</h3>
             <button
               onClick={() => setShowAddNote((v) => !v)}
-              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
             >
               {showAddNote ? 'Cancel' : '+ Add Note'}
             </button>
           </div>
 
+          <div className="px-6 py-4">
+
           {showAddNote && (
             <form
-              className="mt-4 border-t pt-4 space-y-3"
+              className="mb-4 rounded-lg bg-slate-50 border border-slate-200 p-4 space-y-3"
               onSubmit={(e: React.FormEvent) => {
                 e.preventDefault();
                 if (!newNoteContent.trim()) return;
@@ -431,22 +462,22 @@ export function CaseDetailPage() {
                 rows={3}
                 placeholder="Write a note…"
                 required
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black resize-none"
+                className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none"
               />
               <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+                <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={newNotePublished}
                     onChange={(e) => setNewNotePublished(e.target.checked)}
-                    className="rounded border-gray-300"
+                    className="rounded border-slate-300 text-indigo-600"
                   />
                   Visible to client
                 </label>
                 <button
                   type="submit"
                   disabled={isCreatingNote}
-                  className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                  className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
                 >
                   {isCreatingNote ? 'Saving…' : 'Save Note'}
                 </button>
@@ -455,25 +486,25 @@ export function CaseDetailPage() {
           )}
 
           {(!notes || notes.length === 0) && !showAddNote && (
-            <p className="mt-3 text-sm text-gray-400">No notes yet.</p>
+            <p className="text-sm text-slate-400 py-2">No notes yet.</p>
           )}
 
           {notes && notes.length > 0 && (
-            <ul className="mt-4 divide-y divide-gray-100">
+            <ul className="divide-y divide-slate-100">
               {notes.map((note: NoteDto) => (
                 <li key={note.id} className="py-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-gray-800 whitespace-pre-wrap">{note.content}</p>
-                      <div className="mt-1.5 flex items-center gap-3">
-                        <span className="text-xs text-gray-400">
+                      <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{note.content}</p>
+                      <div className="mt-2 flex items-center gap-3">
+                        <span className="text-xs text-slate-400">
                           {note.creator?.name} · {new Date(note.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                         </span>
                         <span
-                          className={`text-xs font-medium px-1.5 py-0.5 rounded ${
+                          className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                             note.isPublished
-                              ? 'bg-green-50 text-green-700'
-                              : 'bg-gray-100 text-gray-500'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                              : 'bg-slate-100 text-slate-500'
                           }`}
                         >
                           {note.isPublished ? 'Visible to client' : 'Internal'}
@@ -485,7 +516,7 @@ export function CaseDetailPage() {
                         onClick={() =>
                           updateNote({ id: note.id, data: { isPublished: !note.isPublished } })
                         }
-                        className="text-xs text-gray-400 hover:text-gray-600"
+                        className="text-xs text-slate-400 hover:text-slate-600"
                         title={note.isPublished ? 'Make internal' : 'Publish to client'}
                       >
                         {note.isPublished ? 'Unpublish' : 'Publish'}
@@ -506,16 +537,17 @@ export function CaseDetailPage() {
               ))}
             </ul>
           )}
+          </div>
         </div>
 
         {/* Document Requests */}
-        <div className="rounded-lg border bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <h3 className="font-medium text-gray-900">Document Requests</h3>
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+            <h3 className="text-sm font-semibold text-slate-900">Document Requests</h3>
             {!isClosed && (
               <button
                 onClick={() => setShowAddDR((v) => !v)}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
               >
                 {showAddDR ? 'Cancel' : '+ Request document'}
               </button>
@@ -523,24 +555,24 @@ export function CaseDetailPage() {
           </div>
 
           {showAddDR && (
-            <div className="mt-4 rounded-md bg-gray-50 border p-4 space-y-3">
+            <div className="mb-4 rounded-lg bg-slate-50 border border-slate-200 p-4 space-y-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700">Description *</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">Description *</label>
                 <input
                   type="text"
                   value={drDescription}
                   onChange={(e) => setDrDescription(e.target.value)}
                   placeholder="e.g. Proof of address"
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none"
+                  className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700">Due date (optional)</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">Due date (optional)</label>
                 <input
                   type="date"
                   value={drDueDate}
                   onChange={(e) => setDrDueDate(e.target.value)}
-                  className="mt-1 block w-48 rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none"
+                  className="block w-48 rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 />
               </div>
               <button
@@ -557,7 +589,7 @@ export function CaseDetailPage() {
                     },
                   );
                 }}
-                className="rounded-md bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
               >
                 {isCreatingDR ? 'Saving…' : 'Save request'}
               </button>
@@ -565,17 +597,17 @@ export function CaseDetailPage() {
           )}
 
           {documentRequests.length === 0 && !showAddDR && (
-            <p className="mt-3 text-sm text-gray-400">No document requests yet.</p>
+            <p className="text-sm text-slate-400 py-2">No document requests yet.</p>
           )}
 
           {documentRequests.length > 0 && (
-            <ul className="mt-4 divide-y divide-gray-100">
+            <ul className="divide-y divide-slate-100">
               {documentRequests.map((dr) => (
                 <li key={dr.id} className="py-3 flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <p className="text-sm text-gray-900">{dr.description}</p>
+                    <p className="text-sm text-slate-900">{dr.description}</p>
                     {dr.dueDate && (
-                      <p className="mt-0.5 text-xs text-gray-400">
+                      <p className="mt-0.5 text-xs text-slate-400">
                         Due: {new Date(dr.dueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </p>
                     )}
@@ -584,8 +616,8 @@ export function CaseDetailPage() {
                     <span
                       className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
                         dr.status === 'received'
-                          ? 'bg-green-50 text-green-700'
-                          : 'bg-yellow-50 text-yellow-700'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                          : 'bg-amber-50 text-amber-700 border border-amber-100'
                       }`}
                     >
                       {dr.status === 'received' ? 'Received' : 'Pending'}
@@ -593,7 +625,7 @@ export function CaseDetailPage() {
                     {dr.status === 'pending' && !isClosed && (
                       <button
                         onClick={() => markReceived(dr.id)}
-                        className="text-xs text-gray-400 hover:text-gray-600"
+                        className="text-xs text-slate-400 hover:text-slate-600"
                       >
                         Mark received
                       </button>
@@ -603,25 +635,27 @@ export function CaseDetailPage() {
               ))}
             </ul>
           )}
+          </div>
         </div>
 
         {/* Fees */}
-        <div className="rounded-lg border bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <h3 className="font-medium text-gray-900">Fees</h3>
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+            <h3 className="text-sm font-semibold text-slate-900">Fees</h3>
             {isAdmin && !isClosed && (
               <button
                 onClick={() => setShowAddFee((v) => !v)}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
               >
                 {showAddFee ? 'Cancel' : '+ Add Fee'}
               </button>
             )}
           </div>
 
+          <div className="px-6 py-4">
           {showAddFee && (
             <form
-              className="mt-4 border-t pt-4 flex flex-wrap gap-3 items-end"
+              className="mb-4 rounded-lg bg-slate-50 border border-slate-200 p-4 flex flex-wrap gap-3 items-end"
               onSubmit={(e: React.FormEvent) => {
                 e.preventDefault();
                 const amount = parseFloat(feeTotalAmount);
@@ -639,11 +673,11 @@ export function CaseDetailPage() {
               }}
             >
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Type</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">Type</label>
                 <select
                   value={feeType}
                   onChange={(e) => setFeeType(e.target.value as FeeType)}
-                  className="block rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none"
+                  className="block rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 >
                   <option value="one-time">One-time</option>
                   <option value="periodic">Periodic</option>
@@ -652,7 +686,7 @@ export function CaseDetailPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Total Amount (₹)</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">Total Amount (₹)</label>
                 <input
                   type="number"
                   min="0"
@@ -661,13 +695,13 @@ export function CaseDetailPage() {
                   onChange={(e) => setFeeTotalAmount(e.target.value)}
                   required
                   placeholder="0.00"
-                  className="block w-36 rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-black focus:outline-none"
+                  className="block w-36 rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 />
               </div>
               <button
                 type="submit"
                 disabled={isCreatingFee}
-                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                className="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
               >
                 {isCreatingFee ? 'Saving…' : 'Save'}
               </button>
@@ -675,29 +709,29 @@ export function CaseDetailPage() {
           )}
 
           {fees.length === 0 && !showAddFee && (
-            <p className="mt-3 text-sm text-gray-400">No fees recorded yet.</p>
+            <p className="text-sm text-slate-400 py-2">No fees recorded yet.</p>
           )}
 
           {fees.length > 0 && (
-            <ul className="mt-4 divide-y divide-gray-100">
+            <ul className="divide-y divide-slate-100">
               {fees.map((fee) => (
                 <li key={fee.id} className="py-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 capitalize">
+                      <p className="text-sm font-semibold text-slate-900 capitalize">
                         {fee.type.replace(/-/g, ' ')}
                       </p>
-                      <div className="mt-1 flex gap-4 text-xs text-gray-500">
+                      <div className="mt-1.5 flex gap-4 text-xs text-slate-500">
                         <span>Total: ₹{fee.totalAmount.toLocaleString('en-IN')}</span>
                         <span>Paid: ₹{fee.paidAmount.toLocaleString('en-IN')}</span>
-                        <span className={fee.dueAmount > 0 ? 'text-red-600 font-medium' : 'text-green-600 font-medium'}>
+                        <span className={fee.dueAmount > 0 ? 'text-red-600 font-semibold' : 'text-emerald-600 font-semibold'}>
                           Due: ₹{fee.dueAmount.toLocaleString('en-IN')}
                         </span>
                       </div>
                       {fee.paymentHistory.length > 0 && (
                         <ul className="mt-2 space-y-0.5">
                           {fee.paymentHistory.map((p, i) => (
-                            <li key={i} className="text-xs text-gray-400">
+                            <li key={i} className="text-xs text-slate-400">
                               ₹{p.amount.toLocaleString('en-IN')} on {new Date(p.paidAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                               {p.note ? ` — ${p.note}` : ''}
                             </li>
@@ -707,7 +741,7 @@ export function CaseDetailPage() {
                       {payingFeeId === fee.id && (
                         <div className="mt-3 flex gap-2 items-end flex-wrap">
                           <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Amount (₹)</label>
+                            <label className="block text-xs font-medium text-slate-700 mb-1.5">Amount (₹)</label>
                             <input
                               type="number"
                               min="0.01"
@@ -715,17 +749,17 @@ export function CaseDetailPage() {
                               value={paymentAmount}
                               onChange={(e) => setPaymentAmount(e.target.value)}
                               placeholder="0.00"
-                              className="block w-28 rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-black focus:outline-none"
+                              className="block w-28 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                             />
                           </div>
                           <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Note (optional)</label>
+                            <label className="block text-xs font-medium text-slate-700 mb-1.5">Note (optional)</label>
                             <input
                               type="text"
                               value={paymentNote}
                               onChange={(e) => setPaymentNote(e.target.value)}
                               placeholder="e.g. Cheque #123"
-                              className="block w-48 rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-black focus:outline-none"
+                              className="block w-48 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                             />
                           </div>
                           <button
@@ -744,13 +778,13 @@ export function CaseDetailPage() {
                                 },
                               );
                             }}
-                            className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50"
+                            className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
                           >
                             {isLoggingPayment ? 'Saving…' : 'Log payment'}
                           </button>
                           <button
                             onClick={() => { setPayingFeeId(null); setPaymentAmount(''); setPaymentNote(''); }}
-                            className="text-xs text-gray-400 hover:text-gray-600"
+                            className="text-xs text-slate-400 hover:text-slate-600"
                           >
                             Cancel
                           </button>
@@ -760,7 +794,7 @@ export function CaseDetailPage() {
                     {isAdmin && fee.dueAmount > 0 && !isClosed && payingFeeId !== fee.id && (
                       <button
                         onClick={() => { setPayingFeeId(fee.id); setPaymentAmount(''); setPaymentNote(''); }}
-                        className="shrink-0 text-xs text-blue-600 hover:text-blue-700 font-medium"
+                        className="shrink-0 text-xs text-indigo-600 hover:text-indigo-700 font-medium"
                       >
                         Log payment
                       </button>
@@ -770,30 +804,33 @@ export function CaseDetailPage() {
               ))}
             </ul>
           )}
+          </div>
         </div>
 
         {/* Audit Trail */}
         {isAdmin && (
-          <div className="rounded-lg border bg-white p-6 shadow-sm">
-            <h3 className="font-medium text-gray-900">Activity</h3>
-
+          <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100">
+              <h3 className="text-sm font-semibold text-slate-900">Activity</h3>
+            </div>
+            <div className="px-6 py-4">
             {(!auditLogs || auditLogs.length === 0) && (
-              <p className="mt-3 text-sm text-gray-400">No activity recorded yet.</p>
+              <p className="text-sm text-slate-400 py-2">No activity recorded yet.</p>
             )}
 
             {auditLogs && auditLogs.length > 0 && (
-              <ol className="mt-4 relative border-l border-gray-200 ml-3 space-y-4">
+              <ol className="relative border-l border-slate-200 ml-3 space-y-4">
                 {auditLogs.map((log: AuditLogDto) => (
                   <li key={log.id} className="ml-4">
-                    <div className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border-2 border-white bg-gray-300" />
-                    <p className="text-sm text-gray-800">
+                    <div className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border-2 border-white bg-slate-300" />
+                    <p className="text-sm text-slate-800">
                       <span className="font-medium">{log.actor?.name ?? 'Unknown'}</span>
                       {' '}
-                      <span className="text-gray-500">{log.action}</span>
+                      <span className="text-slate-500">{log.action}</span>
                       {' '}
-                      <span className="text-gray-500">{log.entityType.replace('_', ' ')}</span>
+                      <span className="text-slate-500">{log.entityType.replace('_', ' ')}</span>
                     </p>
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <p className="text-xs text-slate-400 mt-0.5">
                       {new Date(log.createdAt).toLocaleString('en-IN', {
                         day: '2-digit',
                         month: 'short',
@@ -806,30 +843,35 @@ export function CaseDetailPage() {
                 ))}
               </ol>
             )}
+            </div>
           </div>
         )}
 
         {/* Danger zone */}
         {isAdmin && (
-          <div className="rounded-lg border border-red-200 bg-white p-6 shadow-sm">
-            <h3 className="font-medium text-red-700">Danger zone</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              Deleting a {vocab.matter_label.toLowerCase()} is irreversible.
-            </p>
-            <button
-              onClick={() => {
-                if (confirm(`Delete "${matter.title}"? This cannot be undone.`)) {
-                  deleteMatter(matter.id);
-                }
-              }}
-              disabled={isDeleting}
-              className="mt-3 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
-            >
-              {isDeleting ? 'Deleting…' : `Delete ${vocab.matter_label}`}
-            </button>
+          <div className="rounded-xl border border-red-200 bg-white shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-red-100">
+              <h3 className="text-sm font-semibold text-red-700">Danger zone</h3>
+            </div>
+            <div className="px-6 py-5">
+              <p className="text-sm text-slate-500 mb-4">
+                Deleting a {vocab.matter_label.toLowerCase()} is irreversible.
+              </p>
+              <button
+                onClick={() => {
+                  if (confirm(`Delete "${matter.title}"? This cannot be undone.`)) {
+                    deleteMatter(matter.id);
+                  }
+                }}
+                disabled={isDeleting}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+              >
+                {isDeleting ? 'Deleting…' : `Delete ${vocab.matter_label}`}
+              </button>
+            </div>
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 }
