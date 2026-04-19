@@ -73,7 +73,9 @@ export class DocumentRequestsService {
   /** Mark a document request as received — admin/staff only */
   async markReceived(matterId: string, id: string, user: AuthenticatedUser) {
     if (user.role === 'client') {
-      throw new ForbiddenException('Clients cannot update document request status');
+      throw new ForbiddenException(
+        'Clients cannot update document request status',
+      );
     }
 
     await this.assertMatterAccess(matterId, user);

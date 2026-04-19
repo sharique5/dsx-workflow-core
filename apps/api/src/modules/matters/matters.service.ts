@@ -21,7 +21,14 @@ export class MattersService {
         ...(user.role === 'client' && { participantId: user.id }),
       },
       include: {
-        participant: { select: { id: true, name: true, email: true, portalInviteStatus: true } },
+        participant: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            portalInviteStatus: true,
+          },
+        },
         creator: { select: { id: true, name: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -38,7 +45,13 @@ export class MattersService {
       },
       include: {
         participant: {
-          select: { id: true, name: true, email: true, phone: true, portalInviteStatus: true },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            portalInviteStatus: true,
+          },
         },
         creator: { select: { id: true, name: true } },
       },
@@ -75,7 +88,14 @@ export class MattersService {
         createdBy: user.id,
       },
       include: {
-        participant: { select: { id: true, name: true, email: true, portalInviteStatus: true } },
+        participant: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            portalInviteStatus: true,
+          },
+        },
         creator: { select: { id: true, name: true } },
       },
     });
@@ -98,7 +118,14 @@ export class MattersService {
         }),
       } as Prisma.MatterUncheckedUpdateInput,
       include: {
-        participant: { select: { id: true, name: true, email: true, portalInviteStatus: true } },
+        participant: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            portalInviteStatus: true,
+          },
+        },
         creator: { select: { id: true, name: true } },
       },
     });
@@ -119,7 +146,14 @@ export class MattersService {
       where: { id },
       data: { statusKey: 'closed' },
       include: {
-        participant: { select: { id: true, name: true, email: true, portalInviteStatus: true } },
+        participant: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            portalInviteStatus: true,
+          },
+        },
         creator: { select: { id: true, name: true } },
       },
     });

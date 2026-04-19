@@ -32,12 +32,18 @@ function toFeeDto(fee: {
   createdAt: Date;
   updatedAt: Date;
 }) {
-  const total = typeof fee.totalAmount === 'object' && fee.totalAmount !== null && 'toNumber' in fee.totalAmount
-    ? (fee.totalAmount as { toNumber: () => number }).toNumber()
-    : Number(fee.totalAmount);
-  const paid = typeof fee.paidAmount === 'object' && fee.paidAmount !== null && 'toNumber' in fee.paidAmount
-    ? (fee.paidAmount as { toNumber: () => number }).toNumber()
-    : Number(fee.paidAmount);
+  const total =
+    typeof fee.totalAmount === 'object' &&
+    fee.totalAmount !== null &&
+    'toNumber' in fee.totalAmount
+      ? (fee.totalAmount as { toNumber: () => number }).toNumber()
+      : Number(fee.totalAmount);
+  const paid =
+    typeof fee.paidAmount === 'object' &&
+    fee.paidAmount !== null &&
+    'toNumber' in fee.paidAmount
+      ? (fee.paidAmount as { toNumber: () => number }).toNumber()
+      : Number(fee.paidAmount);
   return {
     ...fee,
     totalAmount: total,
@@ -91,7 +97,12 @@ export class FeesService {
     return toFeeDto(fee);
   }
 
-  async logPayment(matterId: string, feeId: string, dto: LogPaymentDto, user: AuthenticatedUser) {
+  async logPayment(
+    matterId: string,
+    feeId: string,
+    dto: LogPaymentDto,
+    user: AuthenticatedUser,
+  ) {
     if (user.role === 'client') {
       throw new ForbiddenException('Clients cannot log payments');
     }
@@ -121,7 +132,7 @@ export class FeesService {
       where: { id: feeId },
       data: {
         paidAmount: newPaid,
-        paymentHistory: JSON.parse(JSON.stringify([...history, newRecord])),
+        paymentHistory: [...history, newRecord] as object[],
       },
       select: FEE_SELECT,
     });
