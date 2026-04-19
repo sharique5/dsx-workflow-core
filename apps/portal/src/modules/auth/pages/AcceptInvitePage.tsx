@@ -9,12 +9,10 @@ export function AcceptInvitePage() {
   const setUser = usePortalAuthStore((s) => s.setUser);
   const [error, setError] = useState<string | null>(null);
 
+  const token = searchParams.get('token');
+
   useEffect(() => {
-    const token = searchParams.get('token');
-    if (!token) {
-      setError('Invalid invite link. No token found.');
-      return;
-    }
+    if (!token) return;
 
     const run = async () => {
       try {
@@ -29,7 +27,15 @@ export function AcceptInvitePage() {
     };
 
     void run();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!token) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <p className="text-sm text-red-500">Invalid invite link. No token found.</p>
+      </div>
+    );
+  }
 
   if (error) {
     return (

@@ -1,4 +1,3 @@
-/* eslint-disable react-refresh/only-export-components */
 import { createBrowserRouter } from 'react-router-dom';
 import { PortalLoginPage } from '../modules/auth/pages/PortalLoginPage';
 import { PortalOTPPage } from '../modules/auth/pages/PortalOTPPage';
