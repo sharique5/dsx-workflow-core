@@ -10,7 +10,15 @@ import { useDocuments, useUploadDocument, useDocumentDownloadUrl, useDeleteDocum
 import { useInviteClient } from '../../clients/hooks/useClients';
 import { useVocabulary } from '../../../shared/hooks/useVocabulary';
 import { useAuthStore } from '../../../store/auth.store';
-import type { ScheduledEventDto, NoteDto, AuditLogDto, FeeType } from '@dsx/shared';
+import {
+  useNotificationTemplates,
+  useSendNotification,
+  useNotificationLogs,
+  useReminders,
+  useCreateReminder,
+  useDeleteReminder,
+} from '../hooks/useNotifications';
+import type { ScheduledEventDto, NoteDto, AuditLogDto, FeeType, NotificationLogDto } from '@dsx/shared';
 
 function StatusBadge({ statusKey, statuses }: { statusKey: string; statuses: { key: string; label: string; isTerminal: boolean }[] }) {
   const status = statuses.find((s) => s.key === statusKey);
@@ -28,6 +36,287 @@ function StatusBadge({ statusKey, statuses }: { statusKey: string; statuses: { k
     </span>
   );
 }
+
+// ─── Notifications sub-component ─────────────────────────────────────────────
+
+function NotificationsCard({
+  isClosed, participant, notifTemplates, notifTemplateId, setNotifTemplateId,
+  notifCustomMessage, setNotifCustomMessage, notifChannel, showSendForm, setShowSendForm,
+  isSending, sendError, notifLogs, onSend, matterId,
+}: {
+  isClosed: boolean;
+  participant: { id: string; name: string; email?: string | null } | null | undefined;
+  notifTemplates: import('@dsx/shared').NotificationTemplateDto[];
+  notifTemplateId: string;
+  setNotifTemplateId: (v: string) => void;
+  notifCustomMessage: string;
+  setNotifCustomMessage: (v: string) => void;
+  notifChannel: 'email' | 'whatsapp';
+  showSendForm: boolean;
+  setShowSendForm: React.Dispatch<React.SetStateAction<boolean>>;
+  isSending: boolean;
+  sendError: Error | null;
+  notifLogs: import('@dsx/shared').NotificationLogDto[];
+  onSend: (payload: { matterId: string; recipientId: string; channel: 'email' | 'whatsapp'; templateId?: string; customMessage?: string }) => void;
+  matterId: string;
+}) {
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!notifTemplateId && !notifCustomMessage.trim()) return;
+    onSend({
+      matterId,
+      recipientId: participant!.id,
+      channel: notifChannel,
+      templateId: notifTemplateId || undefined,
+      customMessage: notifTemplateId ? undefined : notifCustomMessage.trim(),
+    });
+  }
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+        <h3 className="text-sm font-semibold text-slate-900">Notifications</h3>
+        {!isClosed && participant && (
+          <button
+            onClick={() => setShowSendForm((v) => !v)}
+            className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+          >
+            {showSendForm ? 'Cancel' : '+ Send notification'}
+          </button>
+        )}
+      </div>
+
+      <div className="px-6 py-4">
+        {!participant && (
+          <p className="text-sm text-slate-400 py-2">No client linked to this case.</p>
+        )}
+
+        {participant && showSendForm && (
+          <form className="mb-4 rounded-lg bg-slate-50 border border-slate-200 p-4 space-y-3" onSubmit={handleSubmit}>
+            <p className="text-xs text-slate-500">
+              Sending to: <span className="font-medium text-slate-700">{participant.name}</span>
+              {participant.email && <span className="ml-1 text-slate-400">({participant.email})</span>}
+            </p>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">Template (optional)</label>
+              <select
+                value={notifTemplateId}
+                onChange={(e) => { setNotifTemplateId(e.target.value); setNotifCustomMessage(''); }}
+                className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              >
+                <option value="">— Custom message —</option>
+                {notifTemplates.filter((t) => t.channel === 'email').map((t) => {
+                  const label = t.triggerType.split('_').join(' ');
+                  const suffix = t.isSystem ? 'system' : 'custom';
+                  return <option key={t.id} value={t.id}>{label} ({suffix})</option>;
+                })}
+              </select>
+            </div>
+
+            {!notifTemplateId && (
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">Message *</label>
+                <textarea
+                  value={notifCustomMessage}
+                  onChange={(e) => setNotifCustomMessage(e.target.value)}
+                  rows={3}
+                  placeholder="Type your message to the client…"
+                  required
+                  className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none"
+                />
+              </div>
+            )}
+
+            {sendError && (
+              <p className="text-xs text-red-500">
+                {sendError instanceof Error ? sendError.message : 'Failed to send. Please try again.'}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={isSending || (!notifTemplateId && !notifCustomMessage.trim())}
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+            >
+              {isSending ? 'Sending…' : 'Send via email'}
+            </button>
+          </form>
+        )}
+
+        {notifLogs.length === 0 && (
+          <p className="text-sm text-slate-400 py-2">No notifications sent yet.</p>
+        )}
+        {notifLogs.length > 0 && (
+          <ul className="divide-y divide-slate-100">
+            {notifLogs.map((log) => {
+              const dotColor = log.status === 'sent' || log.status === 'delivered'
+                ? 'bg-emerald-500' : log.status === 'failed' ? 'bg-red-400' : 'bg-amber-400';
+              const msg = log.customMessage
+                ? log.customMessage
+                : log.template
+                  ? 'Template: ' + log.template.triggerType.split('_').join(' ')
+                  : '—';
+              const sentAt = new Date(log.createdAt).toLocaleString('en-IN', {
+                day: '2-digit', month: 'short', year: 'numeric',
+                hour: '2-digit', minute: '2-digit',
+              });
+              return (
+                <li key={log.id} className="py-3 flex items-start gap-3">
+                  <span className={'mt-0.5 inline-flex h-2 w-2 rounded-full shrink-0 ' + dotColor} />
+                  <div className="min-w-0">
+                    <p className="text-sm text-slate-800">{msg}</p>
+                    <p className="mt-0.5 text-xs text-slate-400">{log.channel} · {log.status} · {sentAt}</p>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Reminders sub-component ──────────────────────────────────────────────────
+
+function RemindersCard({
+  isClosed, events, reminders, showReminderForm, setShowReminderForm,
+  reminderEventId, setReminderEventId, reminderAt, setReminderAt,
+  isCreatingReminder, onCreateReminder, onDeleteReminder,
+}: {
+  isClosed: boolean;
+  events: import('@dsx/shared').ScheduledEventDto[] | undefined;
+  reminders: import('@dsx/shared').ReminderDto[];
+  showReminderForm: boolean;
+  setShowReminderForm: React.Dispatch<React.SetStateAction<boolean>>;
+  reminderEventId: string;
+  setReminderEventId: (v: string) => void;
+  reminderAt: string;
+  setReminderAt: (v: string) => void;
+  isCreatingReminder: boolean;
+  onCreateReminder: (payload: { scheduledEventId: string; remindAt: string }) => void;
+  onDeleteReminder: (id: string) => void;
+}) {
+  const hasEvents = events && events.length > 0;
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!reminderEventId || !reminderAt) return;
+    onCreateReminder({ scheduledEventId: reminderEventId, remindAt: reminderAt });
+  }
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+        <h3 className="text-sm font-semibold text-slate-900">Hearing Reminders</h3>
+        {!isClosed && hasEvents && (
+          <button
+            onClick={() => setShowReminderForm((v) => !v)}
+            className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+          >
+            {showReminderForm ? 'Cancel' : '+ Set reminder'}
+          </button>
+        )}
+      </div>
+
+      <div className="px-6 py-4">
+        {!hasEvents && (
+          <p className="text-sm text-slate-400 py-2">No hearings scheduled — add a hearing first.</p>
+        )}
+
+        {showReminderForm && hasEvents && (
+          <form className="mb-4 rounded-lg bg-slate-50 border border-slate-200 p-4 space-y-3" onSubmit={handleSubmit}>
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">Hearing *</label>
+              <select
+                value={reminderEventId}
+                onChange={(e) => setReminderEventId(e.target.value)}
+                required
+                className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              >
+                <option value="">Select a hearing…</option>
+                {events.map((ev) => {
+                  const label = new Date(ev.scheduledAt).toLocaleString('en-IN', {
+                    day: '2-digit', month: 'short', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit',
+                  });
+                  return <option key={ev.id} value={ev.id}>{label}</option>;
+                })}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">Remind at *</label>
+              <input
+                type="datetime-local"
+                value={reminderAt}
+                onChange={(e) => setReminderAt(e.target.value)}
+                required
+                className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={isCreatingReminder}
+              className="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {isCreatingReminder ? 'Saving…' : 'Save reminder'}
+            </button>
+          </form>
+        )}
+
+        {reminders.length === 0 && !showReminderForm && hasEvents && (
+          <p className="text-sm text-slate-400 py-2">No reminders set.</p>
+        )}
+
+        {reminders.length > 0 && (
+          <ul className="divide-y divide-slate-100">
+            {reminders.map((reminder) => {
+              const remindAtStr = new Date(reminder.remindAt).toLocaleString('en-IN', {
+                day: '2-digit', month: 'short', year: 'numeric',
+                hour: '2-digit', minute: '2-digit',
+              });
+              const statusCls = reminder.isSent
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                : 'bg-amber-50 text-amber-700 border border-amber-100';
+              return (
+                <li key={reminder.id} className="py-3 flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{remindAtStr}</p>
+                    {reminder.scheduledEvent && (
+                      <p className="mt-0.5 text-xs text-slate-400">
+                        {'For hearing: ' + new Date(reminder.scheduledEvent.scheduledAt).toLocaleDateString('en-IN', {
+                          day: '2-digit', month: 'short', year: 'numeric',
+                        })}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className={'rounded-full px-2.5 py-0.5 text-xs font-medium ' + statusCls}>
+                      {reminder.isSent ? 'Sent' : 'Pending'}
+                    </span>
+                    {!reminder.isSent && (
+                      <button
+                        onClick={() => {
+                          if (confirm('Delete this reminder?')) onDeleteReminder(reminder.id);
+                        }}
+                        className="text-xs text-red-400 hover:text-red-600"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
 
 export function CaseDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -84,6 +373,25 @@ export function CaseDetailPage() {
   const { mutate: downloadDocument, isPending: isDownloading } = useDocumentDownloadUrl(id!);
   const { mutate: deleteDocument } = useDeleteDocument(id!);
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // Notifications & reminders
+  const { data: notifTemplates = [] } = useNotificationTemplates();
+  const { data: notifLogs = [] } = useNotificationLogs(id);
+  const { mutate: sendNotification, isPending: isSending, error: sendError } = useSendNotification();
+  const { data: reminders = [] } = useReminders(id!);
+  const { mutate: createReminder, isPending: isCreatingReminder } = useCreateReminder(id!);
+  const { mutate: deleteReminder } = useDeleteReminder(id!);
+
+  // Notification form state
+  const [showSendForm, setShowSendForm] = useState(false);
+  const [notifTemplateId, setNotifTemplateId] = useState('');
+  const [notifCustomMessage, setNotifCustomMessage] = useState('');
+  const notifChannel = 'email' as const;
+
+  // Reminder form state
+  const [showReminderForm, setShowReminderForm] = useState(false);
+  const [reminderEventId, setReminderEventId] = useState('');
+  const [reminderAt, setReminderAt] = useState('');
 
   if (isLoading) {
     return (
@@ -635,7 +943,6 @@ export function CaseDetailPage() {
               ))}
             </ul>
           )}
-          </div>
         </div>
 
         {/* Fees */}
@@ -846,6 +1153,53 @@ export function CaseDetailPage() {
             </div>
           </div>
         )}
+
+        {/* Notifications */}
+        {isAdmin && <NotificationsCard
+          isClosed={isClosed}
+          participant={matter.participant}
+          notifTemplates={notifTemplates}
+          notifTemplateId={notifTemplateId}
+          setNotifTemplateId={setNotifTemplateId}
+          notifCustomMessage={notifCustomMessage}
+          setNotifCustomMessage={setNotifCustomMessage}
+          notifChannel={notifChannel}
+          showSendForm={showSendForm}
+          setShowSendForm={setShowSendForm}
+          isSending={isSending}
+          sendError={sendError}
+          notifLogs={notifLogs as NotificationLogDto[]}
+          onSend={(payload) => sendNotification(payload, {
+            onSuccess: () => {
+              setShowSendForm(false);
+              setNotifTemplateId('');
+              setNotifCustomMessage('');
+            },
+          })}
+          matterId={id!}
+        />}
+
+        {/* Reminders */}
+        {isAdmin && <RemindersCard
+          isClosed={isClosed}
+          events={events as ScheduledEventDto[]}
+          reminders={reminders}
+          showReminderForm={showReminderForm}
+          setShowReminderForm={setShowReminderForm}
+          reminderEventId={reminderEventId}
+          setReminderEventId={setReminderEventId}
+          reminderAt={reminderAt}
+          setReminderAt={setReminderAt}
+          isCreatingReminder={isCreatingReminder}
+          onCreateReminder={(payload) => createReminder(payload, {
+            onSuccess: () => {
+              setShowReminderForm(false);
+              setReminderEventId('');
+              setReminderAt('');
+            },
+          })}
+          onDeleteReminder={(remId) => deleteReminder(remId)}
+        />}
 
         {/* Danger zone */}
         {isAdmin && (

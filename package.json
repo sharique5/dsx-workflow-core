@@ -27,6 +27,7 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
-    "@azure/identity": "^4.13.1"
+    "@azure/identity": "^4.13.1",
+    "@nestjs/schedule": "^6.1.3"
   }
 }

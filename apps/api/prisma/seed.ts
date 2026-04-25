@@ -79,6 +79,66 @@ async function main() {
   });
 
   console.warn(`[Seed] Admin user created: ${admin.email ?? admin.phone}`);
+
+  // ─── System notification templates ─────────────────────────────────────
+  // These are tenant-agnostic defaults seeded once into the DB.
+  // Skip if already present (idempotent).
+  const existingTemplates = await prisma.notificationTemplate.count({ where: { isSystem: true } });
+  if (existingTemplates === 0) {
+    await prisma.notificationTemplate.createMany({
+      data: [
+        {
+          id: randomUUID(),
+          tenantId: null,
+          triggerType: 'hearing_added',
+          channel: 'email',
+          templateBody:
+            'Hi {{recipient_name}}, a new hearing has been scheduled for your case "{{matter_title}}" ({{matter_ref}}). Please check your portal for details.',
+          isSystem: true,
+        },
+        {
+          id: randomUUID(),
+          tenantId: null,
+          triggerType: 'status_change',
+          channel: 'email',
+          templateBody:
+            'Hi {{recipient_name}}, the status of your case "{{matter_title}}" ({{matter_ref}}) has been updated. Please check your portal for the latest details.',
+          isSystem: true,
+        },
+        {
+          id: randomUUID(),
+          tenantId: null,
+          triggerType: 'fee_due',
+          channel: 'email',
+          templateBody:
+            'Hi {{recipient_name}}, a fee payment is due for your case "{{matter_title}}" ({{matter_ref}}). Please contact your legal team for payment details.',
+          isSystem: true,
+        },
+        {
+          id: randomUUID(),
+          tenantId: null,
+          triggerType: 'reminder',
+          channel: 'email',
+          templateBody:
+            'Hi {{recipient_name}}, this is a reminder about your case "{{matter_title}}" ({{matter_ref}}). Please check your portal for upcoming hearing dates.',
+          isSystem: true,
+        },
+        {
+          id: randomUUID(),
+          tenantId: null,
+          triggerType: 'custom',
+          channel: 'email',
+          templateBody:
+            'Hi {{recipient_name}}, you have a message regarding your case "{{matter_title}}" ({{matter_ref}}).',
+          isSystem: true,
+        },
+      ],
+    });
+    console.warn('[Seed] System notification templates seeded.');
+  } else {
+    console.warn('[Seed] System notification templates already exist — skipping.');
+  }
+
   console.warn('\n[Seed] Done. Login with:');
   console.warn(`  POST /api/v1/auth/request-otp`);
   console.warn(`  { "identifier": "${ADMIN_EMAIL}" }\n`);

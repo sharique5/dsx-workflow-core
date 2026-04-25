@@ -253,18 +253,61 @@ export interface AuditLogDto {
 
 export type NotificationChannel = 'whatsapp' | 'email';
 export type NotificationStatus = 'pending' | 'sent' | 'delivered' | 'failed';
+export type NotificationTriggerType =
+  | 'status_change'
+  | 'hearing_added'
+  | 'fee_due'
+  | 'reminder'
+  | 'custom';
+
+export interface NotificationTemplateDto {
+  id: string;
+  tenantId: string | null;
+  triggerType: NotificationTriggerType;
+  channel: NotificationChannel;
+  templateBody: string;
+  isSystem: boolean;
+  createdAt: string;
+}
+
+export interface SendNotificationDto {
+  matterId: string;
+  recipientId: string;
+  channel: NotificationChannel;
+  templateId?: string;
+  customMessage?: string;
+}
 
 export interface NotificationLogDto {
   id: string;
   tenantId: string;
   matterId: string | null;
+  matter?: { id: string; internalRef: string; title: string } | null;
   recipientId: string;
+  recipient?: { id: string; name: string; email: string | null };
   channel: NotificationChannel;
   templateId: string | null;
+  template?: { id: string; triggerType: NotificationTriggerType; channel: NotificationChannel } | null;
   customMessage: string | null;
   status: NotificationStatus;
   sentAt: string | null;
   createdAt: string;
+}
+
+export interface ReminderDto {
+  id: string;
+  tenantId: string;
+  matterId: string;
+  scheduledEventId: string;
+  scheduledEvent?: { id: string; scheduledAt: string };
+  remindAt: string;
+  isSent: boolean;
+  createdAt: string;
+}
+
+export interface CreateReminderDto {
+  scheduledEventId: string;
+  remindAt: string;
 }
 
 // ─── Pagination ──────────────────────────────────────────────────────────────

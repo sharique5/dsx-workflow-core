@@ -16,6 +16,7 @@ import { ClientsModule } from './modules/clients/clients.module';
 import { DocumentRequestsModule } from './modules/document-requests/document-requests.module';
 import { FeesModule } from './modules/fees/fees.module';
 import { DocumentsModule } from './modules/documents/documents.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { DocumentsModule } from './modules/documents/documents.module';
     DocumentRequestsModule,
     FeesModule,
     DocumentsModule,
+    NotificationsModule,
     // Phase 3+ modules will be added here:
     // DocumentsModule,
     // FeesModule (already added),

@@ -82,4 +82,31 @@ export class EmailService {
       // Intentionally not throwing — staff is created regardless of email delivery
     }
   }
+
+  async sendCaseNotification(
+    to: string,
+    name: string,
+    message: string,
+    caseTitle: string,
+  ): Promise<void> {
+    const { error } = await this.resend.emails.send({
+      from: process.env.EMAIL_FROM ?? 'onboarding@resend.dev',
+      to,
+      subject: `Update on your case: ${caseTitle}`,
+      html: `
+        <p>Hi ${name},</p>
+        <p>${message}</p>
+        <p style="color:#6b7280;font-size:12px;margin-top:24px;">
+          This is an automated message from your legal team's case management system.
+        </p>
+      `,
+    });
+
+    if (error) {
+      this.logger.error(
+        `Failed to send case notification to ${to}: ${JSON.stringify(error)}`,
+      );
+      throw new Error('Failed to send notification email');
+    }
+  }
 }
