@@ -1,9 +1,12 @@
+import { useEffect, useRef, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { usePortalAuthStore } from '../../store/auth.store';
 import { authApi } from '../../modules/auth/api/auth.api';
 
 export function PortalShell() {
   const { user, clearAuth } = usePortalAuthStore();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = () => {
     void authApi.logout().catch(() => null);
@@ -15,11 +18,22 @@ export function PortalShell() {
     ? user.name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase()
     : '?';
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-20 bg-white border-b border-slate-200 shadow-sm">
-        <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5}>
@@ -29,21 +43,33 @@ export function PortalShell() {
             <span className="text-sm font-semibold text-slate-900 tracking-tight">Nair &amp; Associates</span>
           </div>
 
-          <div className="flex items-center gap-3">
-            {user?.name && (
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center">
-                  <span className="text-xs font-semibold text-indigo-700">{initials}</span>
-                </div>
-                <span className="hidden sm:block text-xs font-medium text-slate-600">{user.name}</span>
+          {/* Avatar button + dropdown */}
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setMenuOpen((o) => !o)}
+              className="w-8 h-8 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center hover:bg-indigo-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              aria-label="Account menu"
+              aria-expanded={menuOpen}
+            >
+              <span className="text-xs font-semibold text-indigo-700">{initials}</span>
+            </button>
+
+            {menuOpen && (
+              <div className="absolute right-0 top-10 w-52 bg-white rounded-xl border border-slate-200 shadow-lg py-1 z-30">
+                {user?.name && (
+                  <div className="px-4 py-2.5 border-b border-slate-100">
+                    <p className="text-xs text-slate-400 leading-none mb-0.5">Signed in as</p>
+                    <p className="text-sm font-medium text-slate-800 truncate">{user.name}</p>
+                  </div>
+                )}
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                >
+                  Sign out
+                </button>
               </div>
             )}
-            <button
-              onClick={handleLogout}
-              className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
-            >
-              Sign out
-            </button>
           </div>
         </div>
       </header>
