@@ -6,8 +6,11 @@ export const DEFAULT_LEGAL_VOCABULARY: IndustryConfig = {
   scheduled_event_label: 'Hearing',
   participant_label: 'Client',
   metadata_fields: {
-    judge: 'Judge',
+    cnr: 'CNR Number',
     court: 'Court',
+    bench: 'Bench',
+    judge: 'Judge',
+    stage: 'Stage',
   },
   statuses: [
     { key: 'filed', label: 'Filed', isTerminal: false },
