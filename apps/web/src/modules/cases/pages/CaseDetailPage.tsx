@@ -392,6 +392,7 @@ export function CaseDetailPage() {
   const [showReminderForm, setShowReminderForm] = useState(false);
   const [reminderEventId, setReminderEventId] = useState('');
   const [reminderAt, setReminderAt] = useState('');
+  const [activeTab, setActiveTab] = useState<'overview' | 'hearings' | 'documents' | 'fees' | 'notes' | 'admin'>('overview');
 
   if (isLoading) {
     return (
@@ -414,10 +415,19 @@ export function CaseDetailPage() {
 
   const isClosed = matter.statusKey === 'closed';
 
+  const tabs: Array<{ key: 'overview' | 'hearings' | 'documents' | 'fees' | 'notes' | 'admin'; label: string }> = [
+    { key: 'overview', label: 'Overview' },
+    { key: 'hearings', label: 'Hearings' },
+    { key: 'documents', label: 'Documents' },
+    { key: 'fees', label: 'Fees' },
+    { key: 'notes', label: 'Notes' },
+    ...(isAdmin ? [{ key: 'admin' as const, label: 'Admin' }] : []),
+  ];
+
   return (
-    <div className="px-6 py-8 max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto">
       {/* Page header */}
-      <div className="flex items-start justify-between mb-6">
+      <div className="px-6 pt-8 pb-4 flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2 mb-2 text-sm text-slate-500">
             <Link to="/cases" className="hover:text-indigo-600 transition-colors">{vocab.matter_plural}</Link>
@@ -442,8 +452,30 @@ export function CaseDetailPage() {
         )}
       </div>
 
-      <div className="space-y-5">
+      {/* Sticky tab bar */}
+      <div className="sticky top-0 z-10 bg-white border-b border-slate-200">
+        <div className="px-6">
+          <nav className="flex overflow-x-auto -mb-px" aria-label="Case sections">
+            {tabs.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                  activeTab === tab.key
+                    ? 'border-indigo-600 text-indigo-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+      </div>
+
+      <div className="px-6 py-5 space-y-5">
         {/* Core details */}
+        <div className={activeTab !== 'overview' ? 'hidden' : undefined}>
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-6 py-5 border-b border-slate-100">
             <h2 className="text-base font-semibold text-slate-900">Case Details</h2>
@@ -555,8 +587,10 @@ export function CaseDetailPage() {
           )}
           </div>
         </div>
+        </div>
 
         {/* Hearings */}
+        <div className={activeTab !== 'hearings' ? 'hidden' : undefined}>
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
             <h3 className="text-sm font-semibold text-slate-900">{vocab.scheduled_event_label}s</h3>
@@ -645,8 +679,10 @@ export function CaseDetailPage() {
           )}
           </div>
         </div>
+        </div>
 
         {/* Documents */}
+        <div className={activeTab !== 'documents' ? 'hidden' : undefined}>
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
             <h3 className="text-sm font-semibold text-slate-900">Documents</h3>
@@ -731,8 +767,10 @@ export function CaseDetailPage() {
           )}
           </div>
         </div>
+        </div>
 
         {/* Notes */}
+        <div className={activeTab !== 'notes' ? 'hidden' : undefined}>
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
             <h3 className="text-sm font-semibold text-slate-900">Notes</h3>
@@ -847,8 +885,10 @@ export function CaseDetailPage() {
           )}
           </div>
         </div>
+        </div>
 
         {/* Document Requests */}
+        <div className={activeTab !== 'documents' ? 'hidden' : undefined}>
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
             <h3 className="text-sm font-semibold text-slate-900">Document Requests</h3>
@@ -944,8 +984,10 @@ export function CaseDetailPage() {
             </ul>
           )}
         </div>
+        </div>
 
         {/* Fees */}
+        <div className={activeTab !== 'fees' ? 'hidden' : undefined}>
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
             <h3 className="text-sm font-semibold text-slate-900">Fees</h3>
@@ -1113,9 +1155,10 @@ export function CaseDetailPage() {
           )}
           </div>
         </div>
+        </div>
 
         {/* Audit Trail */}
-        {isAdmin && (
+        {isAdmin && activeTab === 'admin' && (
           <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100">
               <h3 className="text-sm font-semibold text-slate-900">Activity</h3>
@@ -1155,7 +1198,7 @@ export function CaseDetailPage() {
         )}
 
         {/* Notifications */}
-        {isAdmin && <NotificationsCard
+        {isAdmin && activeTab === 'admin' && <NotificationsCard
           isClosed={isClosed}
           participant={matter.participant}
           notifTemplates={notifTemplates}
@@ -1180,7 +1223,7 @@ export function CaseDetailPage() {
         />}
 
         {/* Reminders */}
-        {isAdmin && <RemindersCard
+        {isAdmin && activeTab === 'hearings' && <RemindersCard
           isClosed={isClosed}
           events={events as ScheduledEventDto[]}
           reminders={reminders}
@@ -1202,7 +1245,7 @@ export function CaseDetailPage() {
         />}
 
         {/* Danger zone */}
-        {isAdmin && (
+        {isAdmin && activeTab === 'admin' && (
           <div className="rounded-xl border border-red-200 bg-white shadow-sm overflow-hidden">
             <div className="px-6 py-4 border-b border-red-100">
               <h3 className="text-sm font-semibold text-red-700">Danger zone</h3>
