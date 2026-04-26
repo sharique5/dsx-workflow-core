@@ -9,7 +9,7 @@ import { AuthController } from './auth.controller';
     JwtModule.register({
       secret: process.env.JWT_SECRET ?? 'change-me',
       signOptions: {
-        expiresIn: (process.env.JWT_EXPIRY ?? '7d') as unknown as number,
+        expiresIn: (process.env.JWT_EXPIRY ?? '1d') as unknown as number,
       },
     }),
   ],
