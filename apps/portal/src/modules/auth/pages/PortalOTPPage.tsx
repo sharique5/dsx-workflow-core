@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { authApi } from '../api/auth.api';
 import { usePortalAuthStore } from '../../../store/auth.store';
+
+const DIGIT_COUNT = 6;
 
 interface LocationState { identifier?: string }
 
@@ -12,31 +14,76 @@ export function PortalOTPPage() {
   const identifier = state?.identifier;
   const { setUser } = usePortalAuthStore();
 
-  const [otp, setOtp] = useState('');
+  const [digits, setDigits] = useState<string[]>(Array(DIGIT_COUNT).fill(''));
+  const inputRefs = useRef<Array<HTMLInputElement | null>>(Array(DIGIT_COUNT).fill(null));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (!identifier) navigate('/login', { replace: true });
+    else inputRefs.current[0]?.focus();
   }, [identifier, navigate]);
 
-  if (!identifier) return null;
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (otp.length !== 6) return;
+  const submit = useCallback(async (code: string) => {
+    if (code.length !== DIGIT_COUNT || !identifier) return;
     setLoading(true);
     setError('');
     try {
-      const { data } = await authApi.verifyOtp(identifier, otp);
+      const { data } = await authApi.verifyOtp(identifier, code);
       setUser(data.user);
       navigate('/cases');
     } catch {
       setError('Invalid or expired code. Please try again.');
+      setDigits(Array(DIGIT_COUNT).fill(''));
+      setTimeout(() => inputRefs.current[0]?.focus(), 50);
     } finally {
       setLoading(false);
     }
+  }, [identifier, setUser, navigate]);
+
+  const handleChange = (idx: number, raw: string) => {
+    const char = raw.replace(/\D/g, '').slice(-1);
+    const next = [...digits];
+    next[idx] = char;
+    setDigits(next);
+    if (char && idx < DIGIT_COUNT - 1) {
+      inputRefs.current[idx + 1]?.focus();
+    }
+    const code = next.join('');
+    if (code.length === DIGIT_COUNT) void submit(code);
   };
+
+  const handleKeyDown = (idx: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace') {
+      if (digits[idx]) {
+        const next = [...digits];
+        next[idx] = '';
+        setDigits(next);
+      } else if (idx > 0) {
+        inputRefs.current[idx - 1]?.focus();
+      }
+    } else if (e.key === 'ArrowLeft' && idx > 0) {
+      inputRefs.current[idx - 1]?.focus();
+    } else if (e.key === 'ArrowRight' && idx < DIGIT_COUNT - 1) {
+      inputRefs.current[idx + 1]?.focus();
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, DIGIT_COUNT);
+    if (!pasted) return;
+    const next = Array(DIGIT_COUNT).fill('');
+    for (let i = 0; i < pasted.length; i++) next[i] = pasted[i];
+    setDigits(next);
+    const focusIdx = Math.min(pasted.length, DIGIT_COUNT - 1);
+    inputRefs.current[focusIdx]?.focus();
+    if (pasted.length === DIGIT_COUNT) void submit(pasted);
+  };
+
+  if (!identifier) return null;
+
+  const otp = digits.join('');
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 px-4 py-12">
@@ -60,22 +107,33 @@ export function PortalOTPPage() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          onSubmit={(e) => { e.preventDefault(); void submit(otp); }}
+          className="space-y-4"
+        >
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1.5" htmlFor="otp">
+            <label className="block text-xs font-medium text-slate-600 mb-3">
               6-digit code
             </label>
-            <input
-              id="otp"
-              type="text"
-              inputMode="numeric"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              placeholder="000000"
-              maxLength={6}
-              autoComplete="one-time-code"
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-2xl font-mono tracking-[0.5em] text-slate-900 transition focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
-            />
+            <div className="flex gap-2 justify-center" onPaste={handlePaste}>
+              {digits.map((d, i) => (
+                <input
+                  key={i}
+                  ref={(el) => { inputRefs.current[i] = el; }}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={1}
+                  value={d}
+                  autoComplete={i === 0 ? 'one-time-code' : 'off'}
+                  onChange={(e) => handleChange(i, e.target.value)}
+                  onKeyDown={(e) => handleKeyDown(i, e)}
+                  onFocus={(e) => e.target.select()}
+                  className="w-11 h-14 rounded-xl border border-slate-200 bg-slate-50 text-center text-xl font-bold text-slate-900 transition focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 disabled:opacity-50"
+                  disabled={loading}
+                />
+              ))}
+            </div>
           </div>
 
           {error && (
@@ -86,7 +144,7 @@ export function PortalOTPPage() {
 
           <button
             type="submit"
-            disabled={loading || otp.length !== 6}
+            disabled={loading || otp.length !== DIGIT_COUNT}
             className="w-full rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? 'Verifying…' : 'Sign in'}

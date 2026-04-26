@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useVerifyOtp } from '../hooks/useAuth';
 import { usePageTitle } from '../../../shared/hooks/usePageTitle';
+
+const DIGIT_COUNT = 6;
 
 interface LocationState {
   identifier?: string;
@@ -14,25 +16,63 @@ export function OTPPage() {
   const state = location.state as LocationState | null;
   const identifier = state?.identifier;
 
-  const [otp, setOtp] = useState('');
+  const [digits, setDigits] = useState<string[]>(Array(DIGIT_COUNT).fill(''));
+  const inputRefs = useRef<Array<HTMLInputElement | null>>(Array(DIGIT_COUNT).fill(null));
   const { mutate: verifyOtp, isPending, error } = useVerifyOtp();
 
   useEffect(() => {
     if (!identifier) navigate('/login', { replace: true });
+    else inputRefs.current[0]?.focus();
   }, [identifier, navigate]);
+
+  const submit = useCallback((code: string) => {
+    if (code.length !== DIGIT_COUNT || !identifier) return;
+    verifyOtp({ identifier, otp: code });
+  }, [identifier, verifyOtp]);
+
+  const handleChange = (idx: number, raw: string) => {
+    const char = raw.replace(/\D/g, '').slice(-1);
+    const next = [...digits];
+    next[idx] = char;
+    setDigits(next);
+    if (char && idx < DIGIT_COUNT - 1) {
+      inputRefs.current[idx + 1]?.focus();
+    }
+    const code = next.join('');
+    if (code.length === DIGIT_COUNT) submit(code);
+  };
+
+  const handleKeyDown = (idx: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace') {
+      if (digits[idx]) {
+        const next = [...digits];
+        next[idx] = '';
+        setDigits(next);
+      } else if (idx > 0) {
+        inputRefs.current[idx - 1]?.focus();
+      }
+    } else if (e.key === 'ArrowLeft' && idx > 0) {
+      inputRefs.current[idx - 1]?.focus();
+    } else if (e.key === 'ArrowRight' && idx < DIGIT_COUNT - 1) {
+      inputRefs.current[idx + 1]?.focus();
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, DIGIT_COUNT);
+    if (!pasted) return;
+    const next = Array(DIGIT_COUNT).fill('');
+    for (let i = 0; i < pasted.length; i++) next[i] = pasted[i];
+    setDigits(next);
+    const focusIdx = Math.min(pasted.length, DIGIT_COUNT - 1);
+    inputRefs.current[focusIdx]?.focus();
+    if (pasted.length === DIGIT_COUNT) submit(pasted);
+  };
 
   if (!identifier) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (otp.length !== 6) return;
-    verifyOtp({ identifier, otp });
-  };
-
-  const handleOtpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, '').slice(0, 6);
-    setOtp(value);
-  };
+  const otp = digits.join('');
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-white px-6">
@@ -50,22 +90,33 @@ export function OTPPage() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form
+          onSubmit={(e) => { e.preventDefault(); submit(otp); }}
+          className="space-y-5"
+        >
           <div>
-            <label htmlFor="otp" className="block text-sm font-medium text-slate-700 mb-1.5">
+            <label className="block text-sm font-medium text-slate-700 mb-3">
               Login code
             </label>
-            <input
-              id="otp"
-              type="text"
-              inputMode="numeric"
-              value={otp}
-              onChange={handleOtpChange}
-              placeholder="000000"
-              maxLength={6}
-              autoComplete="one-time-code"
-              className="block w-full rounded-lg border border-slate-300 px-3.5 py-3 text-center text-2xl font-mono tracking-[0.5em] shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            />
+            <div className="flex gap-2 justify-center" onPaste={handlePaste}>
+              {digits.map((d, i) => (
+                <input
+                  key={i}
+                  ref={(el) => { inputRefs.current[i] = el; }}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={1}
+                  value={d}
+                  autoComplete={i === 0 ? 'one-time-code' : 'off'}
+                  onChange={(e) => handleChange(i, e.target.value)}
+                  onKeyDown={(e) => handleKeyDown(i, e)}
+                  onFocus={(e) => e.target.select()}
+                  className="w-11 h-14 rounded-xl border border-slate-300 text-center text-xl font-bold text-slate-900 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-50"
+                  disabled={isPending}
+                />
+              ))}
+            </div>
           </div>
 
           {error && (
