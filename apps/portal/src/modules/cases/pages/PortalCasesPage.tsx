@@ -9,6 +9,16 @@ function formatStatusKey(key: string) {
     .join(' ');
 }
 
+function formatRelativeDate(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return `${days} days ago`;
+  if (days < 30) return `${Math.floor(days / 7)} week${Math.floor(days / 7) > 1 ? 's' : ''} ago`;
+  return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 function formatHearingDate(iso: string) {
   const d = new Date(iso);
   const now = new Date();
@@ -107,11 +117,17 @@ export function PortalCasesPage() {
       </div>
 
       <ul className="space-y-3">
-        {cases.map((c) => (
+        {cases.map((c) => {
+          const isNextHearingCase = hearing?.matterId === c.id;
+          return (
           <li key={c.id}>
             <button
               onClick={() => navigate(`/cases/${c.id}`)}
-              className="group w-full text-left rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-indigo-200 hover:shadow-md transition-all duration-150"
+              className={`group w-full text-left rounded-2xl border bg-white p-5 shadow-sm hover:shadow-md transition-all duration-150 ${
+                isNextHearingCase
+                  ? 'border-indigo-200 hover:border-indigo-300'
+                  : 'border-slate-200 hover:border-indigo-200'
+              }`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -128,7 +144,30 @@ export function PortalCasesPage() {
                   {formatStatusKey(c.statusKey)}
                 </span>
               </div>
-              <div className="mt-3 flex items-center gap-1 text-xs text-indigo-500 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+
+              {/* Meta row */}
+              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+                {isNextHearingCase && hearing && (
+                  <span className="flex items-center gap-1 text-xs text-indigo-600 font-medium">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.25}>
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                      <line x1="16" y1="2" x2="16" y2="6" />
+                      <line x1="8" y1="2" x2="8" y2="6" />
+                      <line x1="3" y1="10" x2="21" y2="10" />
+                    </svg>
+                    {new Date(hearing.scheduledAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                  </span>
+                )}
+                <span className="flex items-center gap-1 text-xs text-slate-400">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.25}>
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                  {formatRelativeDate(c.updatedAt)}
+                </span>
+              </div>
+
+              <div className="mt-2 flex items-center gap-1 text-xs text-indigo-500 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
                 View details
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 18l6-6-6-6" />
@@ -136,7 +175,8 @@ export function PortalCasesPage() {
               </div>
             </button>
           </li>
-        ))}
+          );
+        })}
       </ul>
     </div>
   );
