@@ -4,6 +4,7 @@ import { ProtectedRoute } from '../modules/auth/components/ProtectedRoute';
 import { LoginPage } from '../modules/auth/pages/LoginPage';
 import { OTPPage } from '../modules/auth/pages/OTPPage';
 import { AppShell } from './AppShell';
+import { CaseCrumb } from '../shared/components/Breadcrumbs';
 
 // Lazy load dashboard + feature pages to keep initial bundle small
 // React Router's lazy() expects { Component } — NOT { default }
@@ -26,12 +27,12 @@ export const router = createBrowserRouter([
       {
         element: <AppShell />,
         children: [
-          { path: '/dashboard', lazy: DashboardPage },
-          { path: '/cases', lazy: CasesPage },
-          { path: '/cases/new', lazy: CreateCasePage },
-          { path: '/cases/:id', lazy: CaseDetailPage },
-          { path: '/staff', lazy: StaffPage },
-          { path: '/notifications', lazy: NotificationsPage },
+          { path: '/dashboard', lazy: DashboardPage, handle: { crumb: 'Dashboard' } },
+          { path: '/cases', lazy: CasesPage, handle: { crumb: 'Cases' } },
+          { path: '/cases/new', lazy: CreateCasePage, handle: { crumb: 'New Case' } },
+          { path: '/cases/:id', lazy: CaseDetailPage, handle: { crumb: CaseCrumb } },
+          { path: '/staff', lazy: StaffPage, handle: { crumb: 'Team' } },
+          { path: '/notifications', lazy: NotificationsPage, handle: { crumb: 'Notifications' } },
         ],
       },
     ],

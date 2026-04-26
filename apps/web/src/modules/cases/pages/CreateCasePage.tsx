@@ -140,16 +140,6 @@ export function CreateCasePage() {
 
   return (
     <div className="px-6 py-8 max-w-2xl mx-auto">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 mb-6 text-sm text-slate-500">
-        <Link to="/cases" className="hover:text-indigo-600 transition-colors">
-          {vocab.matter_plural}
-        </Link>
-        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
-        <span className="text-slate-800 font-medium">New {vocab.matter_label}</span>
-      </div>
 
       {/* eCourts lookup tip */}
       <div className="mb-4 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-4">

@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/auth.store';
 import { useLogout } from '../modules/auth/hooks/useAuth';
 import { useVocabulary } from '../shared/hooks/useVocabulary';
+import { Breadcrumbs } from '../shared/components/Breadcrumbs';
 
 // ─── Icons (inline SVG to avoid deps) ────────────────────────────────────────
 
@@ -208,6 +209,11 @@ export function AppShell() {
           </button>
           <span className="text-sm font-semibold text-slate-800">Nair &amp; Associates</span>
         </header>
+
+        {/* Desktop breadcrumb bar */}
+        <div className="hidden lg:flex items-center h-12 px-6 border-b border-slate-100 bg-white flex-shrink-0">
+          <Breadcrumbs />
+        </div>
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">

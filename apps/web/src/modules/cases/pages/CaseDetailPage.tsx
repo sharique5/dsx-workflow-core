@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useMatter, useCloseMatter, useDeleteMatter } from '../hooks/useMatters';
 import { useScheduledEvents, useCreateScheduledEvent, useDeleteScheduledEvent } from '../hooks/useScheduledEvents';
 import { useNotes, useCreateNote, useUpdateNote, useDeleteNote } from '../hooks/useNotes';
@@ -429,13 +429,6 @@ export function CaseDetailPage() {
       {/* Page header */}
       <div className="px-6 pt-8 pb-4 flex items-start justify-between">
         <div>
-          <div className="flex items-center gap-2 mb-2 text-sm text-slate-500">
-            <Link to="/cases" className="hover:text-indigo-600 transition-colors">{vocab.matter_plural}</Link>
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-            <span className="font-mono text-slate-700">{matter.internalRef}</span>
-          </div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-slate-900">{matter.title}</h1>
             <StatusBadge statusKey={matter.statusKey} statuses={vocab.statuses} />
