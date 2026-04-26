@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { portalCasesApi } from '../api/portal-cases.api';
 import { portalDocumentRequestsApi } from '../api/portal-document-requests.api';
 import { portalFeesApi } from '../api/portal-fees.api';
@@ -88,8 +89,12 @@ export function usePortalDocumentDownloadUrl(matterId: string) {
       portalDocumentsApi
         .getDownloadUrl(matterId, docId)
         .then((r) => r.data.downloadUrl),
-    onSuccess: (url) => {
+    onSuccess: (url, _docId) => {
       window.open(url, '_blank', 'noopener,noreferrer');
+      toast.success('Download started', { description: 'Your file is opening in a new tab.' });
+    },
+    onError: () => {
+      toast.error('Download failed', { description: 'Could not get the download link. Please try again.' });
     },
   });
 }

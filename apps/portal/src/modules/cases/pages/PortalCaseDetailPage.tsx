@@ -126,6 +126,7 @@ export function PortalCaseDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [navOpen, setNavOpen] = useState(false);
+  const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
 
   const { data: matter, isLoading } = usePortalCase(id!);
   const { data: events = [] } = usePortalCaseEvents(id!);
@@ -133,7 +134,20 @@ export function PortalCaseDetailPage() {
   const { data: documentRequests = [] } = usePortalCaseDocumentRequests(id!);
   const { data: fees = [] } = usePortalCaseFees(id!);
   const { data: documents = [] } = usePortalCaseDocuments(id!);
-  const { mutate: downloadDocument, isPending: isDownloading } = usePortalDocumentDownloadUrl(id!);
+  const { mutate: downloadDocument } = usePortalDocumentDownloadUrl(id!);
+
+  function handleDownload(docId: string) {
+    setDownloadingIds((prev) => new Set(prev).add(docId));
+    downloadDocument(docId, {
+      onSettled: () => {
+        setDownloadingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(docId);
+          return next;
+        });
+      },
+    });
+  }
 
   if (isLoading) {
     return (
@@ -437,14 +451,25 @@ export function PortalCaseDetailPage() {
                             </div>
                           </div>
                           <button
-                            onClick={() => downloadDocument(doc.id)}
-                            disabled={isDownloading}
-                            className="shrink-0 inline-flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 text-indigo-600 text-xs font-semibold rounded-lg px-3 py-1.5 transition-colors disabled:opacity-50"
+                            onClick={() => handleDownload(doc.id)}
+                            disabled={downloadingIds.has(doc.id)}
+                            className="shrink-0 inline-flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 text-indigo-600 text-xs font-semibold rounded-lg px-3 py-1.5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                           >
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                            </svg>
-                            Download
+                            {downloadingIds.has(doc.id) ? (
+                              <>
+                                <svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" />
+                                </svg>
+                                Getting link…
+                              </>
+                            ) : (
+                              <>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                Download
+                              </>
+                            )}
                           </button>
                         </li>
                       ))}
