@@ -9,6 +9,7 @@ import { useVocabulary } from '../../../shared/hooks/useVocabulary';
 import type { CreateMatterDto, CreateClientDto } from '@dsx/shared';
 import { parseCnr } from '../utils/cnr';
 import { useStates, useDistricts, useComplexes } from '../hooks/useCourts';
+import { SearchableSelect } from '../../../shared/components/SearchableSelect';
 
 const createMatterSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200, 'Title too long'),
@@ -45,14 +46,7 @@ const EMPTY_COURT: CourtDetails = { cnr: '', state: '', district: '', courtCompl
 const INPUT_CLS =
   'block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20';
 const LABEL_CLS = 'block text-sm font-medium text-slate-700 mb-1.5';
-const SelectSpinner = () => (
-  <span className="pointer-events-none absolute inset-y-0 right-8 flex items-center">
-    <svg className="animate-spin h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-    </svg>
-  </span>
-);
+
 
 export function CreateCasePage() {
   const vocab = useVocabulary();
@@ -67,6 +61,7 @@ export function CreateCasePage() {
   const [courtDetails, setCourtDetails] = useState<CourtDetails>(EMPTY_COURT);
   const [selectedStateId, setSelectedStateId] = useState('');
   const [selectedDistrictId, setSelectedDistrictId] = useState('');
+  const [selectedComplexId, setSelectedComplexId] = useState('');
   const { data: states = [], isLoading: statesLoading } = useStates();
   const { data: districts = [], isLoading: districtsLoading } = useDistricts(selectedStateId);
   const { data: complexes = [], isLoading: complexesLoading } = useComplexes(selectedStateId, selectedDistrictId);
@@ -103,6 +98,7 @@ export function CreateCasePage() {
     if (matchedState) {
       setSelectedStateId(matchedState.id);
       setSelectedDistrictId('');
+      setSelectedComplexId('');
     }
     setCourtDetails((prev) => ({
       ...prev,
@@ -280,67 +276,52 @@ export function CreateCasePage() {
             </p>
             {/* State + District cascade */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="relative">
+              <div>
                 <label className={LABEL_CLS}>State</label>
-                <select
-                  className={`${INPUT_CLS}${statesLoading ? ' opacity-50 cursor-not-allowed' : ''}`}
+                <SearchableSelect
+                  options={states}
                   value={selectedStateId}
-                  onChange={(e) => {
-                    const id = e.target.value;
-                    const name = states.find((s) => s.id === id)?.name ?? '';
+                  onChange={(id, name) => {
                     setSelectedStateId(id);
                     setSelectedDistrictId('');
+                    setSelectedComplexId('');
                     setCourtDetails((p) => ({ ...p, state: name, district: '', courtComplex: '' }));
                   }}
+                  placeholder="Select state"
                   disabled={statesLoading}
-                >
-                  <option value="">Select state</option>
-                  {states.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-                {statesLoading && <SelectSpinner />}
+                  loading={statesLoading}
+                />
               </div>
-              <div className="relative">
+              <div>
                 <label className={LABEL_CLS}>District</label>
-                <select
-                  className={`${INPUT_CLS}${!selectedStateId || districtsLoading ? ' opacity-50 cursor-not-allowed' : ''}`}
+                <SearchableSelect
+                  options={districts}
                   value={selectedDistrictId}
-                  onChange={(e) => {
-                    const id = e.target.value;
-                    const name = districts.find((d) => d.id === id)?.name ?? '';
+                  onChange={(id, name) => {
                     setSelectedDistrictId(id);
+                    setSelectedComplexId('');
                     setCourtDetails((p) => ({ ...p, district: name, courtComplex: '' }));
                   }}
+                  placeholder={!selectedStateId ? 'Select state first' : 'Select district'}
                   disabled={!selectedStateId || districtsLoading}
-                >
-                  <option value="">
-                    {!selectedStateId ? 'Select state first' : 'Select district'}
-                  </option>
-                  {districts.map((d) => (
-                    <option key={d.id} value={d.id}>{d.name}</option>
-                  ))}
-                </select>
-                {districtsLoading && <SelectSpinner />}
+                  loading={districtsLoading}
+                />
               </div>
             </div>
             {/* Court Complex */}
-            <div className="relative">
+            <div>
               <label className={LABEL_CLS}>Court Complex</label>
-              <select
-                className={`${INPUT_CLS}${!selectedDistrictId || complexesLoading ? ' opacity-50 cursor-not-allowed' : ''}`}
-                value={courtDetails.courtComplex}
-                onChange={(e) => setCourtDetails((p) => ({ ...p, courtComplex: e.target.value }))}
+              <SearchableSelect
+                options={complexes}
+                value={selectedComplexId}
+                onChange={(id, name) => {
+                  setSelectedComplexId(id);
+                  setCourtDetails((p) => ({ ...p, courtComplex: name }));
+                }}
+                placeholder={!selectedDistrictId ? 'Select district first' : 'Select court complex'}
                 disabled={!selectedDistrictId || complexesLoading}
-              >
-                <option value="">
-                  {!selectedDistrictId ? 'Select district first' : 'Select court complex'}
-                </option>
-                {complexes.map((c) => (
-                  <option key={c.id} value={c.name}>{c.name}</option>
-                ))}
-              </select>
-              {complexesLoading && <SelectSpinner />}
+                loading={complexesLoading}
+              />
             </div>
             {/* CNR + Judge */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
