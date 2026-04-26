@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useStaff, useCreateStaff, useDeactivateStaff, useReactivateStaff } from '../hooks/useStaff';
 import { useAuthStore } from '../../../store/auth.store';
+import { usePageTitle } from '../../../shared/hooks/usePageTitle';
 import { StaffTableSkeleton } from '../../../shared/components/Skeleton';
 import type { UserDto, CreateStaffDto } from '@dsx/shared';
 
@@ -79,6 +80,7 @@ function StaffRow({
 }
 
 export function StaffPage() {
+  usePageTitle('Team');
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === 'admin';
   const [showForm, setShowForm] = useState(false);

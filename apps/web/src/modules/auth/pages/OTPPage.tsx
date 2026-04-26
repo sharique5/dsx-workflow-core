@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useVerifyOtp } from '../hooks/useAuth';
+import { usePageTitle } from '../../../shared/hooks/usePageTitle';
 
 interface LocationState {
   identifier?: string;
 }
 
 export function OTPPage() {
+  usePageTitle('Verify OTP');
   const location = useLocation();
   const navigate = useNavigate();
   const state = location.state as LocationState | null;

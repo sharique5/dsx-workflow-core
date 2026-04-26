@@ -10,6 +10,7 @@ import { useDocuments, useUploadDocument, useDocumentDownloadUrl, useDeleteDocum
 import { useInviteClient } from '../../clients/hooks/useClients';
 import { useVocabulary } from '../../../shared/hooks/useVocabulary';
 import { useAuthStore } from '../../../store/auth.store';
+import { usePageTitle } from '../../../shared/hooks/usePageTitle';
 import {
   useNotificationTemplates,
   useSendNotification,
@@ -325,6 +326,8 @@ export function CaseDetailPage() {
   const isAdmin = user?.role === 'admin';
 
   const { data: matter, isLoading, isError } = useMatter(id!);
+
+  usePageTitle(matter?.internalRef ?? 'Case');
   const { mutate: closeMatter, isPending: isClosing } = useCloseMatter();
   const { mutate: deleteMatter, isPending: isDeleting } = useDeleteMatter();
   const { mutate: inviteClient, isPending: isInviting } = useInviteClient();

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../../store/auth.store';
 import { useVocabulary } from '../../../shared/hooks/useVocabulary';
 import { useDashboardStats } from '../../cases/hooks/useMatters';
+import { usePageTitle } from '../../../shared/hooks/usePageTitle';
 
 function StatTile({
   value,
@@ -24,6 +25,7 @@ function StatTile({
 }
 
 export function DashboardPage() {
+  usePageTitle('Dashboard');
   const user = useAuthStore((s) => s.user);
   const vocab = useVocabulary();
   const { data: stats, isLoading } = useDashboardStats();

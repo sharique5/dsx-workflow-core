@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
+import { usePageTitle } from '../../../shared/hooks/usePageTitle';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useCreateMatter } from '../hooks/useMatters';
@@ -49,6 +50,7 @@ const LABEL_CLS = 'block text-sm font-medium text-slate-700 mb-1.5';
 
 
 export function CreateCasePage() {
+  usePageTitle('New Case');
   const vocab = useVocabulary();
   const { mutate: createMatter, isPending, error } = useCreateMatter();
   const { data: clients = [], isLoading: clientsLoading } = useClients();

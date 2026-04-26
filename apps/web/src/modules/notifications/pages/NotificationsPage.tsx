@@ -1,6 +1,7 @@
 
 import { useNotificationLogs } from '../../cases/hooks/useNotifications';
 import type { NotificationLogDto } from '@dsx/shared';
+import { usePageTitle } from '../../../shared/hooks/usePageTitle';
 
 const STATUS_STYLES: Record<string, string> = {
   sent:      'bg-emerald-50 text-emerald-700 border border-emerald-100',
@@ -23,6 +24,7 @@ const CHANNEL_ICON = {
 };
 
 export function NotificationsPage() {
+  usePageTitle('Notifications');
   const { data: logs = [], isLoading } = useNotificationLogs();
 
   return (

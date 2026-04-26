@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRequestOtp, useLoginWithPassword } from '../hooks/useAuth';
+import { usePageTitle } from '../../../shared/hooks/usePageTitle';
 
 type Method = 'password' | 'email-otp' | 'phone-otp';
 
@@ -57,6 +58,7 @@ function MethodTab({
 }
 
 export function LoginPage() {
+  usePageTitle('Sign In');
   const [method, setMethod] = useState<Method>('password');
   const navigate = useNavigate();
 
