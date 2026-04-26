@@ -45,6 +45,14 @@ const EMPTY_COURT: CourtDetails = { cnr: '', state: '', district: '', courtCompl
 const INPUT_CLS =
   'block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20';
 const LABEL_CLS = 'block text-sm font-medium text-slate-700 mb-1.5';
+const SelectSpinner = () => (
+  <span className="pointer-events-none absolute inset-y-0 right-8 flex items-center">
+    <svg className="animate-spin h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+    </svg>
+  </span>
+);
 
 export function CreateCasePage() {
   const vocab = useVocabulary();
@@ -272,10 +280,10 @@ export function CreateCasePage() {
             </p>
             {/* State + District cascade */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
+              <div className="relative">
                 <label className={LABEL_CLS}>State</label>
                 <select
-                  className={INPUT_CLS}
+                  className={`${INPUT_CLS}${statesLoading ? ' opacity-50 cursor-not-allowed' : ''}`}
                   value={selectedStateId}
                   onChange={(e) => {
                     const id = e.target.value;
@@ -286,16 +294,17 @@ export function CreateCasePage() {
                   }}
                   disabled={statesLoading}
                 >
-                  <option value="">{statesLoading ? 'Loading…' : 'Select state'}</option>
+                  <option value="">Select state</option>
                   {states.map((s) => (
                     <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
                 </select>
+                {statesLoading && <SelectSpinner />}
               </div>
-              <div>
+              <div className="relative">
                 <label className={LABEL_CLS}>District</label>
                 <select
-                  className={INPUT_CLS}
+                  className={`${INPUT_CLS}${!selectedStateId || districtsLoading ? ' opacity-50 cursor-not-allowed' : ''}`}
                   value={selectedDistrictId}
                   onChange={(e) => {
                     const id = e.target.value;
@@ -306,30 +315,32 @@ export function CreateCasePage() {
                   disabled={!selectedStateId || districtsLoading}
                 >
                   <option value="">
-                    {!selectedStateId ? 'Select state first' : districtsLoading ? 'Loading…' : 'Select district'}
+                    {!selectedStateId ? 'Select state first' : 'Select district'}
                   </option>
                   {districts.map((d) => (
                     <option key={d.id} value={d.id}>{d.name}</option>
                   ))}
                 </select>
+                {districtsLoading && <SelectSpinner />}
               </div>
             </div>
             {/* Court Complex */}
-            <div>
+            <div className="relative">
               <label className={LABEL_CLS}>Court Complex</label>
               <select
-                className={INPUT_CLS}
+                className={`${INPUT_CLS}${!selectedDistrictId || complexesLoading ? ' opacity-50 cursor-not-allowed' : ''}`}
                 value={courtDetails.courtComplex}
                 onChange={(e) => setCourtDetails((p) => ({ ...p, courtComplex: e.target.value }))}
                 disabled={!selectedDistrictId || complexesLoading}
               >
                 <option value="">
-                  {!selectedDistrictId ? 'Select district first' : complexesLoading ? 'Loading…' : 'Select court complex'}
+                  {!selectedDistrictId ? 'Select district first' : 'Select court complex'}
                 </option>
                 {complexes.map((c) => (
                   <option key={c.id} value={c.name}>{c.name}</option>
                 ))}
               </select>
+              {complexesLoading && <SelectSpinner />}
             </div>
             {/* CNR + Judge */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

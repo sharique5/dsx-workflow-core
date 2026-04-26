@@ -6,5 +6,8 @@
     "deleteOutDir": true,
     "webpack": true,
     "webpackConfigPath": "webpack.config.js"
-  }
+  },
+  "assets": [
+    { "include": "modules/courts/data/*.json", "watchAssets": true }
+  ]
 }

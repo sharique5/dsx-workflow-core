@@ -1,6 +1,8 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { Injectable } from '@nestjs/common';
+
+// webpack inlines JSON at build time — no file path resolution needed
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const COURT_DATA: StateEntry[] = require('./data/india-courts.json');
 
 interface CourtComplex {
   value: string;
@@ -20,14 +22,8 @@ interface StateEntry {
 }
 
 @Injectable()
-export class CourtsService implements OnModuleInit {
-  private data: StateEntry[] = [];
-
-  onModuleInit() {
-    const filePath = join(__dirname, 'data', 'india-courts.json');
-    const raw = readFileSync(filePath, 'utf-8');
-    this.data = JSON.parse(raw) as StateEntry[];
-  }
+export class CourtsService {
+  private data: StateEntry[] = COURT_DATA;
 
   getStates() {
     return this.data.map((s) => ({ id: s.stateValue, name: s.state }));
