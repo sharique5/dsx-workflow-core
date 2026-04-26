@@ -1,5 +1,5 @@
 import { api } from '../../../shared/utils/api';
-import type { MatterDto, CreateMatterDto, UpdateMatterDto, PaginatedResponse } from '@dsx/shared';
+import type { MatterDto, CreateMatterDto, UpdateMatterDto, PaginatedResponse, DashboardStatsDto } from '@dsx/shared';
 
 export const mattersApi = {
   list: (params?: { page?: number; limit?: number }) =>
@@ -7,6 +7,9 @@ export const mattersApi = {
 
   get: (id: string) =>
     api.get<MatterDto>(`/matters/${id}`),
+
+  getDashboardStats: () =>
+    api.get<DashboardStatsDto>('/matters/dashboard-stats'),
 
   create: (data: CreateMatterDto) =>
     api.post<MatterDto>('/matters', data),

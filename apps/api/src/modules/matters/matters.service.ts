@@ -180,4 +180,42 @@ export class MattersService {
       data: { deletedAt: new Date() },
     });
   }
+
+  async getDashboardStats(user: AuthenticatedUser) {
+    const tenantWhere = { tenantId: user.tenantId, deletedAt: null };
+
+    const [totalMatters, openMatters, closedMatters, upcomingEvents] =
+      await Promise.all([
+        this.prisma.matter.count({ where: tenantWhere }),
+        this.prisma.matter.count({ where: { ...tenantWhere, statusKey: { not: 'closed' } } }),
+        this.prisma.matter.count({ where: { ...tenantWhere, statusKey: 'closed' } }),
+        this.prisma.scheduledEvent.findMany({
+          where: {
+            tenantId: user.tenantId,
+            scheduledAt: {
+              gte: new Date(),
+              lte: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+            },
+          },
+          orderBy: { scheduledAt: 'asc' },
+          take: 10,
+          include: {
+            matter: { select: { id: true, title: true, internalRef: true } },
+          },
+        }),
+      ]);
+
+    return {
+      totalMatters,
+      openMatters,
+      closedMatters,
+      upcomingHearings: upcomingEvents.map((e) => ({
+        id: e.id,
+        matterId: e.matterId,
+        matterTitle: e.matter.title,
+        matterRef: e.matter.internalRef,
+        scheduledAt: e.scheduledAt.toISOString(),
+      })),
+    };
+  }
 }

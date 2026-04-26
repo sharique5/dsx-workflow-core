@@ -49,6 +49,12 @@ export class MattersController {
     return this.mattersService.findAll(user, query.page ?? 1, query.limit ?? 50);
   }
 
+  /** GET /api/v1/matters/dashboard-stats */
+  @Get('dashboard-stats')
+  getDashboardStats(@CurrentUser() user: AuthenticatedUser) {
+    return this.mattersService.getDashboardStats(user);
+  }
+
   /** GET /api/v1/matters/:id */
   @Get(':id')
   findOne(

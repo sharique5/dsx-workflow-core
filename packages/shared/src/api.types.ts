@@ -139,6 +139,23 @@ export interface UpdateScheduledEventDto {
   outcomeNotes?: string;
 }
 
+// ─── Dashboard Stats ──────────────────────────────────────────────────────────
+
+export interface UpcomingHearingDto {
+  id: string;
+  matterId: string;
+  matterTitle: string;
+  matterRef: string;
+  scheduledAt: string;
+}
+
+export interface DashboardStatsDto {
+  totalMatters: number;
+  openMatters: number;
+  closedMatters: number;
+  upcomingHearings: UpcomingHearingDto[];
+}
+
 // ─── Note ────────────────────────────────────────────────────────────────────
 
 export interface NoteDto {

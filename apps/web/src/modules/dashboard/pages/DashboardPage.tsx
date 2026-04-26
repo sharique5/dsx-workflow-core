@@ -1,98 +1,181 @@
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../../store/auth.store';
 import { useVocabulary } from '../../../shared/hooks/useVocabulary';
+import { useDashboardStats } from '../../cases/hooks/useMatters';
 
-function StatCard({
-  icon,
+function StatTile({
+  value,
   label,
-  to,
-  description,
-  color,
+  sublabel,
+  accent,
 }: {
-  icon: React.ReactNode;
+  value: number | string;
   label: string;
-  to: string;
-  description: string;
-  color: string;
+  sublabel?: string;
+  accent: string;
 }) {
   return (
-    <Link
-      to={to}
-      className="group flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all"
-    >
-      <div className={`inline-flex items-center justify-center w-11 h-11 rounded-xl ${color}`}>
-        {icon}
-      </div>
-      <div>
-        <h3 className="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
-          {label}
-        </h3>
-        <p className="mt-0.5 text-sm text-slate-500">{description}</p>
-      </div>
-      <div className="mt-auto flex items-center gap-1 text-xs font-medium text-indigo-600">
-        Open
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-        </svg>
-      </div>
-    </Link>
+    <div className={`rounded-xl border bg-white p-5 shadow-sm ${accent}`}>
+      <p className="text-3xl font-bold text-slate-900 tabular-nums">{value}</p>
+      <p className="mt-1 text-sm font-medium text-slate-700">{label}</p>
+      {sublabel && <p className="mt-0.5 text-xs text-slate-400">{sublabel}</p>}
+    </div>
   );
 }
 
 export function DashboardPage() {
   const user = useAuthStore((s) => s.user);
   const vocab = useVocabulary();
+  const { data: stats, isLoading } = useDashboardStats();
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
   return (
-    <div className="px-6 py-8 max-w-5xl mx-auto">
-      {/* Page header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900">
-          {greeting}, {user?.name?.split(' ')[0]}
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">Here's what you can do today.</p>
+    <div className="px-6 py-8 max-w-5xl mx-auto space-y-8">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">
+            {greeting}, {user?.name?.split(' ')[0]}
+          </h1>
+          <p className="mt-0.5 text-sm text-slate-500">Here's what's happening today.</p>
+        </div>
+        <Link
+          to="/cases/new"
+          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition-colors"
+        >
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          New {vocab.matter_label}
+        </Link>
       </div>
 
-      {/* Quick action cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <StatCard
+      {/* Stats row */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {isLoading ? (
+          <>
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm animate-pulse">
+                <div className="h-8 w-16 bg-slate-100 rounded mb-2" />
+                <div className="h-4 w-24 bg-slate-100 rounded" />
+              </div>
+            ))}
+          </>
+        ) : (
+          <>
+            <Link to="/cases" className="block hover:opacity-90 transition-opacity">
+              <StatTile
+                value={stats?.totalMatters ?? 0}
+                label={`Total ${vocab.matter_plural}`}
+                accent="border-slate-200"
+              />
+            </Link>
+            <Link to="/cases" className="block hover:opacity-90 transition-opacity">
+              <StatTile
+                value={stats?.openMatters ?? 0}
+                label="Active"
+                sublabel="Not closed"
+                accent="border-indigo-100"
+              />
+            </Link>
+            <StatTile
+              value={stats?.closedMatters ?? 0}
+              label="Closed"
+              accent="border-slate-200"
+            />
+          </>
+        )}
+      </div>
+
+      {/* Upcoming hearings */}
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <h2 className="text-sm font-semibold text-slate-900">Upcoming Hearings — next 7 days</h2>
+        </div>
+        <div className="px-6 py-4">
+          {isLoading && (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-3 animate-pulse">
+                  <div className="h-9 w-9 rounded-lg bg-slate-100 shrink-0" />
+                  <div className="flex-1">
+                    <div className="h-3.5 w-40 bg-slate-100 rounded mb-1.5" />
+                    <div className="h-3 w-24 bg-slate-100 rounded" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {!isLoading && (!stats?.upcomingHearings || stats.upcomingHearings.length === 0) && (
+            <p className="text-sm text-slate-400 py-2">No hearings scheduled in the next 7 days.</p>
+          )}
+          {!isLoading && stats?.upcomingHearings && stats.upcomingHearings.length > 0 && (
+            <ul className="divide-y divide-slate-100">
+              {stats.upcomingHearings.map((h) => {
+                const d = new Date(h.scheduledAt);
+                const dayLabel = d.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short' });
+                const timeLabel = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+                const isToday = d.toDateString() === new Date().toDateString();
+                return (
+                  <li key={h.id} className="py-3 flex items-center gap-3">
+                    <div className={`shrink-0 w-9 h-9 rounded-lg flex flex-col items-center justify-center text-center leading-none ${isToday ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                      <span className="text-xs font-bold">{d.getDate()}</span>
+                      <span className="text-[9px] uppercase">{d.toLocaleString('en-IN', { month: 'short' })}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <Link
+                        to={`/cases/${h.matterId}`}
+                        className="text-sm font-medium text-slate-900 hover:text-indigo-600 truncate block"
+                      >
+                        {h.matterTitle}
+                      </Link>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        <span className="font-mono">{h.matterRef}</span>
+                        {' · '}
+                        {isToday ? <span className="text-indigo-600 font-medium">Today</span> : dayLabel}
+                        {' · '}
+                        {timeLabel}
+                      </p>
+                    </div>
+                    <Link
+                      to={`/cases/${h.matterId}`}
+                      className="shrink-0 text-slate-300 hover:text-indigo-500 transition-colors"
+                    >
+                      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      {/* Quick links */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <Link
           to="/cases"
-          icon={
-            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#4f46e5" strokeWidth={1.75}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
-            </svg>
-          }
-          label={vocab.matter_plural}
-          description={`View and manage all ${vocab.matter_plural.toLowerCase()}`}
-          color="bg-indigo-50"
-        />
-        <StatCard
-          to="/cases/new"
-          icon={
-            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#0891b2" strokeWidth={1.75}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-          }
-          label={`New ${vocab.matter_label}`}
-          description={`Open a new ${vocab.matter_label.toLowerCase()} file`}
-          color="bg-cyan-50"
-        />
+          className="rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium text-slate-700 hover:border-indigo-200 hover:text-indigo-600 transition-all shadow-sm"
+        >
+          View all {vocab.matter_plural.toLowerCase()} →
+        </Link>
+        <Link
+          to="/clients"
+          className="rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium text-slate-700 hover:border-indigo-200 hover:text-indigo-600 transition-all shadow-sm"
+        >
+          {vocab.participant_label}s →
+        </Link>
         {user?.role === 'admin' && (
-          <StatCard
+          <Link
             to="/staff"
-            icon={
-              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#059669" strokeWidth={1.75}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            }
-            label="Team"
-            description="Manage staff and admin accounts"
-            color="bg-emerald-50"
-          />
+            className="rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium text-slate-700 hover:border-indigo-200 hover:text-indigo-600 transition-all shadow-sm"
+          >
+            Team →
+          </Link>
         )}
       </div>
     </div>

@@ -2,12 +2,20 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { mattersApi } from '../api/matters.api';
-import type { CreateMatterDto, UpdateMatterDto, PaginatedResponse, MatterDto } from '@dsx/shared';
+import type { CreateMatterDto, UpdateMatterDto, PaginatedResponse, MatterDto, DashboardStatsDto } from '@dsx/shared';
 
 export const MATTERS_KEY = ['matters'] as const;
 export const matterKey = (id: string) => ['matters', id] as const;
 export const mattersPageKey = (page: number, limit: number) =>
   ['matters', 'page', page, limit] as const;
+
+export function useDashboardStats() {
+  return useQuery<DashboardStatsDto>({
+    queryKey: ['matters', 'dashboard-stats'],
+    queryFn: () => mattersApi.getDashboardStats().then((r) => r.data),
+    staleTime: 60_000, // 1 min
+  });
+}
 
 export function useMatters(page = 1, limit = 50) {
   return useQuery<PaginatedResponse<MatterDto>>({
