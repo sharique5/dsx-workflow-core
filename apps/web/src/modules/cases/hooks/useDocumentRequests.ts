@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { documentRequestsApi } from '../api/documentRequests.api';
 import type { CreateDocumentRequestDto } from '@dsx/shared';
 
@@ -21,7 +22,9 @@ export function useCreateDocumentRequest(matterId: string) {
       documentRequestsApi.create(matterId, data).then((r) => r.data),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: drKey(matterId) });
+      toast.success('Document request created');
     },
+    onError: () => toast.error('Failed to create document request'),
   });
 }
 
@@ -33,6 +36,8 @@ export function useMarkDocumentRequestReceived(matterId: string) {
       documentRequestsApi.markReceived(matterId, id).then((r) => r.data),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: drKey(matterId) });
+      toast.success('Marked as received');
     },
+    onError: () => toast.error('Failed to update document request'),
   });
 }

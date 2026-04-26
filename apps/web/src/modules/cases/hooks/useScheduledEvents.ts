@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { scheduledEventsApi } from '../api/scheduledEvents.api';
 import type { CreateScheduledEventDto, UpdateScheduledEventDto } from '@dsx/shared';
 
@@ -20,7 +21,9 @@ export function useCreateScheduledEvent(matterId: string) {
       scheduledEventsApi.create(matterId, data).then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: eventsKey(matterId) });
+      toast.success('Hearing added');
     },
+    onError: () => toast.error('Failed to add hearing'),
   });
 }
 
@@ -32,7 +35,9 @@ export function useUpdateScheduledEvent(matterId: string, id: string) {
       scheduledEventsApi.update(matterId, id, data).then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: eventsKey(matterId) });
+      toast.success('Hearing updated');
     },
+    onError: () => toast.error('Failed to update hearing'),
   });
 }
 
@@ -43,6 +48,8 @@ export function useDeleteScheduledEvent(matterId: string) {
     mutationFn: (id: string) => scheduledEventsApi.remove(matterId, id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: eventsKey(matterId) });
+      toast.success('Hearing deleted');
     },
+    onError: () => toast.error('Failed to delete hearing'),
   });
 }

@@ -13,26 +13,35 @@ import { CreateMatterDto, UpdateMatterDto } from './dto/matters.dto';
 export class MattersService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(user: AuthenticatedUser) {
-    return this.prisma.matter.findMany({
-      where: {
-        tenantId: user.tenantId,
-        deletedAt: null,
-        ...(user.role === 'client' && { participantId: user.id }),
-      },
-      include: {
-        participant: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            portalInviteStatus: true,
+  async findAll(user: AuthenticatedUser, page = 1, limit = 50) {
+    const where: Parameters<typeof this.prisma.matter.findMany>[0]['where'] = {
+      tenantId: user.tenantId,
+      deletedAt: null,
+      ...(user.role === 'client' && { participantId: user.id }),
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.matter.findMany({
+        where,
+        include: {
+          participant: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              portalInviteStatus: true,
+            },
           },
+          creator: { select: { id: true, name: true } },
         },
-        creator: { select: { id: true, name: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.matter.count({ where }),
+    ]);
+
+    return { data, total, page, limit };
   }
 
   async findOne(id: string, user: AuthenticatedUser) {

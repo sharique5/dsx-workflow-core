@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { feesApi } from '../api/fees.api';
 import type { CreateFeeDto, LogPaymentDto } from '@dsx/shared';
 
@@ -16,7 +17,11 @@ export function useCreateFee(matterId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateFeeDto) => feesApi.create(matterId, data).then((r) => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: feesKey(matterId) }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: feesKey(matterId) });
+      toast.success('Fee added');
+    },
+    onError: () => toast.error('Failed to add fee'),
   });
 }
 
@@ -25,6 +30,10 @@ export function useLogPayment(matterId: string) {
   return useMutation({
     mutationFn: ({ feeId, data }: { feeId: string; data: LogPaymentDto }) =>
       feesApi.logPayment(matterId, feeId, data).then((r) => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: feesKey(matterId) }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: feesKey(matterId) });
+      toast.success('Payment logged');
+    },
+    onError: () => toast.error('Failed to log payment'),
   });
 }

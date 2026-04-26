@@ -1,15 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { mattersApi } from '../api/matters.api';
-import type { CreateMatterDto, UpdateMatterDto } from '@dsx/shared';
+import type { CreateMatterDto, UpdateMatterDto, PaginatedResponse, MatterDto } from '@dsx/shared';
 
 export const MATTERS_KEY = ['matters'] as const;
 export const matterKey = (id: string) => ['matters', id] as const;
+export const mattersPageKey = (page: number, limit: number) =>
+  ['matters', 'page', page, limit] as const;
 
-export function useMatters() {
-  return useQuery({
-    queryKey: MATTERS_KEY,
-    queryFn: () => mattersApi.list().then((r) => r.data),
+export function useMatters(page = 1, limit = 50) {
+  return useQuery<PaginatedResponse<MatterDto>>({
+    queryKey: mattersPageKey(page, limit),
+    queryFn: () => mattersApi.list({ page, limit }).then((r) => r.data),
   });
 }
 
@@ -29,8 +32,10 @@ export function useCreateMatter() {
     mutationFn: (data: CreateMatterDto) => mattersApi.create(data).then((r) => r.data),
     onSuccess: (matter) => {
       queryClient.invalidateQueries({ queryKey: MATTERS_KEY });
+      toast.success('Case created');
       navigate(`/cases/${matter.id}`);
     },
+    onError: () => toast.error('Failed to create case'),
   });
 }
 
@@ -42,7 +47,9 @@ export function useUpdateMatter(id: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: matterKey(id) });
       queryClient.invalidateQueries({ queryKey: MATTERS_KEY });
+      toast.success('Case updated');
     },
+    onError: () => toast.error('Failed to update case'),
   });
 }
 
@@ -54,7 +61,9 @@ export function useCloseMatter() {
     onSuccess: (matter) => {
       queryClient.invalidateQueries({ queryKey: matterKey(matter.id) });
       queryClient.invalidateQueries({ queryKey: MATTERS_KEY });
+      toast.success('Case closed');
     },
+    onError: () => toast.error('Failed to close case'),
   });
 }
 
@@ -66,7 +75,9 @@ export function useDeleteMatter() {
     mutationFn: (id: string) => mattersApi.remove(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: MATTERS_KEY });
+      toast.success('Case deleted');
       navigate('/cases');
     },
+    onError: () => toast.error('Failed to delete case'),
   });
 }

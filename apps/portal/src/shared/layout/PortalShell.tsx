@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Outlet } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import { usePortalAuthStore } from '../../store/auth.store';
 import { authApi } from '../../modules/auth/api/auth.api';
 
@@ -83,6 +84,7 @@ export function PortalShell() {
       <footer className="py-6 text-center">
         <p className="text-xs text-slate-400">Nair &amp; Associates &middot; Client Portal</p>
       </footer>
+      <Toaster position="bottom-right" richColors closeButton />
     </div>
   );
 }

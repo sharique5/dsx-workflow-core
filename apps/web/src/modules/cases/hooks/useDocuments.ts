@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { documentsApi } from '../api/documents.api';
 
 const docsKey = (matterId: string) =>
@@ -17,7 +18,11 @@ export function useUploadDocument(matterId: string) {
   return useMutation({
     mutationFn: (file: File) =>
       documentsApi.upload(matterId, file).then((r) => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: docsKey(matterId) }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: docsKey(matterId) });
+      toast.success('Document uploaded');
+    },
+    onError: () => toast.error('Upload failed'),
   });
 }
 
@@ -36,6 +41,10 @@ export function useDeleteDocument(matterId: string) {
   return useMutation({
     mutationFn: (docId: string) =>
       documentsApi.remove(matterId, docId).then((r) => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: docsKey(matterId) }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: docsKey(matterId) });
+      toast.success('Document deleted');
+    },
+    onError: () => toast.error('Failed to delete document'),
   });
 }

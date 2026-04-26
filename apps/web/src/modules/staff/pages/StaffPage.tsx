@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useStaff, useCreateStaff, useDeactivateStaff, useReactivateStaff } from '../hooks/useStaff';
 import { useAuthStore } from '../../../store/auth.store';
+import { StaffTableSkeleton } from '../../../shared/components/Skeleton';
 import type { UserDto, CreateStaffDto } from '@dsx/shared';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -207,14 +208,7 @@ export function StaffPage() {
         )}
 
         {/* Staff table */}
-        {isLoading && (
-          <div className="flex items-center justify-center py-16 text-slate-400 text-sm gap-2">
-            <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-            </svg>
-            Loading team…
-          </div>
-        )}
+        {isLoading && <StaffTableSkeleton />}
 
         {isError && (
           <div className="text-center py-12 text-red-500 text-sm">

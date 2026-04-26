@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { notificationsApi } from '../api/notifications.api';
 import type { SendNotificationDto, CreateReminderDto } from '@dsx/shared';
 
@@ -31,7 +32,9 @@ export function useSendNotification() {
       notificationsApi.send(data).then((r) => r.data),
     onSuccess: (_data, variables) => {
       void qc.invalidateQueries({ queryKey: notificationLogsKey(variables.matterId) });
+      toast.success('Notification sent');
     },
+    onError: () => toast.error('Failed to send notification'),
   });
 }
 
@@ -50,7 +53,9 @@ export function useCreateReminder(matterId: string) {
       notificationsApi.createReminder(matterId, data).then((r) => r.data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: remindersKey(matterId) });
+      toast.success('Reminder set');
     },
+    onError: () => toast.error('Failed to set reminder'),
   });
 }
 
@@ -61,6 +66,8 @@ export function useDeleteReminder(matterId: string) {
       notificationsApi.deleteReminder(matterId, reminderId),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: remindersKey(matterId) });
+      toast.success('Reminder deleted');
     },
+    onError: () => toast.error('Failed to delete reminder'),
   });
 }

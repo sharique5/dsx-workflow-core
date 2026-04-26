@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { clientsApi } from '../api/clients.api';
 import type { CreateClientDto, UpdateClientDto } from '@dsx/shared';
 
@@ -27,7 +28,9 @@ export function useCreateClient() {
     mutationFn: (data: CreateClientDto) => clientsApi.create(data).then((r) => r.data),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: CLIENTS_KEY });
+      toast.success('Client created');
     },
+    onError: () => toast.error('Failed to create client'),
   });
 }
 
@@ -39,7 +42,9 @@ export function useUpdateClient(id: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: CLIENTS_KEY });
       void queryClient.invalidateQueries({ queryKey: clientKey(id) });
+      toast.success('Client updated');
     },
+    onError: () => toast.error('Failed to update client'),
   });
 }
 
@@ -51,6 +56,8 @@ export function useInviteClient() {
     onSuccess: (updated) => {
       void queryClient.invalidateQueries({ queryKey: CLIENTS_KEY });
       void queryClient.invalidateQueries({ queryKey: clientKey(updated.id) });
+      toast.success('Invite sent');
     },
+    onError: () => toast.error('Failed to send invite'),
   });
 }

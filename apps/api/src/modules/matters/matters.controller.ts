@@ -6,16 +6,34 @@ import {
   Delete,
   Param,
   Body,
+  Query,
   UseGuards,
   HttpCode,
   HttpStatus,
   ParseUUIDPipe,
 } from '@nestjs/common';
+import { IsOptional, IsInt, Min, Max } from 'class-validator';
+import { Type } from 'class-transformer';
 import { MattersService } from './matters.service';
 import { CreateMatterDto, UpdateMatterDto } from './dto/matters.dto';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { CurrentUser } from '../../shared/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
+
+class PaginationQueryDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number = 1;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number = 50;
+}
 
 @Controller('matters')
 @UseGuards(JwtAuthGuard)
@@ -24,8 +42,11 @@ export class MattersController {
 
   /** GET /api/v1/matters */
   @Get()
-  findAll(@CurrentUser() user: AuthenticatedUser) {
-    return this.mattersService.findAll(user);
+  findAll(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: PaginationQueryDto,
+  ) {
+    return this.mattersService.findAll(user, query.page ?? 1, query.limit ?? 50);
   }
 
   /** GET /api/v1/matters/:id */
