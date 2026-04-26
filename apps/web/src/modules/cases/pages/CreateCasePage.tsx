@@ -8,6 +8,7 @@ import { useClients, useCreateClient } from '../../clients/hooks/useClients';
 import { useVocabulary } from '../../../shared/hooks/useVocabulary';
 import type { CreateMatterDto, CreateClientDto } from '@dsx/shared';
 import { parseCnr } from '../utils/cnr';
+import { useStates, useDistricts, useComplexes } from '../hooks/useCourts';
 
 const createMatterSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200, 'Title too long'),
@@ -32,13 +33,14 @@ type CreateClientForm = z.infer<typeof createClientSchema>;
 
 interface CourtDetails {
   cnr: string;
-  court: string;
-  bench: string;
+  state: string;
+  district: string;
+  courtComplex: string;
   judge: string;
   stage: string;
 }
 
-const EMPTY_COURT: CourtDetails = { cnr: '', court: '', bench: '', judge: '', stage: '' };
+const EMPTY_COURT: CourtDetails = { cnr: '', state: '', district: '', courtComplex: '', judge: '', stage: '' };
 
 const INPUT_CLS =
   'block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20';
@@ -55,6 +57,11 @@ export function CreateCasePage() {
   const [cnrInput, setCnrInput] = useState('');
   const [cnrHint, setCnrHint] = useState<{ ok: boolean; text: string } | null>(null);
   const [courtDetails, setCourtDetails] = useState<CourtDetails>(EMPTY_COURT);
+  const [selectedStateId, setSelectedStateId] = useState('');
+  const [selectedDistrictId, setSelectedDistrictId] = useState('');
+  const { data: states = [], isLoading: statesLoading } = useStates();
+  const { data: districts = [], isLoading: districtsLoading } = useDistricts(selectedStateId);
+  const { data: complexes = [], isLoading: complexesLoading } = useComplexes(selectedStateId, selectedDistrictId);
 
   const {
     register,
@@ -84,14 +91,22 @@ export function CreateCasePage() {
       setCnrHint({ ok: false, text: 'Could not recognise this CNR — please fill court details manually.' });
       return;
     }
+    const matchedState = states.find((s) => s.name === info.state);
+    if (matchedState) {
+      setSelectedStateId(matchedState.id);
+      setSelectedDistrictId('');
+    }
     setCourtDetails((prev) => ({
       ...prev,
       cnr: info.cnr,
-      court: info.court,
-      bench: info.bench ?? prev.bench,
+      state: info.state,
+      district: matchedState ? '' : prev.district,
+      courtComplex: '',
     }));
-    const label = info.bench ? `${info.court} — ${info.bench} Bench (${info.year})` : `${info.court} (${info.year})`;
-    setCnrHint({ ok: true, text: `Auto-filled: ${label}` });
+    const label = info.bench
+      ? `${info.state} — ${info.bench} Bench (${info.year})`
+      : `${info.state} (${info.year})`;
+    setCnrHint({ ok: true, text: `Auto-filled: ${label}. Select district and court complex below.` });
   };
 
   const onSubmit = (data: CreateMatterForm) => {
@@ -255,6 +270,68 @@ export function CreateCasePage() {
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
               Court Details
             </p>
+            {/* State + District cascade */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={LABEL_CLS}>State</label>
+                <select
+                  className={INPUT_CLS}
+                  value={selectedStateId}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    const name = states.find((s) => s.id === id)?.name ?? '';
+                    setSelectedStateId(id);
+                    setSelectedDistrictId('');
+                    setCourtDetails((p) => ({ ...p, state: name, district: '', courtComplex: '' }));
+                  }}
+                  disabled={statesLoading}
+                >
+                  <option value="">{statesLoading ? 'Loading…' : 'Select state'}</option>
+                  {states.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={LABEL_CLS}>District</label>
+                <select
+                  className={INPUT_CLS}
+                  value={selectedDistrictId}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    const name = districts.find((d) => d.id === id)?.name ?? '';
+                    setSelectedDistrictId(id);
+                    setCourtDetails((p) => ({ ...p, district: name, courtComplex: '' }));
+                  }}
+                  disabled={!selectedStateId || districtsLoading}
+                >
+                  <option value="">
+                    {!selectedStateId ? 'Select state first' : districtsLoading ? 'Loading…' : 'Select district'}
+                  </option>
+                  {districts.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {/* Court Complex */}
+            <div>
+              <label className={LABEL_CLS}>Court Complex</label>
+              <select
+                className={INPUT_CLS}
+                value={courtDetails.courtComplex}
+                onChange={(e) => setCourtDetails((p) => ({ ...p, courtComplex: e.target.value }))}
+                disabled={!selectedDistrictId || complexesLoading}
+              >
+                <option value="">
+                  {!selectedDistrictId ? 'Select district first' : complexesLoading ? 'Loading…' : 'Select court complex'}
+                </option>
+                {complexes.map((c) => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+            {/* CNR + Judge */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className={LABEL_CLS}>CNR Number</label>
@@ -263,26 +340,6 @@ export function CreateCasePage() {
                   value={courtDetails.cnr}
                   onChange={(e) => setCourtDetails((p) => ({ ...p, cnr: e.target.value }))}
                   placeholder="e.g. MPHC020312152025"
-                  className={INPUT_CLS}
-                />
-              </div>
-              <div>
-                <label className={LABEL_CLS}>Court</label>
-                <input
-                  type="text"
-                  value={courtDetails.court}
-                  onChange={(e) => setCourtDetails((p) => ({ ...p, court: e.target.value }))}
-                  placeholder="e.g. Madhya Pradesh High Court"
-                  className={INPUT_CLS}
-                />
-              </div>
-              <div>
-                <label className={LABEL_CLS}>Bench</label>
-                <input
-                  type="text"
-                  value={courtDetails.bench}
-                  onChange={(e) => setCourtDetails((p) => ({ ...p, bench: e.target.value }))}
-                  placeholder="e.g. Indore"
                   className={INPUT_CLS}
                 />
               </div>

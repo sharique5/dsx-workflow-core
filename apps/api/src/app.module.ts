@@ -17,6 +17,7 @@ import { DocumentRequestsModule } from './modules/document-requests/document-req
 import { FeesModule } from './modules/fees/fees.module';
 import { DocumentsModule } from './modules/documents/documents.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { CourtsModule } from './modules/courts/courts.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     FeesModule,
     DocumentsModule,
     NotificationsModule,
+    CourtsModule,
     // Phase 3+ modules will be added here:
     // DocumentsModule,
     // FeesModule (already added),
