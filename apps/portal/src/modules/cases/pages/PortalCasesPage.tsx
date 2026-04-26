@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePortalCases, usePortalNextHearing } from '../hooks/usePortalCases';
+import { usePortalAuthStore } from '../../../store/auth.store';
 
 function formatStatusKey(key: string) {
   return key
@@ -36,9 +37,11 @@ function formatHearingDate(iso: string) {
 }
 
 export function PortalCasesPage() {
-  const { data: cases, isLoading } = usePortalCases();
+  const { data: cases, isLoading, isError } = usePortalCases();
   const { data: nextHearing } = usePortalNextHearing();
   const navigate = useNavigate();
+  const user = usePortalAuthStore((s) => s.user);
+  const firstName = user?.name?.split(' ')[0] ?? 'there';
 
   // Auto-redirect if client has only one case
   useEffect(() => {
@@ -60,16 +63,62 @@ export function PortalCasesPage() {
     );
   }
 
-  if (!cases || cases.length === 0) {
+  if (isError) {
     return (
       <div className="flex flex-col items-center justify-center py-24 px-4 text-center">
-        <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-4">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth={1.5}>
+        <div className="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center mb-4">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth={1.75}>
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+        </div>
+        <p className="text-sm font-semibold text-slate-800">Could not load your cases</p>
+        <p className="text-xs text-slate-400 mt-1 max-w-xs">
+          There was a problem fetching your case information. Please check your connection and try again.
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-700 transition-colors"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+            <polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 .49-4.95" />
+          </svg>
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (!cases || cases.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 px-6 text-center max-w-sm mx-auto">
+        {/* Illustration */}
+        <div className="w-20 h-20 rounded-3xl bg-indigo-50 flex items-center justify-center mb-6">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
         </div>
-        <p className="text-sm font-medium text-slate-700">No cases found</p>
-        <p className="text-xs text-slate-400 mt-1">Contact your lawyer if you believe this is an error.</p>
+
+        <h2 className="text-base font-semibold text-slate-900">
+          Hi {firstName}, no cases yet
+        </h2>
+        <p className="text-sm text-slate-500 mt-2 leading-relaxed">
+          Your cases will appear here once your lawyer has added you to a matter.
+        </p>
+
+        <div className="mt-6 w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Need help?</p>
+          <div className="flex items-center gap-2 text-sm text-slate-700">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            Contact Nair &amp; Associates
+          </div>
+          <p className="mt-1 text-xs text-slate-400 pl-[22px]">
+            Reach out to your lawyer if you believe your cases should be visible here.
+          </p>
+        </div>
       </div>
     );
   }
