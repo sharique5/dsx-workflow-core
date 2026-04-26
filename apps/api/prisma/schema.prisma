@@ -50,6 +50,7 @@ model User {
   name               String
   email              String?
   phone              String?
+  passwordHash       String?            @map("password_hash")
   role               UserRole
   isActive           Boolean            @default(true) @map("is_active")
   portalInviteStatus PortalInviteStatus @default(not_invited) @map("portal_invite_status")

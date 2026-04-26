@@ -2,14 +2,23 @@ import {
   Injectable,
   UnauthorizedException,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../shared/database/prisma.service';
 import { RedisService } from '../../shared/redis/redis.service';
 import { EmailService } from '../../shared/email/email.service';
-import { RequestOtpDto, VerifyOtpDto, AcceptInviteDto } from './dto/auth.dto';
+import { SmsService } from '../../shared/sms/sms.service';
+import {
+  RequestOtpDto,
+  VerifyOtpDto,
+  AcceptInviteDto,
+  LoginPasswordDto,
+  SetPasswordDto,
+} from './dto/auth.dto';
 import { AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
 import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 import { PortalInviteStatus } from '@prisma/client';
 
 const OTP_PREFIX = 'otp:';
@@ -20,6 +29,7 @@ export class AuthService {
     private prisma: PrismaService,
     private redis: RedisService,
     private email: EmailService,
+    private sms: SmsService,
     private jwt: JwtService,
   ) {}
 
@@ -46,12 +56,12 @@ export class AuthService {
 
     await this.redis.set(`${OTP_PREFIX}${identifier}`, otp, expirySeconds);
 
-    // Send via email if identifier looks like an email
+    // Send via email or SMS/WhatsApp depending on identifier format
     if (identifier.includes('@')) {
       await this.email.sendOtp(identifier, otp);
+    } else {
+      await this.sms.sendOtp(identifier, otp);
     }
-    // WhatsApp / SMS — placeholder for now
-    // else { await this.whatsapp.sendOtp(identifier, otp); }
 
     return { message: 'If your account exists, a code has been sent.' };
   }
@@ -153,6 +163,53 @@ export class AuthService {
 
     const accessToken = this.jwt.sign(payload);
     return { accessToken, user: payload };
+  }
+
+  async loginWithPassword(dto: LoginPasswordDto): Promise<{
+    accessToken: string;
+    user: AuthenticatedUser;
+  }> {
+    const email = dto.email.trim().toLowerCase();
+
+    const user = await this.prisma.user.findFirst({
+      where: { email, isActive: true, deletedAt: null },
+      include: { tenant: true },
+    });
+
+    // Generic error — don't reveal whether email exists
+    if (!user?.passwordHash) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const valid = await bcrypt.compare(dto.password, user.passwordHash);
+    if (!valid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const payload: AuthenticatedUser = {
+      id: user.id,
+      tenantId: user.tenantId,
+      role: user.role,
+      name: user.name,
+    };
+
+    const accessToken = this.jwt.sign(payload);
+    return { accessToken, user: payload };
+  }
+
+  async setPassword(userId: string, dto: SetPasswordDto): Promise<void> {
+    const hash = await bcrypt.hash(dto.newPassword, 12);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: hash },
+    });
+  }
+
+  async clearPassword(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: null },
+    });
   }
 
   private generateOtp(): string {

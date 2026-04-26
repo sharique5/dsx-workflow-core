@@ -22,6 +22,25 @@ export function useVerifyOtp() {
   });
 }
 
+export function useLoginWithPassword() {
+  const { setUser } = useAuthStore();
+  const navigate = useNavigate();
+
+  return useMutation({
+    mutationFn: authApi.loginWithPassword,
+    onSuccess: ({ data }) => {
+      setUser(data.user);
+      navigate('/dashboard');
+    },
+  });
+}
+
+export function useSetPassword() {
+  return useMutation({
+    mutationFn: (newPassword: string) => authApi.setPassword(newPassword),
+  });
+}
+
 export function useLogout() {
   const { clearAuth } = useAuthStore();
   const navigate = useNavigate();

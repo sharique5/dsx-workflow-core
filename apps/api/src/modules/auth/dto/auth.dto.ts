@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, Length } from 'class-validator';
+import { IsString, IsNotEmpty, Length, IsEmail, MinLength } from 'class-validator';
 
 export class AcceptInviteDto {
   @IsString()
@@ -21,3 +21,19 @@ export class VerifyOtpDto {
   @Length(6, 6)
   otp!: string;
 }
+
+export class LoginPasswordDto {
+  @IsEmail()
+  email!: string;
+
+  @IsString()
+  @MinLength(8)
+  password!: string;
+}
+
+export class SetPasswordDto {
+  @IsString()
+  @MinLength(8)
+  newPassword!: string;
+}
+
