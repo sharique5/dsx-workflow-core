@@ -20,7 +20,7 @@ export const portalMatterDocsKey = (id: string) =>
 export function usePortalCases() {
   return useQuery({
     queryKey: PORTAL_MATTERS_KEY,
-    queryFn: () => portalCasesApi.list().then((r) => r.data),
+    queryFn: () => portalCasesApi.list().then((r) => r.data.data),
   });
 }
 

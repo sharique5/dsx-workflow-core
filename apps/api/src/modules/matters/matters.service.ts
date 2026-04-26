@@ -14,7 +14,7 @@ export class MattersService {
   constructor(private prisma: PrismaService) {}
 
   async findAll(user: AuthenticatedUser, page = 1, limit = 50) {
-    const where: Parameters<typeof this.prisma.matter.findMany>[0]['where'] = {
+    const where: Prisma.MatterWhereInput = {
       tenantId: user.tenantId,
       deletedAt: null,
       ...(user.role === 'client' && { participantId: user.id }),
