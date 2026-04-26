@@ -156,6 +156,14 @@ export interface DashboardStatsDto {
   upcomingHearings: UpcomingHearingDto[];
 }
 
+export interface ClientNextHearingDto {
+  id: string;
+  matterId: string;
+  matterTitle: string;
+  matterRef: string;
+  scheduledAt: string;
+}
+
 // ─── Note ────────────────────────────────────────────────────────────────────
 
 export interface NoteDto {

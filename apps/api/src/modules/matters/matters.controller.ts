@@ -55,6 +55,12 @@ export class MattersController {
     return this.mattersService.getDashboardStats(user);
   }
 
+  /** GET /api/v1/matters/client-next-hearing */
+  @Get('client-next-hearing')
+  getClientNextHearing(@CurrentUser() user: AuthenticatedUser) {
+    return this.mattersService.getClientNextHearing(user);
+  }
+
   /** GET /api/v1/matters/:id */
   @Get(':id')
   findOne(

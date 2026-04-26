@@ -17,6 +17,16 @@ export const portalMatterFeesKey = (id: string) =>
 export const portalMatterDocsKey = (id: string) =>
   ['portal', 'matters', id, 'documents'] as const;
 
+export const portalNextHearingKey = ['portal', 'next-hearing'] as const;
+
+export function usePortalNextHearing() {
+  return useQuery({
+    queryKey: portalNextHearingKey,
+    queryFn: () => portalCasesApi.getNextHearing().then((r) => r.data),
+    staleTime: 60_000,
+  });
+}
+
 export function usePortalCases() {
   return useQuery({
     queryKey: PORTAL_MATTERS_KEY,

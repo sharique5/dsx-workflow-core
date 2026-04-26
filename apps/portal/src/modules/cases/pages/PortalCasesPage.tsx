@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePortalCases } from '../hooks/usePortalCases';
+import { usePortalCases, usePortalNextHearing } from '../hooks/usePortalCases';
 
 function formatStatusKey(key: string) {
   return key
@@ -9,8 +9,25 @@ function formatStatusKey(key: string) {
     .join(' ');
 }
 
+function formatHearingDate(iso: string) {
+  const d = new Date(iso);
+  const now = new Date();
+  const diffDays = Math.round((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+  const dateStr = d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  const timeStr = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+
+  let badge = '';
+  if (diffDays === 0) badge = 'Today';
+  else if (diffDays === 1) badge = 'Tomorrow';
+  else if (diffDays <= 7) badge = `In ${diffDays} days`;
+
+  return { dateStr, timeStr, badge };
+}
+
 export function PortalCasesPage() {
   const { data: cases, isLoading } = usePortalCases();
+  const { data: nextHearing } = usePortalNextHearing();
   const navigate = useNavigate();
 
   // Auto-redirect if client has only one case
@@ -47,8 +64,43 @@ export function PortalCasesPage() {
     );
   }
 
+  const hearing = nextHearing ?? null;
+  const hearingFmt = hearing ? formatHearingDate(hearing.scheduledAt) : null;
+
   return (
     <div className="px-4 py-8 max-w-lg mx-auto">
+
+      {/* Next hearing hero */}
+      {hearing && hearingFmt && (
+        <button
+          onClick={() => navigate(`/cases/${hearing.matterId}`)}
+          className="w-full text-left mb-6 rounded-2xl bg-gradient-to-br from-indigo-600 to-indigo-700 p-5 shadow-md hover:shadow-lg hover:from-indigo-700 hover:to-indigo-800 transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-indigo-200 uppercase tracking-wide mb-1">
+                Next Hearing
+              </p>
+              <p className="text-lg font-bold text-white leading-snug truncate">
+                {hearingFmt.dateStr}
+              </p>
+              <p className="text-sm text-indigo-200 mt-0.5">{hearingFmt.timeStr}</p>
+              <p className="mt-2 text-xs text-indigo-300 truncate font-mono">{hearing.matterRef} · {hearing.matterTitle}</p>
+            </div>
+            <div className="shrink-0 flex flex-col items-end gap-2">
+              {hearingFmt.badge && (
+                <span className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-semibold text-white">
+                  {hearingFmt.badge}
+                </span>
+              )}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2} className="opacity-60 mt-1">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 18l6-6-6-6" />
+              </svg>
+            </div>
+          </div>
+        </button>
+      )}
+
       <div className="mb-6">
         <h1 className="text-lg font-semibold text-slate-900">Your Cases</h1>
         <p className="text-xs text-slate-400 mt-0.5">{cases.length} {cases.length === 1 ? 'matter' : 'matters'} on file</p>

@@ -181,6 +181,35 @@ export class MattersService {
     });
   }
 
+  async getClientNextHearing(user: AuthenticatedUser) {
+    const matterWhere =
+      user.role === 'client'
+        ? { tenantId: user.tenantId, participantId: user.id, deletedAt: null }
+        : { tenantId: user.tenantId, deletedAt: null };
+
+    const event = await this.prisma.scheduledEvent.findFirst({
+      where: {
+        tenantId: user.tenantId,
+        scheduledAt: { gte: new Date() },
+        matter: matterWhere,
+      },
+      orderBy: { scheduledAt: 'asc' },
+      include: {
+        matter: { select: { id: true, title: true, internalRef: true } },
+      },
+    });
+
+    if (!event) return null;
+
+    return {
+      id: event.id,
+      matterId: event.matterId,
+      matterTitle: event.matter.title,
+      matterRef: event.matter.internalRef,
+      scheduledAt: event.scheduledAt.toISOString(),
+    };
+  }
+
   async getDashboardStats(user: AuthenticatedUser) {
     const tenantWhere = { tenantId: user.tenantId, deletedAt: null };
 
