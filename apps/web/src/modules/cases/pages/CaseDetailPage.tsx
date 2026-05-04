@@ -42,7 +42,7 @@ function StatusBadge({ statusKey, statuses }: { statusKey: string; statuses: { k
 
 function NotificationsCard({
   isClosed, participant, notifTemplates, notifTemplateId, setNotifTemplateId,
-  notifCustomMessage, setNotifCustomMessage, notifChannel, showSendForm, setShowSendForm,
+  notifCustomMessage, setNotifCustomMessage, notifChannel, setNotifChannel, showSendForm, setShowSendForm,
   isSending, sendError, notifLogs, onSend, matterId,
 }: {
   isClosed: boolean;
@@ -53,6 +53,7 @@ function NotificationsCard({
   notifCustomMessage: string;
   setNotifCustomMessage: (v: string) => void;
   notifChannel: 'email' | 'whatsapp';
+  setNotifChannel: (v: 'email' | 'whatsapp') => void;
   showSendForm: boolean;
   setShowSendForm: React.Dispatch<React.SetStateAction<boolean>>;
   isSending: boolean;
@@ -99,6 +100,27 @@ function NotificationsCard({
               {participant.email && <span className="ml-1 text-slate-400">({participant.email})</span>}
             </p>
 
+            {/* Channel selector */}
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">Channel</label>
+              <div className="flex gap-2">
+                {(['email', 'whatsapp'] as const).map((ch) => (
+                  <button
+                    key={ch}
+                    type="button"
+                    onClick={() => { setNotifChannel(ch); setNotifTemplateId(''); setNotifCustomMessage(''); }}
+                    className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium capitalize transition-colors ${
+                      notifChannel === ch
+                        ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                        : 'border-slate-300 bg-white text-slate-600 hover:border-slate-400'
+                    }`}
+                  >
+                    {ch === 'email' ? '✉ Email' : '💬 WhatsApp'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1.5">Template (optional)</label>
               <select
@@ -107,7 +129,7 @@ function NotificationsCard({
                 className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               >
                 <option value="">— Custom message —</option>
-                {notifTemplates.filter((t) => t.channel === 'email').map((t) => {
+                {notifTemplates.filter((t) => t.channel === notifChannel).map((t) => {
                   const label = t.triggerType.split('_').join(' ');
                   const suffix = t.isSystem ? 'system' : 'custom';
                   return <option key={t.id} value={t.id}>{label} ({suffix})</option>;
@@ -140,7 +162,7 @@ function NotificationsCard({
               disabled={isSending || (!notifTemplateId && !notifCustomMessage.trim())}
               className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
             >
-              {isSending ? 'Sending…' : 'Send via email'}
+              {isSending ? 'Sending…' : notifChannel === 'whatsapp' ? 'Send via WhatsApp' : 'Send via email'}
             </button>
           </form>
         )}
@@ -389,7 +411,7 @@ export function CaseDetailPage() {
   const [showSendForm, setShowSendForm] = useState(false);
   const [notifTemplateId, setNotifTemplateId] = useState('');
   const [notifCustomMessage, setNotifCustomMessage] = useState('');
-  const notifChannel = 'email' as const;
+  const [notifChannel, setNotifChannel] = useState<'email' | 'whatsapp'>('email');
 
   // Reminder form state
   const [showReminderForm, setShowReminderForm] = useState(false);
@@ -923,7 +945,7 @@ export function CaseDetailPage() {
                 disabled={isCreatingDR || !drDescription.trim()}
                 onClick={() => {
                   createDocumentRequest(
-                    { matterId: id!, description: drDescription.trim(), dueDate: drDueDate || undefined },
+                    { description: drDescription.trim(), dueDate: drDueDate || undefined },
                     {
                       onSuccess: () => {
                         setDrDescription('');
@@ -1203,6 +1225,7 @@ export function CaseDetailPage() {
           notifCustomMessage={notifCustomMessage}
           setNotifCustomMessage={setNotifCustomMessage}
           notifChannel={notifChannel}
+          setNotifChannel={setNotifChannel}
           showSendForm={showSendForm}
           setShowSendForm={setShowSendForm}
           isSending={isSending}

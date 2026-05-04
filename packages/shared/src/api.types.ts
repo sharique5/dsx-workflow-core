@@ -218,7 +218,6 @@ export interface DocumentRequestDto {
 }
 
 export interface CreateDocumentRequestDto {
-  matterId: string;
   description: string;
   dueDate?: string;
 }
