@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { DatabaseModule } from './shared/database/database.module';
 import { RedisModule } from './shared/redis/redis.module';
 import { EmailModule } from './shared/email/email.module';
+import { WhatsAppModule } from './shared/whatsapp/whatsapp.module';
 import { SmsModule } from './shared/sms/sms.module';
 import { StorageModule } from './shared/storage/storage.module';
 import { AuditInterceptor } from './shared/interceptors/audit.interceptor';
@@ -29,6 +30,7 @@ import { CourtsModule } from './modules/courts/courts.module';
     DatabaseModule,
     RedisModule,
     EmailModule,
+    WhatsAppModule,
     SmsModule,
     StorageModule,
 
