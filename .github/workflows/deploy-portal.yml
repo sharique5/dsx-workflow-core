@@ -27,8 +27,6 @@ jobs:
 
       - name: Build portal app
         run: npx turbo run build --filter=@dsx/portal...
-        env:
-          VITE_API_URL: ${{ vars.VITE_API_URL }}
 
       - name: Copy SWA config to dist
         run: cp apps/portal/staticwebapp.config.json apps/portal/dist/staticwebapp.config.json
