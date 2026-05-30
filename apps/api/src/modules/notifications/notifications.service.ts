@@ -8,7 +8,7 @@ import { PrismaService } from '../../shared/database/prisma.service';
 import { EmailService } from '../../shared/email/email.service';
 import { WhatsAppService } from '../../shared/whatsapp/whatsapp.service';
 import type { AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
-import { SendNotificationDto, CreateReminderDto } from './dto/notifications.dto';
+import { SendNotificationDto, CreateReminderDto, NotificationChannelDto } from './dto/notifications.dto';
 
 @Injectable()
 export class NotificationsService {
@@ -85,12 +85,12 @@ export class NotificationsService {
 
     // Send via channel
     try {
-      if (dto.channel === 'email') {
+      if (dto.channel === NotificationChannelDto.email) {
         if (!recipient.email) {
           throw new BadRequestException('Recipient has no email address');
         }
         await this.email.sendCaseNotification(recipient.email, recipient.name, body, matter.title);
-      } else if (dto.channel === 'whatsapp') {
+      } else if (dto.channel === NotificationChannelDto.whatsapp) {
         if (!recipient.phone) {
           throw new BadRequestException('Recipient has no phone number for WhatsApp');
         }

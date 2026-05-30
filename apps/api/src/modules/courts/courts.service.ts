@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 // webpack inlines JSON at build time — no file path resolution needed
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
 const COURT_DATA: StateEntry[] = require('./data/india-courts.json');
 
 interface CourtComplex {
