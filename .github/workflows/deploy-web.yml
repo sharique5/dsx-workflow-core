@@ -6,6 +6,7 @@ on:
     paths:
       - 'apps/web/**'
       - 'packages/shared/**'
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
