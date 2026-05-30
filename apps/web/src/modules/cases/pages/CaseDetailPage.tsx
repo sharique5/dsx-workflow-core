@@ -7,7 +7,8 @@ import { useAuditLogs } from '../hooks/useAuditLogs';
 import { useDocumentRequests, useCreateDocumentRequest, useMarkDocumentRequestReceived } from '../hooks/useDocumentRequests';
 import { useFees, useCreateFee, useLogPayment } from '../hooks/useFees';
 import { useDocuments, useUploadDocument, useDocumentDownloadUrl, useDeleteDocument } from '../hooks/useDocuments';
-import { useInviteClient } from '../../clients/hooks/useClients';
+import { useInviteClient, useClients } from '../../clients/hooks/useClients';
+import { useUpdateMatter } from '../hooks/useMatters';
 import { useVocabulary } from '../../../shared/hooks/useVocabulary';
 import { useAuthStore } from '../../../store/auth.store';
 import { usePageTitle } from '../../../shared/hooks/usePageTitle';
@@ -353,6 +354,9 @@ export function CaseDetailPage() {
   const { mutate: closeMatter, isPending: isClosing } = useCloseMatter();
   const { mutate: deleteMatter, isPending: isDeleting } = useDeleteMatter();
   const { mutate: inviteClient, isPending: isInviting } = useInviteClient();
+  const { mutate: updateMatter, isPending: isAssigningClient } = useUpdateMatter(id!);
+  const { data: allClients = [] } = useClients();
+  const [assignClientId, setAssignClientId] = useState('');
 
   // Hearings
   const { data: events } = useScheduledEvents(id!);
@@ -515,6 +519,33 @@ export function CaseDetailPage() {
             <div>
               <dt className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">{vocab.participant_label}</dt>
               <dd className="text-slate-800 font-medium">{matter.participant?.name ?? '—'}</dd>
+              {/* Assign client — shown when no participant linked yet */}
+              {isAdmin && !matter.participant && !isClosed && (
+                <div className="mt-2 flex items-center gap-2">
+                  <select
+                    value={assignClientId}
+                    onChange={(e) => setAssignClientId(e.target.value)}
+                    className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  >
+                    <option value="">— Select client —</option>
+                    {allClients.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                  <button
+                    disabled={!assignClientId || isAssigningClient}
+                    onClick={() => {
+                      if (!assignClientId) return;
+                      updateMatter({ participantId: assignClientId }, {
+                        onSuccess: () => setAssignClientId(''),
+                      });
+                    }}
+                    className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors whitespace-nowrap"
+                  >
+                    {isAssigningClient ? 'Saving…' : 'Assign'}
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Portal invite — admin only */}
