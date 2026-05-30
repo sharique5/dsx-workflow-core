@@ -74,7 +74,7 @@ const HC_BENCHES: Record<string, Record<string, string>> = {
  * be recognised (too short, unknown state code, non-numeric year, etc.).
  */
 export function parseCnr(raw: string): CnrInfo | null {
-  const cnr = raw.trim().toUpperCase().replace(/[\s\-]/g, '');
+  const cnr = raw.trim().toUpperCase().replace(/[\s-]/g, '');
   if (cnr.length < 10) return null;
 
   const stateCode = cnr.slice(0, 2);

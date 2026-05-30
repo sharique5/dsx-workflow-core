@@ -89,7 +89,7 @@ export function usePortalDocumentDownloadUrl(matterId: string) {
       portalDocumentsApi
         .getDownloadUrl(matterId, docId)
         .then((r) => r.data.downloadUrl),
-    onSuccess: (url, _docId) => {
+    onSuccess: (url) => {
       window.open(url, '_blank', 'noopener,noreferrer');
       toast.success('Download started', { description: 'Your file is opening in a new tab.' });
     },

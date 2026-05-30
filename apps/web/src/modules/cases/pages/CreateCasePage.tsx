@@ -18,7 +18,7 @@ const createMatterSchema = z.object({
     .string()
     .min(1, 'Internal ref is required')
     .max(50, 'Ref too long')
-    .regex(/^[A-Za-z0-9\-\/]+$/, 'Only letters, numbers, hyphens and slashes allowed'),
+    .regex(/^[A-Za-z0-9\-/]+$/, 'Only letters, numbers, hyphens and slashes allowed'),
   externalRef: z.string().max(50, 'Ref too long').optional(),
   participantId: z.string().min(1, 'Please select a client'),
   statusKey: z.string().min(1, 'Status is required'),

@@ -40,17 +40,6 @@ export function useSessionWarning() {
     toast.info('You were signed out due to inactivity.');
   }, [clearAuth, navigate]);
 
-  const extendSession = useCallback(() => {
-    setShowWarning(false);
-    isWarningRef.current = false;
-    setSecondsLeft(5 * 60);
-    if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
-    if (countdownRef.current) clearInterval(countdownRef.current);
-    // Restart the idle timer
-    if (warnTimerRef.current) clearTimeout(warnTimerRef.current);
-    warnTimerRef.current = setTimeout(triggerWarning, WARN_AFTER_MS);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   const triggerWarning = useCallback(() => {
     isWarningRef.current = true;
     setShowWarning(true);
@@ -74,6 +63,17 @@ export function useSessionWarning() {
       await performLogout();
     }, LOGOUT_AFTER_MS);
   }, [performLogout]);
+
+  const extendSession = useCallback(() => {
+    setShowWarning(false);
+    isWarningRef.current = false;
+    setSecondsLeft(5 * 60);
+    if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    // Restart the idle timer
+    if (warnTimerRef.current) clearTimeout(warnTimerRef.current);
+    warnTimerRef.current = setTimeout(triggerWarning, WARN_AFTER_MS);
+  }, [triggerWarning]);
 
   useEffect(() => {
     if (!isAuthenticated) return;

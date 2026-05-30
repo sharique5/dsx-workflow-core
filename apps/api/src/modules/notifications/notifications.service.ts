@@ -6,8 +6,9 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../shared/database/prisma.service';
 import { EmailService } from '../../shared/email/email.service';
+import { WhatsAppService } from '../../shared/whatsapp/whatsapp.service';
 import type { AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
-import { SendNotificationDto, CreateReminderDto } from './dto/notifications.dto';
+import { SendNotificationDto, CreateReminderDto, NotificationChannelDto } from './dto/notifications.dto';
 
 @Injectable()
 export class NotificationsService {
@@ -16,6 +17,7 @@ export class NotificationsService {
   constructor(
     private prisma: PrismaService,
     private email: EmailService,
+    private whatsapp: WhatsAppService,
   ) {}
 
   // ─── Templates ───────────────────────────────────────────────────────────
@@ -40,7 +42,7 @@ export class NotificationsService {
     // Resolve recipient
     const recipient = await this.prisma.user.findFirst({
       where: { id: dto.recipientId, tenantId: user.tenantId },
-      select: { id: true, name: true, email: true },
+      select: { id: true, name: true, email: true, phone: true },
     });
     if (!recipient) throw new NotFoundException('Recipient not found');
 
@@ -83,13 +85,17 @@ export class NotificationsService {
 
     // Send via channel
     try {
-      if (dto.channel === 'email') {
+      if (dto.channel === NotificationChannelDto.email) {
         if (!recipient.email) {
           throw new BadRequestException('Recipient has no email address');
         }
         await this.email.sendCaseNotification(recipient.email, recipient.name, body, matter.title);
+      } else if (dto.channel === NotificationChannelDto.whatsapp) {
+        if (!recipient.phone) {
+          throw new BadRequestException('Recipient has no phone number for WhatsApp');
+        }
+        await this.whatsapp.sendMessage(recipient.phone, body);
       }
-      // whatsapp: placeholder — not implemented yet
 
       await this.prisma.notificationLog.update({
         where: { id: log.id },
@@ -186,36 +192,54 @@ export class NotificationsService {
         const matter = await this.prisma.matter.findUnique({
           where: { id: reminder.matterId },
           include: {
-            participant: { select: { id: true, name: true, email: true } },
+            participant: { select: { id: true, name: true, email: true, phone: true } },
           },
         });
 
-        if (matter?.participant?.email) {
+        if (matter?.participant) {
+          const participant = matter.participant;
           const hearingDate = reminder.scheduledEvent.scheduledAt.toLocaleDateString(
             'en-IN',
             { day: '2-digit', month: 'short', year: 'numeric', weekday: 'long' },
           );
           const body = `Your hearing for case "${matter.title}" (${matter.internalRef}) is scheduled on ${hearingDate}. Please be prepared.`;
 
-          await this.email.sendCaseNotification(
-            matter.participant.email,
-            matter.participant.name,
-            body,
-            matter.title,
-          );
+          // Send email if available
+          if (participant.email) {
+            await this.email.sendCaseNotification(
+              participant.email,
+              participant.name,
+              body,
+              matter.title,
+            );
+            await this.prisma.notificationLog.create({
+              data: {
+                tenantId: reminder.tenantId,
+                matterId: reminder.matterId,
+                recipientId: participant.id,
+                channel: 'email',
+                customMessage: body,
+                status: 'sent',
+                sentAt: new Date(),
+              },
+            });
+          }
 
-          // Log it
-          await this.prisma.notificationLog.create({
-            data: {
-              tenantId: reminder.tenantId,
-              matterId: reminder.matterId,
-              recipientId: matter.participant.id,
-              channel: 'email',
-              customMessage: body,
-              status: 'sent',
-              sentAt: new Date(),
-            },
-          });
+          // Send WhatsApp if phone is available
+          if (participant.phone) {
+            await this.whatsapp.sendMessage(participant.phone, body);
+            await this.prisma.notificationLog.create({
+              data: {
+                tenantId: reminder.tenantId,
+                matterId: reminder.matterId,
+                recipientId: participant.id,
+                channel: 'whatsapp',
+                customMessage: body,
+                status: 'sent',
+                sentAt: new Date(),
+              },
+            });
+          }
         }
 
         // Mark sent regardless (avoid retry spam if no email)

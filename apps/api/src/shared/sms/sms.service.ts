@@ -1,12 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { WhatsAppService } from '../whatsapp/whatsapp.service';
 
 /**
  * Provider-agnostic SMS/WhatsApp OTP service.
  *
  * Configure via env vars:
- *   SMS_PROVIDER=msg91        → MSG91 (recommended for India; SMS + WhatsApp)
- *   SMS_PROVIDER=twofactor    → 2Factor.in (simpler, SMS only)
- *   (unset)                   → Dev mode: logs OTP to console
+ *   SMS_PROVIDER=msg91                  → MSG91 (recommended for India; SMS + WhatsApp)
+ *   SMS_PROVIDER=twofactor              → 2Factor.in (simpler, SMS only)
+ *   SMS_PROVIDER=messagebird_whatsapp   → MessageBird Conversations (WhatsApp OTP)
+ *   (unset)                             → Dev mode: logs OTP to console
  *
  * MSG91 env vars:
  *   MSG91_AUTH_KEY            → Auth key from MSG91 dashboard
@@ -14,10 +16,16 @@ import { Injectable, Logger } from '@nestjs/common';
  *
  * 2Factor env vars:
  *   TWOFACTOR_API_KEY         → API key from 2factor.in dashboard
+ *
+ * MessageBird WhatsApp env vars:
+ *   MESSAGEBIRD_API_KEY                 → MessageBird access key
+ *   MESSAGEBIRD_WHATSAPP_CHANNEL_ID     → WhatsApp channel ID
  */
 @Injectable()
 export class SmsService {
   private readonly logger = new Logger(SmsService.name);
+
+  constructor(private whatsapp: WhatsAppService) {}
 
   async sendOtp(phone: string, otp: string): Promise<void> {
     const provider = process.env.SMS_PROVIDER;
@@ -32,6 +40,8 @@ export class SmsService {
       await this.sendViaMSG91(phone, otp);
     } else if (provider === 'twofactor') {
       await this.sendViaTwoFactor(phone, otp);
+    } else if (provider === 'messagebird_whatsapp') {
+      await this.whatsapp.sendOtp(phone, otp);
     } else {
       this.logger.error(`Unknown SMS_PROVIDER: ${provider}`);
       throw new Error(`Unknown SMS provider: ${provider}`);
