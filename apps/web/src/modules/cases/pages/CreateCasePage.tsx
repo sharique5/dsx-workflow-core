@@ -77,10 +77,10 @@ export function CreateCasePage() {
     formState: { errors },
   } = useForm<CreateMatterForm>({
     resolver: zodResolver(createMatterSchema),
-    defaultValues: {
+    defaultValues: () => ({
       statusKey: vocab.statuses[0]?.key ?? 'filed',
       internalRef: `NA-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,
-    },
+    }),
   });
 
   const selectedParticipantId = useWatch({ control, name: 'participantId' });
