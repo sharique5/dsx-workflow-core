@@ -390,11 +390,13 @@ export function CaseDetailPage() {
   const { mutate: createFee, isPending: isCreatingFee } = useCreateFee(id!);
   const { mutate: logPayment, isPending: isLoggingPayment } = useLogPayment(id!);
   const [showAddFee, setShowAddFee] = useState(false);
-  const [feeType, setFeeType] = useState<FeeType>('one-time');
+  const [feeType, setFeeType] = useState<FeeType>('one_time');
   const [feeTotalAmount, setFeeTotalAmount] = useState('');
   const [payingFeeId, setPayingFeeId] = useState<string | null>(null);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentNote, setPaymentNote] = useState('');
+  const [paymentDate, setPaymentDate] = useState('');
+  const [deleteNoteId, setDeleteNoteId] = useState<string | null>(null);
 
   // Documents
   const { data: documents = [] } = useDocuments(id!);
@@ -661,8 +663,10 @@ export function CaseDetailPage() {
               onSubmit={(e: React.FormEvent) => {
                 e.preventDefault();
                 if (!hearingDate) return;
+                // Convert datetime-local (local time) to UTC ISO string
+                const utcDate = new Date(hearingDate).toISOString();
                 createEvent(
-                  { scheduledAt: hearingDate },
+                  { scheduledAt: utcDate },
                   { onSuccess: () => { setShowAddHearing(false); setHearingDate(''); } },
                 );
               }}
@@ -907,20 +911,9 @@ export function CaseDetailPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
-                      <button
-                        onClick={() =>
-                          updateNote({ id: note.id, data: { isPublished: !note.isPublished } })
-                        }
-                        className="text-xs text-slate-400 hover:text-slate-600"
-                        title={note.isPublished ? 'Make internal' : 'Publish to client'}
-                      >
-                        {note.isPublished ? 'Unpublish' : 'Publish'}
-                      </button>
                       {(note.createdBy === user?.id || isAdmin) && (
                         <button
-                          onClick={() => {
-                            if (confirm('Delete this note?')) deleteNote(note.id);
-                          }}
+                          onClick={() => setDeleteNoteId(note.id)}
                           className="text-xs text-red-400 hover:text-red-600"
                         >
                           Delete
@@ -993,6 +986,7 @@ export function CaseDetailPage() {
             </div>
           )}
 
+          <div className="px-6 py-4">
           {documentRequests.length === 0 && !showAddDR && (
             <p className="text-sm text-slate-400 py-2">No document requests yet.</p>
           )}
@@ -1032,6 +1026,7 @@ export function CaseDetailPage() {
               ))}
             </ul>
           )}
+          </div>
         </div>
         </div>
 
@@ -1063,7 +1058,7 @@ export function CaseDetailPage() {
                   {
                     onSuccess: () => {
                       setFeeTotalAmount('');
-                      setFeeType('one-time');
+                      setFeeType('one_time');
                       setShowAddFee(false);
                     },
                   },
@@ -1077,10 +1072,10 @@ export function CaseDetailPage() {
                   onChange={(e) => setFeeType(e.target.value as FeeType)}
                   className="block rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 >
-                  <option value="one-time">One-time</option>
+                  <option value="one_time">One-time</option>
                   <option value="periodic">Periodic</option>
-                  <option value="per-hearing">Per hearing</option>
-                  <option value="per-consultation">Per consultation</option>
+                  <option value="per_hearing">Per hearing</option>
+                  <option value="per_consultation">Per consultation</option>
                 </select>
               </div>
               <div>
@@ -1117,7 +1112,7 @@ export function CaseDetailPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-slate-900 capitalize">
-                        {fee.type.replace(/-/g, ' ')}
+                        {fee.type.replace(/_/g, ' ')}
                       </p>
                       <div className="mt-1.5 flex gap-4 text-xs text-slate-500">
                         <span>Total: ₹{fee.totalAmount.toLocaleString('en-IN')}</span>
@@ -1151,6 +1146,15 @@ export function CaseDetailPage() {
                             />
                           </div>
                           <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1.5">Date</label>
+                            <input
+                              type="date"
+                              value={paymentDate}
+                              onChange={(e) => setPaymentDate(e.target.value)}
+                              className="block w-36 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                            />
+                          </div>
+                          <div>
                             <label className="block text-xs font-medium text-slate-700 mb-1.5">Note (optional)</label>
                             <input
                               type="text"
@@ -1165,13 +1169,15 @@ export function CaseDetailPage() {
                             onClick={() => {
                               const amt = parseFloat(paymentAmount);
                               if (!amt || amt <= 0) return;
+                              const paidAt = paymentDate ? new Date(paymentDate).toISOString() : undefined;
                               logPayment(
-                                { feeId: fee.id, data: { amount: amt, note: paymentNote || undefined } },
+                                { feeId: fee.id, data: { amount: amt, note: paymentNote || undefined, paidAt } },
                                 {
                                   onSuccess: () => {
                                     setPayingFeeId(null);
                                     setPaymentAmount('');
                                     setPaymentNote('');
+                                    setPaymentDate('');
                                   },
                                 },
                               );
@@ -1181,7 +1187,7 @@ export function CaseDetailPage() {
                             {isLoggingPayment ? 'Saving…' : 'Log payment'}
                           </button>
                           <button
-                            onClick={() => { setPayingFeeId(null); setPaymentAmount(''); setPaymentNote(''); }}
+                            onClick={() => { setPayingFeeId(null); setPaymentAmount(''); setPaymentNote(''); setPaymentDate(''); }}
                             className="text-xs text-slate-400 hover:text-slate-600"
                           >
                             Cancel
@@ -1191,7 +1197,7 @@ export function CaseDetailPage() {
                     </div>
                     {isAdmin && fee.dueAmount > 0 && !isClosed && payingFeeId !== fee.id && (
                       <button
-                        onClick={() => { setPayingFeeId(fee.id); setPaymentAmount(''); setPaymentNote(''); }}
+                    onClick={() => { setPayingFeeId(fee.id); setPaymentAmount(''); setPaymentNote(''); setPaymentDate(new Date().toISOString().slice(0, 10)); }}
                         className="shrink-0 text-xs text-indigo-600 hover:text-indigo-700 font-medium"
                       >
                         Log payment
@@ -1320,5 +1326,29 @@ export function CaseDetailPage() {
         )}
       </div>
     </div>
+
+    {/* Delete note confirmation modal */}
+    {deleteNoteId && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">
+          <h3 className="text-base font-semibold text-slate-900 mb-2">Delete note?</h3>
+          <p className="text-sm text-slate-500 mb-5">This action cannot be undone.</p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setDeleteNoteId(null)}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => { deleteNote(deleteNoteId); setDeleteNoteId(null); }}
+              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   );
 }

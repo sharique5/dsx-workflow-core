@@ -124,7 +124,7 @@ export class FeesService {
     const history = (fee.paymentHistory as unknown as PaymentRecord[]) ?? [];
     const newRecord: PaymentRecord = {
       amount: dto.amount,
-      paidAt: new Date().toISOString(),
+      paidAt: dto.paidAt ?? new Date().toISOString(),
       ...(dto.note ? { note: dto.note } : {}),
     };
 

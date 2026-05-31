@@ -4,6 +4,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsISO8601,
   Min,
 } from 'class-validator';
 import { FeeType } from '@prisma/client';
@@ -26,4 +27,8 @@ export class LogPaymentDto {
   @IsString()
   @IsNotEmpty()
   note?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  paidAt?: string;
 }

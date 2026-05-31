@@ -228,7 +228,7 @@ export interface UpdateDocumentRequestDto {
 
 // ─── Fee ─────────────────────────────────────────────────────────────────────
 
-export type FeeType = 'one-time' | 'periodic' | 'per-hearing' | 'per-consultation';
+export type FeeType = 'one_time' | 'periodic' | 'per_hearing' | 'per_consultation';
 
 export interface CreateFeeDto {
   type: FeeType;
@@ -238,6 +238,7 @@ export interface CreateFeeDto {
 export interface LogPaymentDto {
   amount: number;
   note?: string;
+  paidAt?: string;
 }
 
 export interface PaymentRecord {

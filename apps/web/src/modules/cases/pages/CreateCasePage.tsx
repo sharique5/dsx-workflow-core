@@ -26,7 +26,7 @@ const createMatterSchema = z.object({
 
 const createClientSchema = z.object({
   name: z.string().min(1, 'Name is required').max(200),
-  email: z.string().optional(),
+  email: z.string().email('Enter a valid email').min(1, 'Email is required'),
   phone: z.string().max(20).optional(),
 });
 
@@ -76,7 +76,10 @@ export function CreateCasePage() {
     formState: { errors },
   } = useForm<CreateMatterForm>({
     resolver: zodResolver(createMatterSchema),
-    defaultValues: { statusKey: vocab.statuses[0]?.key ?? 'filed' },
+    defaultValues: {
+      statusKey: vocab.statuses[0]?.key ?? 'filed',
+      internalRef: `NA-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,
+    },
   });
 
   const selectedParticipantId = watch('participantId');
@@ -423,13 +426,16 @@ export function CreateCasePage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Email</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Email <span className="text-red-500">*</span></label>
                     <input
                       type="email"
                       placeholder="client@example.com"
                       className={INPUT_CLS}
                       {...registerClient('email')}
                     />
+                    {clientErrors.email && (
+                      <p className="mt-1 text-xs text-red-500">{clientErrors.email.message}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-slate-700 mb-1">Phone</label>
