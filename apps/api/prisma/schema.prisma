@@ -22,6 +22,7 @@ model Tenant {
   documents             Document[]
   documentRequests      DocumentRequest[]
   fees                  Fee[]
+  messages              Message[]
   notificationTemplates NotificationTemplate[]
   notificationLogs      NotificationLog[]
   reminders             Reminder[]
@@ -66,6 +67,7 @@ model User {
   notes            Note[]
   documents        Document[]
   documentRequests DocumentRequest[]
+  messages         Message[]
   auditLogs        AuditLog[]
   notificationLogs NotificationLog[]
 
@@ -99,6 +101,7 @@ model Matter {
   documents       Document[]
   documentRequests DocumentRequest[]
   fees            Fee[]
+  messages        Message[]
   reminders       Reminder[]
   notificationLogs NotificationLog[]
   auditLogs       AuditLog[]
@@ -344,4 +347,26 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([actorId])
   @@map("audit_logs")
+}
+
+// ─── Messages ─────────────────────────────────────────────────────────────────
+
+model Message {
+  id             String   @id @default(uuid())
+  tenantId       String   @map("tenant_id")
+  matterId       String   @map("matter_id")
+  senderId       String   @map("sender_id")
+  content        String
+  isReadByLawyer Boolean  @default(false) @map("is_read_by_lawyer")
+  isReadByClient Boolean  @default(false) @map("is_read_by_client")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  matter Matter @relation(fields: [matterId], references: [id])
+  sender User   @relation(fields: [senderId], references: [id])
+
+  @@index([tenantId])
+  @@index([matterId])
+  @@index([matterId, createdAt])
+  @@map("messages")
 }

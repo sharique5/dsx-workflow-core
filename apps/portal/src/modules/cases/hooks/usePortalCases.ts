@@ -4,6 +4,8 @@ import { portalCasesApi } from '../api/portal-cases.api';
 import { portalDocumentRequestsApi } from '../api/portal-document-requests.api';
 import { portalFeesApi } from '../api/portal-fees.api';
 import { portalDocumentsApi } from '../api/portal-documents.api';
+import { portalMessagesApi } from '../api/portal-messages.api';
+import type { CreateMessageDto } from '@dsx/shared';
 
 export const PORTAL_MATTERS_KEY = ['portal', 'matters'] as const;
 export const portalMatterKey = (id: string) => ['portal', 'matters', id] as const;
@@ -115,5 +117,50 @@ export function usePortalUploadDocument(matterId: string) {
       toast.success('Document uploaded');
     },
     onError: () => toast.error('Upload failed'),
+  });
+}
+
+const portalMatterMessagesKey = (id: string) =>
+  ['portal', 'matters', id, 'messages'] as const;
+const portalMatterMessagesUnreadKey = (id: string) =>
+  ['portal', 'matters', id, 'messages', 'unread'] as const;
+
+export function usePortalMessages(matterId: string) {
+  return useQuery({
+    queryKey: portalMatterMessagesKey(matterId),
+    queryFn: () => portalMessagesApi.list(matterId).then((r) => r.data),
+    enabled: !!matterId,
+    refetchInterval: 5000,
+  });
+}
+
+export function usePortalMessagesUnreadCount(matterId: string) {
+  return useQuery({
+    queryKey: portalMatterMessagesUnreadKey(matterId),
+    queryFn: () => portalMessagesApi.unreadCount(matterId).then((r) => r.data),
+    enabled: !!matterId,
+    refetchInterval: 5000,
+  });
+}
+
+export function usePortalSendMessage(matterId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateMessageDto) =>
+      portalMessagesApi.create(matterId, data).then((r) => r.data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: portalMatterMessagesKey(matterId) });
+    },
+    onError: () => toast.error('Failed to send message'),
+  });
+}
+
+export function usePortalMarkMessagesRead(matterId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => portalMessagesApi.markRead(matterId).then((r) => r.data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: portalMatterMessagesUnreadKey(matterId) });
+    },
   });
 }

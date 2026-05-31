@@ -270,6 +270,32 @@ export class NotificationsService {
   }
 
   /**
+   * Fire-and-forget notification to a specific user by id (e.g. lawyer).
+   */
+  async notifyUser(
+    userId: string,
+    tenantId: string,
+    message: string,
+    caseTitle: string,
+  ): Promise<void> {
+    try {
+      const user = await this.prisma.user.findFirst({
+        where: { id: userId, tenantId },
+        select: { name: true, email: true, phone: true },
+      });
+      if (!user) return;
+      if (user.email) {
+        await this.email.sendCaseNotification(user.email, user.name, message, caseTitle);
+      }
+      if (user.phone) {
+        await this.whatsapp.sendMessage(user.phone, message);
+      }
+    } catch (err) {
+      this.logger.error(`notifyUser failed for user ${userId}: ${String(err)}`);
+    }
+  }
+
+  /**
    * Fire-and-forget notification to a matter's participant (client).
    * Sends via email and/or WhatsApp depending on what contact info is available.
    * Logs each send. Silently swallows errors to avoid breaking the caller.

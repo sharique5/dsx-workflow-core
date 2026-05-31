@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Trash2, Download, Plus, ChevronLeft, CheckCheck, CreditCard, X, Bell } from 'lucide-react';
+import { Trash2, Download, Plus, ChevronLeft, CheckCheck, CreditCard, X, Bell, MessageSquare, Send } from 'lucide-react';
 import { useMatter, useCloseMatter, useDeleteMatter } from '../hooks/useMatters';
 import { useScheduledEvents, useCreateScheduledEvent, useDeleteScheduledEvent } from '../hooks/useScheduledEvents';
 import { useNotes, useCreateNote, useDeleteNote } from '../hooks/useNotes';
@@ -21,7 +21,8 @@ import {
   useCreateReminder,
   useDeleteReminder,
 } from '../hooks/useNotifications';
-import type { ScheduledEventDto, NoteDto, AuditLogDto, FeeType, BillingCycle, NotificationLogDto } from '@dsx/shared';
+import type { ScheduledEventDto, NoteDto, AuditLogDto, FeeType, BillingCycle, NotificationLogDto, MessageDto } from '@dsx/shared';
+import { useMessages, useSendMessage, useMarkMessagesRead, useMessagesUnreadCount } from '../hooks/useMessages';
 
 /**
  * Convert a datetime-local string ("YYYY-MM-DDTHH:mm") or date string ("YYYY-MM-DD")
@@ -572,7 +573,9 @@ export function CaseDetailPage() {
 
   // Reminder form state
   const [showReminderForm, setShowReminderForm] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'hearings' | 'documents' | 'fees' | 'notes' | 'admin'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'hearings' | 'documents' | 'fees' | 'notes' | 'messages' | 'admin'>('overview');
+  const [messageInput, setMessageInput] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   if (isLoading) {
     return (
@@ -595,12 +598,27 @@ export function CaseDetailPage() {
 
   const isClosed = matter.statusKey === 'closed';
 
-  const tabs: Array<{ key: 'overview' | 'hearings' | 'documents' | 'fees' | 'notes' | 'admin'; label: string }> = [
+  const { data: messages = [] } = useMessages(id!);
+  const { mutate: sendMessage, isPending: isSending } = useSendMessage(id!);
+  const { mutate: markRead } = useMarkMessagesRead(id!);
+  const { data: unreadData } = useMessagesUnreadCount(id!);
+  const unreadCount = unreadData?.unread ?? 0;
+
+  // Scroll to bottom when messages load or when tab opens
+  useEffect(() => {
+    if (activeTab === 'messages') {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      markRead();
+    }
+  }, [activeTab, messages.length]);
+
+  const tabs: Array<{ key: 'overview' | 'hearings' | 'documents' | 'fees' | 'notes' | 'messages' | 'admin'; label: string; badge?: number }> = [
     { key: 'overview', label: 'Overview' },
     { key: 'hearings', label: 'Hearings' },
     { key: 'documents', label: 'Documents' },
     { key: 'fees', label: 'Fees' },
     { key: 'notes', label: 'Notes' },
+    { key: 'messages', label: 'Messages', badge: unreadCount > 0 ? unreadCount : undefined },
     ...(isAdmin ? [{ key: 'admin' as const, label: 'Admin' }] : []),
   ];
 
@@ -641,13 +659,18 @@ export function CaseDetailPage() {
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                className={`relative px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                   activeTab === tab.key
                     ? 'border-indigo-600 text-indigo-600'
                     : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
                 }`}
               >
                 {tab.label}
+                {tab.badge !== undefined && (
+                  <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-indigo-600 px-1.5 py-0.5 text-xs font-semibold text-white">
+                    {tab.badge}
+                  </span>
+                )}
               </button>
             ))}
           </nav>
@@ -1160,6 +1183,74 @@ export function CaseDetailPage() {
           )}
           </div>
         </div>
+        </div>
+
+        {/* Messages */}
+        <div className={activeTab !== 'messages' ? 'hidden' : undefined}>
+          <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col" style={{ height: '60vh' }}>
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
+              <MessageSquare size={16} className="text-slate-500" />
+              <h3 className="text-sm font-semibold text-slate-900">Messages</h3>
+            </div>
+
+            {/* Message list */}
+            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+              {messages.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center mt-8">No messages yet. Start the conversation.</p>
+              ) : (
+                messages.map((msg: MessageDto) => {
+                  const isOwn = msg.senderId === user?.id;
+                  return (
+                    <div key={msg.id} className={`flex flex-col gap-0.5 ${isOwn ? 'items-end' : 'items-start'}`}>
+                      <p className="text-xs text-slate-400">
+                        {msg.sender?.name ?? 'Unknown'} · {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                      <div className={`max-w-xs rounded-2xl px-4 py-2 text-sm ${isOwn ? 'bg-indigo-600 text-white rounded-br-sm' : 'bg-slate-100 text-slate-800 rounded-bl-sm'}`}>
+                        {msg.content}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Compose */}
+            <div className="px-6 py-4 border-t border-slate-100">
+              <form
+                className="flex items-end gap-3"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const trimmed = messageInput.trim();
+                  if (!trimmed) return;
+                  sendMessage({ content: trimmed }, { onSuccess: () => setMessageInput('') });
+                }}
+              >
+                <textarea
+                  value={messageInput}
+                  onChange={(e) => setMessageInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      const trimmed = messageInput.trim();
+                      if (!trimmed) return;
+                      sendMessage({ content: trimmed }, { onSuccess: () => setMessageInput('') });
+                    }
+                  }}
+                  placeholder="Type a message… (Enter to send, Shift+Enter for newline)"
+                  rows={2}
+                  className="flex-1 resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <button
+                  type="submit"
+                  disabled={isSending || !messageInput.trim()}
+                  className="rounded-lg bg-indigo-600 p-2.5 text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                >
+                  <Send size={16} />
+                </button>
+              </form>
+            </div>
+          </div>
         </div>
 
         {/* Document Requests */}
