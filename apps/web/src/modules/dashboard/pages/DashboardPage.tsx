@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Briefcase, Users, UserPlus } from 'lucide-react';
 import { useAuthStore } from '../../../store/auth.store';
@@ -35,7 +35,8 @@ export function DashboardPage() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   const [hearingDays, setHearingDays] = useState<7 | 15 | 30>(7);
-  const cutoff = useMemo(() => Date.now() + hearingDays * 24 * 60 * 60 * 1000, [hearingDays]);
+  const [now] = useState(() => Date.now());
+  const cutoff = now + hearingDays * 24 * 60 * 60 * 1000;
   const visibleHearings = (stats?.upcomingHearings ?? []).filter(
     (h) => new Date(h.scheduledAt).getTime() <= cutoff,
   );
