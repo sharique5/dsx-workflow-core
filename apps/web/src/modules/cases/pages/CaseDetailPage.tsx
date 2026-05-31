@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useMatter, useCloseMatter, useDeleteMatter } from '../hooks/useMatters';
 import { useScheduledEvents, useCreateScheduledEvent, useDeleteScheduledEvent } from '../hooks/useScheduledEvents';
 import { useNotes, useCreateNote, useUpdateNote, useDeleteNote } from '../hooks/useNotes';
@@ -275,6 +275,7 @@ function RemindersCard({
                 type="datetime-local"
                 value={reminderAt}
                 onChange={(e) => setReminderAt(e.target.value)}
+                min={new Date().toISOString().slice(0, 16)}
                 required
                 className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               />
@@ -404,6 +405,7 @@ export function CaseDetailPage() {
   const { mutate: downloadDocument, isPending: isDownloading } = useDocumentDownloadUrl(id!);
   const { mutate: deleteDocument } = useDeleteDocument(id!);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
 
   // Notifications & reminders
   const { data: notifTemplates = [] } = useNotificationTemplates();
@@ -460,6 +462,15 @@ export function CaseDetailPage() {
       {/* Page header */}
       <div className="px-6 pt-8 pb-4 flex items-start justify-between">
         <div>
+          <Link
+            to="/cases"
+            className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600 mb-3 transition-colors"
+          >
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Cases
+          </Link>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-slate-900">{matter.title}</h1>
             <StatusBadge statusKey={matter.statusKey} statuses={vocab.statuses} />
@@ -471,7 +482,7 @@ export function CaseDetailPage() {
             disabled={isClosing}
             className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-colors"
           >
-            {isClosing ? 'Closing…' : `Close ${vocab.matter_label}`}
+            {isClosing ? 'Closing…' : 'Mark as Closed'}
           </button>
         )}
       </div>
@@ -698,11 +709,16 @@ export function CaseDetailPage() {
           )}
 
           {events && events.length > 0 && (
-            <ul className="divide-y divide-slate-100">
-              {events.map((event: ScheduledEventDto) => (
+            <ul className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
+              {events.map((event: ScheduledEventDto) => {
+                const isUpcoming = new Date(event.scheduledAt) > new Date();
+                const isFirstUpcoming = isUpcoming && !events.slice(0, events.indexOf(event)).some(
+                  (e) => new Date(e.scheduledAt) > new Date()
+                );
+                return (
                 <li key={event.id} className="py-3 flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-sm font-medium text-slate-900">
+                    <p className="text-sm font-medium text-slate-900 flex items-center gap-2">
                       {new Date(event.scheduledAt).toLocaleString('en-IN', {
                         day: '2-digit',
                         month: 'short',
@@ -710,6 +726,11 @@ export function CaseDetailPage() {
                         hour: '2-digit',
                         minute: '2-digit',
                       })}
+                      {isFirstUpcoming && (
+                        <span className="inline-flex items-center rounded-full bg-indigo-50 border border-indigo-200 px-2 py-0.5 text-[10px] font-semibold text-indigo-700">
+                          Upcoming
+                        </span>
+                      )}
                     </p>
                     {event.outcomeNotes && (
                       <p className="mt-0.5 text-sm text-slate-500">{event.outcomeNotes}</p>
@@ -727,53 +748,78 @@ export function CaseDetailPage() {
                     </button>
                   )}
                 </li>
-              ))}
+                );
+              })}
             </ul>
           )}
           </div>
         </div>
         </div>
 
-        {/* Documents */}
+          {/* Documents */}
         <div className={activeTab !== 'documents' ? 'hidden' : undefined}>
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
             <h3 className="text-sm font-semibold text-slate-900">Documents</h3>
-            {!isClosed && user?.role !== 'client' && (
-              <label className="cursor-pointer text-sm text-indigo-600 hover:text-indigo-700 font-medium inline-flex items-center gap-1.5">
-                {isUploading ? 'Uploading…' : (
-                  <>
-                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                    </svg>
-                    Upload
-                  </>
-                )}
-                <input
-                  type="file"
-                  className="sr-only"
-                  disabled={isUploading}
-                  accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    setUploadError(null);
-                    uploadDocument(file, {
-                      onError: (err: unknown) => {
-                        const msg = err instanceof Error ? err.message : 'Upload failed';
-                        setUploadError(msg);
-                      },
-                    });
-                    e.target.value = '';
-                  }}
-                />
-              </label>
-            )}
           </div>
 
           <div className="px-6 py-4">
           {uploadError && (
             <p className="mb-3 text-xs text-red-500">{uploadError}</p>
+          )}
+
+          {!isClosed && user?.role !== 'client' && (
+            <label
+              className={`mb-4 flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-8 transition-colors ${
+                dragOver ? 'border-indigo-400 bg-indigo-50' : 'border-slate-200 bg-slate-50 hover:border-indigo-300 hover:bg-indigo-50/50'
+              } ${isUploading ? 'opacity-60 pointer-events-none' : 'cursor-pointer'}`}
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+                const file = e.dataTransfer.files?.[0];
+                if (!file) return;
+                setUploadError(null);
+                uploadDocument(file, { onError: (err: unknown) => { setUploadError(err instanceof Error ? err.message : 'Upload failed'); } });
+              }}
+            >
+              <input
+                type="file"
+                className="sr-only"
+                disabled={isUploading}
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setUploadError(null);
+                  uploadDocument(file, { onError: (err: unknown) => { setUploadError(err instanceof Error ? err.message : 'Upload failed'); } });
+                  e.target.value = '';
+                }}
+              />
+              {isUploading ? (
+                <>
+                  <svg className="animate-spin h-6 w-6 text-indigo-500" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  <p className="text-sm text-indigo-600 font-medium">Uploading…</p>
+                  <div className="w-full max-w-xs h-1 bg-slate-200 rounded-full overflow-hidden mt-1">
+                    <div className="h-full bg-indigo-500 rounded-full animate-pulse" style={{ width: '60%' }} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke={dragOver ? '#4f46e5' : '#94a3b8'} strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                  </svg>
+                  <p className="text-sm font-medium text-slate-600">
+                    {dragOver ? 'Drop to upload' : 'Drag & drop or click to upload'}
+                  </p>
+                  <p className="text-xs text-slate-400">PDF, Word, Excel, Images</p>
+                </>
+              )}
+            </label>
           )}
 
           {documents.length === 0 && !isUploading && (

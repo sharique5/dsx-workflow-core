@@ -19,7 +19,7 @@ const createMatterSchema = z.object({
     .min(1, 'Internal ref is required')
     .max(50, 'Ref too long')
     .regex(/^[A-Za-z0-9\-/]+$/, 'Only letters, numbers, hyphens and slashes allowed'),
-  externalRef: z.string().max(50, 'Ref too long').optional(),
+  externalRef: z.string().min(1, 'Court case no. is required').max(50, 'Ref too long'),
   participantId: z.string().min(1, 'Please select a client'),
   statusKey: z.string().min(1, 'Status is required'),
 });
@@ -137,8 +137,13 @@ export function CreateCasePage() {
         setShowNewClient(false);
         resetClientForm();
       },
-      onError: () => {
-        setNewClientError('Failed to create client. Check details and try again.');
+      onError: (err: unknown) => {
+        const msg = err instanceof Error ? err.message : '';
+        if (msg.toLowerCase().includes('already exists') || msg.toLowerCase().includes('unique')) {
+          setNewClientError('A client with this email already exists. Please select them from the client dropdown above instead.');
+        } else {
+          setNewClientError('Failed to create client. Check details and try again.');
+        }
       },
     });
   };
@@ -253,14 +258,18 @@ export function CreateCasePage() {
               )}
             </div>
             <div>
-              <label className={LABEL_CLS}>Court Case No.</label>
+              <label className={LABEL_CLS}>Court Case No. <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 placeholder="e.g. AC-83-2025"
                 className={INPUT_CLS}
                 {...register('externalRef')}
               />
-              <p className="mt-1 text-xs text-slate-400">Case type + number + year</p>
+              {errors.externalRef ? (
+                <p className="mt-1 text-xs text-red-500">{errors.externalRef.message}</p>
+              ) : (
+                <p className="mt-1 text-xs text-slate-400">Case type + number + year</p>
+              )}
             </div>
           </div>
 

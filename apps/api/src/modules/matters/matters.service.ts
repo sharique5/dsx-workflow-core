@@ -223,11 +223,11 @@ export class MattersService {
             tenantId: user.tenantId,
             scheduledAt: {
               gte: new Date(),
-              lte: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+              lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
             },
           },
           orderBy: { scheduledAt: 'asc' },
-          take: 10,
+          take: 30,
           include: {
             matter: { select: { id: true, title: true, internalRef: true } },
           },
