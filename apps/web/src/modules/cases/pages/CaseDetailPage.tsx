@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { Trash2, Download, Pencil, Plus, CheckCircle, ChevronLeft, Send, Upload, CheckCheck, CreditCard, X, Link2, Bell, FileText, MoreHorizontal } from 'lucide-react';
 import { useMatter, useCloseMatter, useDeleteMatter } from '../hooks/useMatters';
 import { useScheduledEvents, useCreateScheduledEvent, useDeleteScheduledEvent } from '../hooks/useScheduledEvents';
 import { useNotes, useCreateNote, useUpdateNote, useDeleteNote } from '../hooks/useNotes';
@@ -20,7 +21,7 @@ import {
   useCreateReminder,
   useDeleteReminder,
 } from '../hooks/useNotifications';
-import type { ScheduledEventDto, NoteDto, AuditLogDto, FeeType, NotificationLogDto } from '@dsx/shared';
+import type { ScheduledEventDto, NoteDto, AuditLogDto, FeeType, BillingCycle, NotificationLogDto } from '@dsx/shared';
 
 function StatusBadge({ statusKey, statuses }: { statusKey: string; statuses: { key: string; label: string; isTerminal: boolean }[] }) {
   const status = statuses.find((s) => s.key === statusKey);
@@ -206,7 +207,6 @@ function NotificationsCard({
 
 function RemindersCard({
   isClosed, events, reminders, showReminderForm, setShowReminderForm,
-  reminderEventId, setReminderEventId, reminderAt, setReminderAt,
   isCreatingReminder, onCreateReminder, onDeleteReminder,
 }: {
   isClosed: boolean;
@@ -214,20 +214,48 @@ function RemindersCard({
   reminders: import('@dsx/shared').ReminderDto[];
   showReminderForm: boolean;
   setShowReminderForm: React.Dispatch<React.SetStateAction<boolean>>;
-  reminderEventId: string;
-  setReminderEventId: (v: string) => void;
-  reminderAt: string;
-  setReminderAt: (v: string) => void;
   isCreatingReminder: boolean;
-  onCreateReminder: (payload: { scheduledEventId: string; remindAt: string }) => void;
+  onCreateReminder: (payload: { scheduledEventId: string; remindAt: string; message?: string }) => void;
   onDeleteReminder: (id: string) => void;
 }) {
   const hasEvents = events && events.length > 0;
 
+  // Reminder form: pick hearing + days/hours before + message
+  const [reminderEventId, setReminderEventId] = useState('');
+  const [reminderDaysBefore, setReminderDaysBefore] = useState('1');
+  const [reminderMessage, setReminderMessage] = useState('');
+
+  const presets = [
+    { label: '1 day before', value: '1' },
+    { label: '3 days before', value: '3' },
+    { label: '1 week before', value: '7' },
+    { label: 'Custom' , value: 'custom' },
+  ];
+  const [reminderPreset, setReminderPreset] = useState('1');
+  const [customDays, setCustomDays] = useState('');
+
+  const effectiveDays = reminderPreset === 'custom' ? Number(customDays) : Number(reminderPreset);
+
+  const selectedEvent = events?.find((e) => e.id === reminderEventId);
+  const remindAtPreview = selectedEvent && effectiveDays > 0
+    ? new Date(new Date(selectedEvent.scheduledAt).getTime() - effectiveDays * 24 * 60 * 60 * 1000)
+    : null;
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!reminderEventId || !reminderAt) return;
-    onCreateReminder({ scheduledEventId: reminderEventId, remindAt: reminderAt });
+    if (!reminderEventId || !selectedEvent || !effectiveDays) return;
+    const remindAt = new Date(
+      new Date(selectedEvent.scheduledAt).getTime() - effectiveDays * 24 * 60 * 60 * 1000,
+    ).toISOString();
+    onCreateReminder({
+      scheduledEventId: reminderEventId,
+      remindAt,
+      message: reminderMessage || undefined,
+    });
+    setReminderEventId('');
+    setReminderPreset('1');
+    setCustomDays('');
+    setReminderMessage('');
   }
 
   return (
@@ -239,7 +267,7 @@ function RemindersCard({
             onClick={() => setShowReminderForm((v) => !v)}
             className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
           >
-            {showReminderForm ? 'Cancel' : '+ Set reminder'}
+            {showReminderForm ? <><X size={14} className="inline mr-1" />Cancel</> : <><Bell size={14} className="inline mr-1" />Set reminder</>}
           </button>
         )}
       </div>
@@ -252,7 +280,7 @@ function RemindersCard({
         {showReminderForm && hasEvents && (
           <form className="mb-4 rounded-lg bg-slate-50 border border-slate-200 p-4 space-y-3" onSubmit={handleSubmit}>
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1.5">Hearing *</label>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">Hearing <span className="text-red-500">*</span></label>
               <select
                 value={reminderEventId}
                 onChange={(e) => setReminderEventId(e.target.value)}
@@ -260,7 +288,7 @@ function RemindersCard({
                 className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               >
                 <option value="">Select a hearing…</option>
-                {events.map((ev) => {
+                {events.filter((ev) => new Date(ev.scheduledAt) > new Date()).map((ev) => {
                   const label = new Date(ev.scheduledAt).toLocaleString('en-IN', {
                     day: '2-digit', month: 'short', year: 'numeric',
                     hour: '2-digit', minute: '2-digit',
@@ -268,15 +296,62 @@ function RemindersCard({
                   return <option key={ev.id} value={ev.id}>{label}</option>;
                 })}
               </select>
+              {events.filter((ev) => new Date(ev.scheduledAt) > new Date()).length === 0 && (
+                <p className="mt-1 text-xs text-amber-600">No upcoming hearings to set a reminder for.</p>
+              )}
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1.5">Remind at *</label>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">Remind me <span className="text-red-500">*</span></label>
+              <div className="flex gap-2 flex-wrap">
+                {presets.map((p) => (
+                  <button
+                    key={p.value}
+                    type="button"
+                    onClick={() => setReminderPreset(p.value)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                      reminderPreset === p.value
+                        ? 'bg-indigo-600 text-white border-indigo-600'
+                        : 'bg-white text-slate-600 border-slate-300 hover:border-indigo-400'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+              {reminderPreset === 'custom' && (
+                <div className="mt-2 flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={customDays}
+                    onChange={(e) => setCustomDays(e.target.value)}
+                    placeholder="e.g. 5"
+                    required
+                    className="w-24 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  />
+                  <span className="text-sm text-slate-500">days before the hearing</span>
+                </div>
+              )}
+              {remindAtPreview && (
+                <p className="mt-2 text-xs text-slate-500">
+                  Reminder will be sent on{' '}
+                  <span className="font-medium text-slate-700">
+                    {remindAtPreview.toLocaleString('en-IN', {
+                      day: '2-digit', month: 'short', year: 'numeric',
+                      hour: '2-digit', minute: '2-digit',
+                    })}
+                  </span>
+                </p>
+              )}
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">Message / Note <span className="text-slate-400 font-normal">(optional)</span></label>
               <input
-                type="datetime-local"
-                value={reminderAt}
-                onChange={(e) => setReminderAt(e.target.value)}
-                min={new Date().toISOString().slice(0, 16)}
-                required
+                type="text"
+                value={reminderMessage}
+                onChange={(e) => setReminderMessage(e.target.value)}
+                placeholder="e.g. Ask client to bring payment receipt"
                 className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               />
             </div>
@@ -308,6 +383,9 @@ function RemindersCard({
                 <li key={reminder.id} className="py-3 flex items-start justify-between gap-4">
                   <div>
                     <p className="text-sm font-medium text-slate-900">{remindAtStr}</p>
+                    {reminder.message && (
+                      <p className="mt-0.5 text-xs text-slate-600 italic">"{reminder.message}"</p>
+                    )}
                     {reminder.scheduledEvent && (
                       <p className="mt-0.5 text-xs text-slate-400">
                         {'For hearing: ' + new Date(reminder.scheduledEvent.scheduledAt).toLocaleDateString('en-IN', {
@@ -325,9 +403,10 @@ function RemindersCard({
                         onClick={() => {
                           if (confirm('Delete this reminder?')) onDeleteReminder(reminder.id);
                         }}
-                        className="text-xs text-red-400 hover:text-red-600"
+                        className="text-red-400 hover:text-red-600"
+                        title="Delete reminder"
                       >
-                        Delete
+                        <Trash2 size={14} />
                       </button>
                     )}
                   </div>
@@ -365,6 +444,9 @@ export function CaseDetailPage() {
   const { mutate: deleteEvent } = useDeleteScheduledEvent(id!);
   const [showAddHearing, setShowAddHearing] = useState(false);
   const [hearingDate, setHearingDate] = useState('');
+  const [hearingCourtLink, setHearingCourtLink] = useState('');
+  const [hearingJudgeNotes, setHearingJudgeNotes] = useState('');
+  const [hearingLawyerNotes, setHearingLawyerNotes] = useState('');
 
   // Notes
   const { data: notes } = useNotes(id!);
@@ -392,6 +474,7 @@ export function CaseDetailPage() {
   const { mutate: logPayment, isPending: isLoggingPayment } = useLogPayment(id!);
   const [showAddFee, setShowAddFee] = useState(false);
   const [feeType, setFeeType] = useState<FeeType>('one_time');
+  const [feeBillingCycle, setFeeBillingCycle] = useState<string>('monthly');
   const [feeTotalAmount, setFeeTotalAmount] = useState('');
   const [payingFeeId, setPayingFeeId] = useState<string | null>(null);
   const [paymentAmount, setPaymentAmount] = useState('');
@@ -405,6 +488,7 @@ export function CaseDetailPage() {
   const { mutate: downloadDocument, isPending: isDownloading } = useDocumentDownloadUrl(id!);
   const { mutate: deleteDocument } = useDeleteDocument(id!);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [docDescription, setDocDescription] = useState('');
   const [dragOver, setDragOver] = useState(false);
 
   // Notifications & reminders
@@ -423,8 +507,6 @@ export function CaseDetailPage() {
 
   // Reminder form state
   const [showReminderForm, setShowReminderForm] = useState(false);
-  const [reminderEventId, setReminderEventId] = useState('');
-  const [reminderAt, setReminderAt] = useState('');
   const [activeTab, setActiveTab] = useState<'overview' | 'hearings' | 'documents' | 'fees' | 'notes' | 'admin'>('overview');
 
   if (isLoading) {
@@ -466,9 +548,7 @@ export function CaseDetailPage() {
             to="/cases"
             className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600 mb-3 transition-colors"
           >
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
+            <ChevronLeft size={14} />
             Back to Cases
           </Link>
           <div className="flex items-center gap-3">
@@ -661,7 +741,7 @@ export function CaseDetailPage() {
                 onClick={() => setShowAddHearing((v) => !v)}
                 className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
               >
-                {showAddHearing ? 'Cancel' : `+ Add ${vocab.scheduled_event_label}`}
+                {showAddHearing ? <><X size={14} className="inline mr-1" />Cancel</> : <><Plus size={14} className="inline mr-1" />Add {vocab.scheduled_event_label}</>}
               </button>
             )}
           </div>
@@ -670,21 +750,33 @@ export function CaseDetailPage() {
 
           {showAddHearing && (
             <form
-              className="mb-4 flex gap-3 items-end rounded-lg bg-slate-50 border border-slate-200 p-4"
+              className="mb-4 rounded-lg bg-slate-50 border border-slate-200 p-4 space-y-3"
               onSubmit={(e: React.FormEvent) => {
                 e.preventDefault();
                 if (!hearingDate) return;
-                // Convert datetime-local (local time) to UTC ISO string
                 const utcDate = new Date(hearingDate).toISOString();
                 createEvent(
-                  { scheduledAt: utcDate },
-                  { onSuccess: () => { setShowAddHearing(false); setHearingDate(''); } },
+                  {
+                    scheduledAt: utcDate,
+                    courtLink: hearingCourtLink || undefined,
+                    judgeNotes: hearingJudgeNotes || undefined,
+                    lawyerNotes: hearingLawyerNotes || undefined,
+                  },
+                  {
+                    onSuccess: () => {
+                      setShowAddHearing(false);
+                      setHearingDate('');
+                      setHearingCourtLink('');
+                      setHearingJudgeNotes('');
+                      setHearingLawyerNotes('');
+                    },
+                  },
                 );
               }}
             >
-              <div className="flex-1">
+              <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">
-                  Date &amp; Time
+                  Date &amp; Time <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="datetime-local"
@@ -694,13 +786,49 @@ export function CaseDetailPage() {
                   className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 />
               </div>
-              <button
-                type="submit"
-                disabled={isCreatingEvent}
-                className="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
-              >
-                {isCreatingEvent ? 'Saving…' : 'Save'}
-              </button>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                  Court Link <span className="text-slate-400 font-normal">(optional URL)</span>
+                </label>
+                <input
+                  type="text"
+                  value={hearingCourtLink}
+                  onChange={(e) => setHearingCourtLink(e.target.value)}
+                  placeholder="https://…"
+                  className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1.5">Judge Notes</label>
+                  <textarea
+                    value={hearingJudgeNotes}
+                    onChange={(e) => setHearingJudgeNotes(e.target.value)}
+                    rows={2}
+                    placeholder="Notes from the judge…"
+                    className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1.5">Lawyer Notes</label>
+                  <textarea
+                    value={hearingLawyerNotes}
+                    onChange={(e) => setHearingLawyerNotes(e.target.value)}
+                    rows={2}
+                    placeholder="Internal notes…"
+                    className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={isCreatingEvent}
+                  className="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {isCreatingEvent ? 'Saving…' : 'Save'}
+                </button>
+              </div>
             </form>
           )}
 
@@ -717,7 +845,7 @@ export function CaseDetailPage() {
                 );
                 return (
                 <li key={event.id} className="py-3 flex items-start justify-between gap-4">
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-slate-900 flex items-center gap-2">
                       {new Date(event.scheduledAt).toLocaleString('en-IN', {
                         day: '2-digit',
@@ -732,8 +860,25 @@ export function CaseDetailPage() {
                         </span>
                       )}
                     </p>
+                    {event.courtLink && (
+                      <a
+                        href={event.courtLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-0.5 inline-flex items-center gap-1 text-xs text-indigo-600 hover:underline"
+                      >
+                        <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                        Court link
+                      </a>
+                    )}
+                    {event.judgeNotes && (
+                      <p className="mt-1 text-xs text-slate-500"><span className="font-medium text-slate-600">Judge: </span>{event.judgeNotes}</p>
+                    )}
+                    {event.lawyerNotes && (
+                      <p className="mt-0.5 text-xs text-slate-500"><span className="font-medium text-slate-600">Notes: </span>{event.lawyerNotes}</p>
+                    )}
                     {event.outcomeNotes && (
-                      <p className="mt-0.5 text-sm text-slate-500">{event.outcomeNotes}</p>
+                      <p className="mt-0.5 text-xs text-slate-500"><span className="font-medium text-slate-600">Outcome: </span>{event.outcomeNotes}</p>
                     )}
                     <p className="mt-0.5 text-xs text-slate-400">Added by {event.creator?.name}</p>
                   </div>
@@ -742,9 +887,10 @@ export function CaseDetailPage() {
                       onClick={() => {
                         if (confirm('Delete this hearing?')) deleteEvent(event.id);
                       }}
-                      className="text-xs text-red-400 hover:text-red-600 shrink-0"
+                      className="text-red-400 hover:text-red-600 shrink-0"
+                      title="Delete hearing"
                     >
-                      Delete
+                      <Trash2 size={14} />
                     </button>
                   )}
                 </li>
@@ -838,6 +984,9 @@ export function CaseDetailPage() {
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-slate-900 truncate">{doc.fileName}</p>
+                      {doc.description && (
+                        <p className="mt-0.5 text-xs text-slate-600">{doc.description}</p>
+                      )}
                       <p className="mt-0.5 text-xs text-slate-400">{(doc.fileSizeBytes / 1024).toFixed(1)} KB</p>
                     </div>
                   </div>
@@ -845,18 +994,20 @@ export function CaseDetailPage() {
                     <button
                       onClick={() => downloadDocument(doc.id)}
                       disabled={isDownloading}
-                      className="text-xs text-indigo-600 hover:text-indigo-700 font-medium disabled:opacity-50"
+                      className="text-indigo-600 hover:text-indigo-700 disabled:opacity-50"
+                      title="Download"
                     >
-                      Download
+                      <Download size={14} />
                     </button>
                     {isAdmin && (
                       <button
                         onClick={() => {
                           if (confirm(`Delete "${doc.fileName}"?`)) deleteDocument(doc.id);
                         }}
-                        className="text-xs text-red-400 hover:text-red-600"
+                        className="text-red-400 hover:text-red-600"
+                        title="Delete document"
                       >
-                        Delete
+                        <Trash2 size={14} />
                       </button>
                     )}
                   </div>
@@ -877,7 +1028,7 @@ export function CaseDetailPage() {
               onClick={() => setShowAddNote((v) => !v)}
               className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
             >
-              {showAddNote ? 'Cancel' : '+ Add Note'}
+              {showAddNote ? <><X size={14} className="inline mr-1" />Cancel</> : <><Plus size={14} className="inline mr-1" />Add Note</>}
             </button>
           </div>
 
@@ -960,9 +1111,10 @@ export function CaseDetailPage() {
                       {(note.createdBy === user?.id || isAdmin) && (
                         <button
                           onClick={() => setDeleteNoteId(note.id)}
-                          className="text-xs text-red-400 hover:text-red-600"
+                          className="text-red-400 hover:text-red-600"
+                          title="Delete note"
                         >
-                          Delete
+                          <Trash2 size={14} />
                         </button>
                       )}
                     </div>
@@ -1062,9 +1214,10 @@ export function CaseDetailPage() {
                     {dr.status === 'pending' && !isClosed && (
                       <button
                         onClick={() => markReceived(dr.id)}
-                        className="text-xs text-slate-400 hover:text-slate-600"
+                        className="text-xs text-slate-400 hover:text-emerald-600 flex items-center gap-1"
+                        title="Mark received"
                       >
-                        Mark received
+                        <CheckCheck size={13} />Mark received
                       </button>
                     )}
                   </div>
@@ -1086,7 +1239,7 @@ export function CaseDetailPage() {
                 onClick={() => setShowAddFee((v) => !v)}
                 className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
               >
-                {showAddFee ? 'Cancel' : '+ Add Fee'}
+                {showAddFee ? <><X size={14} className="inline mr-1" />Cancel</> : <><Plus size={14} className="inline mr-1" />Add Fee</>}
               </button>
             )}
           </div>
@@ -1100,11 +1253,12 @@ export function CaseDetailPage() {
                 const amount = parseFloat(feeTotalAmount);
                 if (!amount || amount <= 0) return;
                 createFee(
-                  { type: feeType, totalAmount: amount },
+                  { type: feeType, totalAmount: amount, billingCycle: feeType === 'periodic' ? feeBillingCycle as BillingCycle : undefined },
                   {
                     onSuccess: () => {
                       setFeeTotalAmount('');
                       setFeeType('one_time');
+                      setFeeBillingCycle('monthly');
                       setShowAddFee(false);
                     },
                   },
@@ -1124,6 +1278,22 @@ export function CaseDetailPage() {
                   <option value="per_consultation">Per consultation</option>
                 </select>
               </div>
+              {feeType === 'periodic' && (
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1.5">Billing Cycle</label>
+                  <select
+                    value={feeBillingCycle}
+                    onChange={(e) => setFeeBillingCycle(e.target.value)}
+                    className="block rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  >
+                    <option value="weekly">Weekly</option>
+                    <option value="biweekly">Bi-weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="quarterly">Quarterly</option>
+                    <option value="yearly">Yearly</option>
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1.5">Total Amount (₹)</label>
                 <input
@@ -1159,6 +1329,9 @@ export function CaseDetailPage() {
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-slate-900 capitalize">
                         {fee.type.replace(/_/g, ' ')}
+                        {fee.billingCycle && (
+                          <span className="ml-2 text-xs font-normal text-slate-500 capitalize">({fee.billingCycle})</span>
+                        )}
                       </p>
                       <div className="mt-1.5 flex gap-4 text-xs text-slate-500">
                         <span>Total: ₹{fee.totalAmount.toLocaleString('en-IN')}</span>
@@ -1244,9 +1417,9 @@ export function CaseDetailPage() {
                     {isAdmin && fee.dueAmount > 0 && !isClosed && payingFeeId !== fee.id && (
                       <button
                     onClick={() => { setPayingFeeId(fee.id); setPaymentAmount(''); setPaymentNote(''); setPaymentDate(new Date().toISOString().slice(0, 10)); }}
-                        className="shrink-0 text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+                        className="shrink-0 text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
                       >
-                        Log payment
+                        <CreditCard size={13} />Log payment
                       </button>
                     )}
                   </div>
@@ -1331,17 +1504,9 @@ export function CaseDetailPage() {
           reminders={reminders}
           showReminderForm={showReminderForm}
           setShowReminderForm={setShowReminderForm}
-          reminderEventId={reminderEventId}
-          setReminderEventId={setReminderEventId}
-          reminderAt={reminderAt}
-          setReminderAt={setReminderAt}
           isCreatingReminder={isCreatingReminder}
           onCreateReminder={(payload) => createReminder(payload, {
-            onSuccess: () => {
-              setShowReminderForm(false);
-              setReminderEventId('');
-              setReminderAt('');
-            },
+            onSuccess: () => setShowReminderForm(false),
           })}
           onDeleteReminder={(remId) => deleteReminder(remId)}
         />}

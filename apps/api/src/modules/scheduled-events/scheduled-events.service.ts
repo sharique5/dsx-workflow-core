@@ -50,6 +50,9 @@ export class ScheduledEventsService {
         matterId,
         scheduledAt: new Date(dto.scheduledAt),
         outcomeNotes: dto.outcomeNotes,
+        courtLink: dto.courtLink,
+        judgeNotes: dto.judgeNotes,
+        lawyerNotes: dto.lawyerNotes,
         createdBy: user.id,
       },
       include: { creator: { select: { id: true, name: true } } },
@@ -78,6 +81,9 @@ export class ScheduledEventsService {
         ...(dto.outcomeNotes !== undefined && {
           outcomeNotes: dto.outcomeNotes,
         }),
+        ...(dto.courtLink !== undefined && { courtLink: dto.courtLink }),
+        ...(dto.judgeNotes !== undefined && { judgeNotes: dto.judgeNotes }),
+        ...(dto.lawyerNotes !== undefined && { lawyerNotes: dto.lawyerNotes }),
       },
       include: { creator: { select: { id: true, name: true } } },
     });

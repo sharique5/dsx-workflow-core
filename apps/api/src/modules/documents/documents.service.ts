@@ -30,6 +30,7 @@ const DOC_SELECT = {
   storageKey: true,
   fileSizeBytes: true,
   mimeType: true,
+  description: true,
   uploadedBy: true,
   createdAt: true,
 } as const;
@@ -73,6 +74,7 @@ export class DocumentsService {
     matterId: string,
     file: Express.Multer.File,
     user: AuthenticatedUser,
+    description?: string,
   ) {
     if (user.role === 'client') {
       throw new ForbiddenException('Clients cannot upload documents');
@@ -106,6 +108,7 @@ export class DocumentsService {
         storageKey,
         fileSizeBytes: file.size,
         mimeType: file.mimetype,
+        description: description ?? null,
         uploadedBy: user.id,
       },
       select: DOC_SELECT,

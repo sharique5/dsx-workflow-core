@@ -1,0 +1,59 @@
+Nair And Assosciates
+
+URL: https://teams.nairandassociates.in
+
+General observations:
+1. Its better to add icons whereever possible such as for delete, download, mark received etc
+2. Better to update mouse from pointer to hand for all interactions in the app
+3. Add loader or spinner wherever we are dealing with api so that user knows about the in process flows
+4. There should be a back button or breadcrumbs enabling user navigation freely
+
+/dashboard
+
+1. Why do we need "Clients" button in this dashboard screen?
+2. Food for thought: show we move 3 buttons (View all cases, Clients, Team) at top? Also, we are showing same thing in left panel then do we need these buttons on screen?
+3. Second tile in dashboard says "Active" with sub-header "Not closed", do we have other sub-headers because Active and not closed serves same purpose in my view
+4. How about adding filters to upcoming hearings section - next 7, 15, 30 days or custom date widget?
+
+
+/cases
+
+1. UI (especially dropdown) looks basic like a college project, it lacks professional look
+2. I think its better to add a search option into "All states" dropdown
+3. Lets also add sorting and searching into table columns
+
+/cases/{caseid}
+
+1. Hearing tab: Is it possible to add more metadata to hearing? Could be a free text or court link or judge notes or lawyer notes.
+2. Hearing tab: User selected hearing date as 05/05/2026 7:45 but it got saved as 05 May 2026, 01:14 pm.
+Similarly, when I selected 30/05/2026 19:44, it got saved as 31/05/2026 1:14 am
+3. I think its better to add scrollbar to the hearing list otherwise it will keep getting increase as case proceeds
+4. Hearings tab: Its better to add a label for upcoming hearing and there can be a max of 1 upcoming hearing in a given case
+5. Hearing Reminder section: I think this should be a custom reminder for upcoming hearing. Possible use case: remind me about particular section 3 days before next hearing OR remind me to ask client to bring relevant files 1 week before OR remind client to pay before hearing... etc etc
+6. Hearing Reminder section: Right now, it allows setting up reminder for past date which is an invalid usecase
+7. Documents tab: We need better UX for file upload, it could be adding drag functionality and showing progress bars
+8. Documents tab: Food for thought, is it possible to add a custom notes field for user to attach notes with document?
+9. Document Requests: CSS not correct to show requests list
+10. Fees tab: Unable to add fee for "one-time", "Per hearing" and "Per consultation" because payload uses hyphen whereas API expects underscore (type must be one of the following values: one_time, periodic, per_hearing, per_consultation")
+11. Fee: Are we aligning the fee type with the flow i.e. if its periodic then is it weekly, bi-weekly, monthly, quarterly, yearly or custom? Did we integrate reminders etc for each fee type?
+12. Fee: In log payment flow, it better to show date and time selection with current date prefilled in case user wants to record previous payment
+13. Fee: Its better to have user friendly notification message instead of showing "Failed to log payment" everytime
+14. Notes: Deleting notes should open a in-app modal for confirmation instead of browser's alert dialog.
+15. Notes: What's the usecase to unpublish the note? How often a user can revert the published note? I think its better to remove/hide unpublish flow for simplicity.
+16. "Close Case" button is confusing because it might give impression of going back to all cases.
+
+/cases/new
+
+1. "Internal Ref" should be auto filled or something relevant because asking user to add this and then using it as primary doesn't make sense
+2. "Case type + number + year" under "Court Case No.", we don't know the correctness of this field. Its better to align it properly with actual records.
+3. Food for thought, should we also add an option for FIR??? I mean we can refer to this value with the help of court case number anyway
+4. "Court Case No." field should be required
+5. Creating a new case for same email says "A client with this email already exists" but it is possible to have multiple cases on same client
+6. Should we add an option to verify phone number or email?? Not sure, we can defer it for next phase as well
+7. Adding email is mandatory according to API but not shown to user in frontend.
+
+URL: https://portal.nairandassociates.in
+
+General Observation
+
+1. I think its better to add an option to send a message to lawyer which lawyer can respond and same can be updated in the portal.

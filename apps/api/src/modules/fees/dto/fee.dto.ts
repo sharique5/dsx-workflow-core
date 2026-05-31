@@ -7,11 +7,15 @@ import {
   IsISO8601,
   Min,
 } from 'class-validator';
-import { FeeType } from '@prisma/client';
+import { FeeType, BillingCycle } from '@prisma/client';
 
 export class CreateFeeDto {
   @IsEnum(FeeType)
   type!: FeeType;
+
+  @IsEnum(BillingCycle)
+  @IsOptional()
+  billingCycle?: BillingCycle;
 
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)

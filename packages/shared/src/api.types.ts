@@ -124,6 +124,9 @@ export interface ScheduledEventDto {
   matterId: string;
   scheduledAt: string;
   outcomeNotes: string | null;
+  courtLink: string | null;
+  judgeNotes: string | null;
+  lawyerNotes: string | null;
   createdBy: string;
   creator?: { id: string; name: string };
   createdAt: string;
@@ -132,11 +135,17 @@ export interface ScheduledEventDto {
 export interface CreateScheduledEventDto {
   scheduledAt: string;
   outcomeNotes?: string;
+  courtLink?: string;
+  judgeNotes?: string;
+  lawyerNotes?: string;
 }
 
 export interface UpdateScheduledEventDto {
   scheduledAt?: string;
   outcomeNotes?: string;
+  courtLink?: string;
+  judgeNotes?: string;
+  lawyerNotes?: string;
 }
 
 // ─── Dashboard Stats ──────────────────────────────────────────────────────────
@@ -197,6 +206,7 @@ export interface DocumentDto {
   fileName: string;
   fileSizeBytes: number;
   mimeType: string;
+  description: string | null;
   uploadedBy: string;
   createdAt: string;
   downloadUrl?: string; // signed URL — ephemeral
@@ -229,9 +239,11 @@ export interface UpdateDocumentRequestDto {
 // ─── Fee ─────────────────────────────────────────────────────────────────────
 
 export type FeeType = 'one_time' | 'periodic' | 'per_hearing' | 'per_consultation';
+export type BillingCycle = 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly';
 
 export interface CreateFeeDto {
   type: FeeType;
+  billingCycle?: BillingCycle;
   totalAmount: number;
 }
 
@@ -252,6 +264,7 @@ export interface FeeDto {
   tenantId: string;
   matterId: string;
   type: FeeType;
+  billingCycle: BillingCycle | null;
   totalAmount: number;
   paidAmount: number;
   dueAmount: number;
@@ -326,6 +339,7 @@ export interface ReminderDto {
   scheduledEventId: string;
   scheduledEvent?: { id: string; scheduledAt: string };
   remindAt: string;
+  message: string | null;
   isSent: boolean;
   createdAt: string;
 }
@@ -333,6 +347,7 @@ export interface ReminderDto {
 export interface CreateReminderDto {
   scheduledEventId: string;
   remindAt: string;
+  message?: string;
 }
 
 // ─── Pagination ──────────────────────────────────────────────────────────────

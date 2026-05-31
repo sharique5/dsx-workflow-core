@@ -42,4 +42,9 @@ export class CreateReminderDto {
   @IsString()
   @IsNotEmpty()
   remindAt!: string;
+
+  /** Optional user-written message/label for this reminder */
+  @IsString()
+  @IsOptional()
+  message?: string;
 }

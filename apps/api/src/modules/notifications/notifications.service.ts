@@ -160,6 +160,7 @@ export class NotificationsService {
         matterId,
         scheduledEventId: dto.scheduledEventId,
         remindAt: new Date(dto.remindAt),
+        message: dto.message,
       },
     });
   }
