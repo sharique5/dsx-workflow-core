@@ -35,6 +35,7 @@ type CreateClientForm = z.infer<typeof createClientSchema>;
 
 interface CourtDetails {
   cnr: string;
+  caseType: string;
   state: string;
   district: string;
   courtComplex: string;
@@ -42,7 +43,7 @@ interface CourtDetails {
   stage: string;
 }
 
-const EMPTY_COURT: CourtDetails = { cnr: '', state: '', district: '', courtComplex: '', judge: '', stage: '' };
+const EMPTY_COURT: CourtDetails = { cnr: '', caseType: '', state: '', district: '', courtComplex: '', judge: '', stage: '' };
 
 const INPUT_CLS =
   'block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20';
@@ -327,8 +328,24 @@ export function CreateCasePage() {
                 loading={complexesLoading}
               />
             </div>
-            {/* CNR + Judge */}
+            {/* Case Type + CNR */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={LABEL_CLS}>Case Type</label>
+                <select
+                  value={courtDetails.caseType}
+                  onChange={(e) => setCourtDetails((p) => ({ ...p, caseType: e.target.value }))}
+                  className={INPUT_CLS}
+                >
+                  <option value="">Select case type</option>
+                  <option value="Civil">Civil</option>
+                  <option value="Criminal">Criminal</option>
+                  <option value="FIR">FIR</option>
+                  <option value="Writ">Writ</option>
+                  <option value="Execution">Execution</option>
+                  <option value="Misc">Misc</option>
+                </select>
+              </div>
               <div>
                 <label className={LABEL_CLS}>CNR Number</label>
                 <input
@@ -339,6 +356,9 @@ export function CreateCasePage() {
                   className={INPUT_CLS}
                 />
               </div>
+            </div>
+            {/* Judge + Stage */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className={LABEL_CLS}>Judge</label>
                 <input
@@ -349,16 +369,16 @@ export function CreateCasePage() {
                   className={INPUT_CLS}
                 />
               </div>
-            </div>
-            <div>
-              <label className={LABEL_CLS}>Stage</label>
-              <input
-                type="text"
-                value={courtDetails.stage}
-                onChange={(e) => setCourtDetails((p) => ({ ...p, stage: e.target.value }))}
-                placeholder="e.g. Arguments, Final Hearing, Evidence"
-                className={INPUT_CLS}
-              />
+              <div>
+                <label className={LABEL_CLS}>Stage</label>
+                <input
+                  type="text"
+                  value={courtDetails.stage}
+                  onChange={(e) => setCourtDetails((p) => ({ ...p, stage: e.target.value }))}
+                  placeholder="e.g. Arguments, Final Hearing, Evidence"
+                  className={INPUT_CLS}
+                />
+              </div>
             </div>
           </div>
 

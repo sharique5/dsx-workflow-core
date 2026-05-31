@@ -7,6 +7,7 @@ export const DEFAULT_LEGAL_VOCABULARY: IndustryConfig = {
   participant_label: 'Client',
   metadata_fields: {
     cnr: 'CNR Number',
+    caseType: 'Case Type',
     state: 'State',
     district: 'District',
     courtComplex: 'Court Complex',

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Briefcase, Users, UserPlus } from 'lucide-react';
 import { useAuthStore } from '../../../store/auth.store';
 import { useVocabulary } from '../../../shared/hooks/useVocabulary';
 import { useDashboardStats } from '../../cases/hooks/useMatters';
@@ -83,8 +84,7 @@ export function DashboardPage() {
             <Link to="/cases" className="block hover:opacity-90 transition-opacity">
               <StatTile
                 value={stats?.openMatters ?? 0}
-                label="Active"
-                sublabel="Not closed"
+                label="Active cases"
                 accent="border-indigo-100"
               />
             </Link>
@@ -179,19 +179,30 @@ export function DashboardPage() {
       </div>
 
       {/* Quick links */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 gap-3">
+      <div className="flex flex-wrap gap-3">
         <Link
           to="/cases"
-          className="rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium text-slate-700 hover:border-indigo-200 hover:text-indigo-600 transition-all shadow-sm"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:border-indigo-200 hover:text-indigo-600 transition-all shadow-sm"
         >
-          View all {vocab.matter_plural.toLowerCase()} →
+          <Briefcase size={15} />
+          All {vocab.matter_plural.toLowerCase()}
         </Link>
         {user?.role === 'admin' && (
           <Link
-            to="/staff"
-            className="rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium text-slate-700 hover:border-indigo-200 hover:text-indigo-600 transition-all shadow-sm"
+            to="/clients"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:border-indigo-200 hover:text-indigo-600 transition-all shadow-sm"
           >
-            Team →
+            <Users size={15} />
+            Clients
+          </Link>
+        )}
+        {user?.role === 'admin' && (
+          <Link
+            to="/staff"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:border-indigo-200 hover:text-indigo-600 transition-all shadow-sm"
+          >
+            <UserPlus size={15} />
+            Team
           </Link>
         )}
       </div>
