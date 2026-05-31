@@ -577,6 +577,21 @@ export function CaseDetailPage() {
   const [messageInput, setMessageInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Messages
+  const { data: messages = [] } = useMessages(id!);
+  const { mutate: sendMessage, isPending: isMessageSending } = useSendMessage(id!);
+  const { mutate: markRead } = useMarkMessagesRead(id!);
+  const { data: unreadData } = useMessagesUnreadCount(id!);
+  const unreadCount = unreadData?.unread ?? 0;
+
+  // Scroll to bottom and mark read when messages tab is opened
+  useEffect(() => {
+    if (activeTab === 'messages') {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      markRead();
+    }
+  }, [activeTab, messages.length, markRead]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-24 text-slate-400 text-sm gap-2">
@@ -597,20 +612,6 @@ export function CaseDetailPage() {
   }
 
   const isClosed = matter.statusKey === 'closed';
-
-  const { data: messages = [] } = useMessages(id!);
-  const { mutate: sendMessage, isPending: isMessageSending } = useSendMessage(id!);
-  const { mutate: markRead } = useMarkMessagesRead(id!);
-  const { data: unreadData } = useMessagesUnreadCount(id!);
-  const unreadCount = unreadData?.unread ?? 0;
-
-  // Scroll to bottom when messages load or when tab opens
-  useEffect(() => {
-    if (activeTab === 'messages') {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      markRead();
-    }
-  }, [activeTab, messages.length]);
 
   const tabs: Array<{ key: 'overview' | 'hearings' | 'documents' | 'fees' | 'notes' | 'messages' | 'admin'; label: string; badge?: number }> = [
     { key: 'overview', label: 'Overview' },
