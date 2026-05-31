@@ -599,7 +599,7 @@ export function CaseDetailPage() {
   const isClosed = matter.statusKey === 'closed';
 
   const { data: messages = [] } = useMessages(id!);
-  const { mutate: sendMessage, isPending: isSending } = useSendMessage(id!);
+  const { mutate: sendMessage, isPending: isMessageSending } = useSendMessage(id!);
   const { mutate: markRead } = useMarkMessagesRead(id!);
   const { data: unreadData } = useMessagesUnreadCount(id!);
   const unreadCount = unreadData?.unread ?? 0;
@@ -1243,7 +1243,7 @@ export function CaseDetailPage() {
                 />
                 <button
                   type="submit"
-                  disabled={isSending || !messageInput.trim()}
+                  disabled={isMessageSending || !messageInput.trim()}
                   className="rounded-lg bg-indigo-600 p-2.5 text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
                 >
                   <Send size={16} />
