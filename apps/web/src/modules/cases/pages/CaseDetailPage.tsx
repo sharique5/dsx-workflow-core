@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Trash2, Download, Pencil, Plus, CheckCircle, ChevronLeft, Send, Upload, CheckCheck, CreditCard, X, Link2, Bell, FileText, MoreHorizontal } from 'lucide-react';
+import { Trash2, Download, Plus, ChevronLeft, CheckCheck, CreditCard, X, Bell } from 'lucide-react';
 import { useMatter, useCloseMatter, useDeleteMatter } from '../hooks/useMatters';
 import { useScheduledEvents, useCreateScheduledEvent, useDeleteScheduledEvent } from '../hooks/useScheduledEvents';
-import { useNotes, useCreateNote, useUpdateNote, useDeleteNote } from '../hooks/useNotes';
+import { useNotes, useCreateNote, useDeleteNote } from '../hooks/useNotes';
 import { useAuditLogs } from '../hooks/useAuditLogs';
 import { useDocumentRequests, useCreateDocumentRequest, useMarkDocumentRequestReceived } from '../hooks/useDocumentRequests';
 import { useFees, useCreateFee, useLogPayment } from '../hooks/useFees';
@@ -236,7 +236,6 @@ function RemindersCard({
 
   // Reminder form: pick hearing + days/hours before + message
   const [reminderEventId, setReminderEventId] = useState('');
-  const [reminderDaysBefore, setReminderDaysBefore] = useState('1');
   const [reminderMessage, setReminderMessage] = useState('');
 
   const presets = [
@@ -465,7 +464,6 @@ export function CaseDetailPage() {
   // Notes
   const { data: notes } = useNotes(id!);
   const { mutate: createNote, isPending: isCreatingNote } = useCreateNote(id!);
-  const { mutate: updateNote } = useUpdateNote(id!);
   const { mutate: deleteNote } = useDeleteNote(id!);
   const [newNoteContent, setNewNoteContent] = useState('');
   const [newNotePublished, setNewNotePublished] = useState(false);
@@ -502,7 +500,6 @@ export function CaseDetailPage() {
   const { mutate: downloadDocument, isPending: isDownloading } = useDocumentDownloadUrl(id!);
   const { mutate: deleteDocument } = useDeleteDocument(id!);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [docDescription, setDocDescription] = useState('');
   const [dragOver, setDragOver] = useState(false);
 
   // Notifications & reminders
@@ -942,7 +939,7 @@ export function CaseDetailPage() {
                 const file = e.dataTransfer.files?.[0];
                 if (!file) return;
                 setUploadError(null);
-                uploadDocument(file, { onError: (err: unknown) => { setUploadError(err instanceof Error ? err.message : 'Upload failed'); } });
+                uploadDocument({ file }, { onError: (err: unknown) => { setUploadError(err instanceof Error ? err.message : 'Upload failed'); } });
               }}
             >
               <input
@@ -954,7 +951,7 @@ export function CaseDetailPage() {
                   const file = e.target.files?.[0];
                   if (!file) return;
                   setUploadError(null);
-                  uploadDocument(file, { onError: (err: unknown) => { setUploadError(err instanceof Error ? err.message : 'Upload failed'); } });
+                  uploadDocument({ file }, { onError: (err: unknown) => { setUploadError(err instanceof Error ? err.message : 'Upload failed'); } });
                   e.target.value = '';
                 }}
               />
