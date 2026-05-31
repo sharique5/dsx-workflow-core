@@ -7,6 +7,7 @@ import { DocumentRequestStatus } from '@prisma/client';
 import { PrismaService } from '../../shared/database/prisma.service';
 import type { AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
 import { CreateDocumentRequestDto } from './dto/document-request.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const DR_SELECT = {
   id: true,
@@ -22,7 +23,10 @@ const DR_SELECT = {
 
 @Injectable()
 export class DocumentRequestsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notifications: NotificationsService,
+  ) {}
 
   private async assertMatterAccess(matterId: string, user: AuthenticatedUser) {
     const matter = await this.prisma.matter.findFirst({
@@ -58,7 +62,7 @@ export class DocumentRequestsService {
 
     await this.assertMatterAccess(matterId, user);
 
-    return this.prisma.documentRequest.create({
+    const dr = await this.prisma.documentRequest.create({
       data: {
         tenantId: user.tenantId,
         matterId,
@@ -68,16 +72,18 @@ export class DocumentRequestsService {
       },
       select: DR_SELECT,
     });
+
+    void this.notifications.notifyParticipant(
+      matterId,
+      user.tenantId,
+      `Your lawyer has requested a document: "${dto.description}".${dto.dueDate ? ` Please submit it by ${new Date(dto.dueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}.` : ''}`,
+    );
+
+    return dr;
   }
 
-  /** Mark a document request as received — admin/staff only */
+  /** Mark a document request as received — staff or the matter's client */
   async markReceived(matterId: string, id: string, user: AuthenticatedUser) {
-    if (user.role === 'client') {
-      throw new ForbiddenException(
-        'Clients cannot update document request status',
-      );
-    }
-
     await this.assertMatterAccess(matterId, user);
 
     const dr = await this.prisma.documentRequest.findFirst({

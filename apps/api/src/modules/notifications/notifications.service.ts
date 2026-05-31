@@ -268,4 +268,48 @@ export class NotificationsService {
       .replace(/\{\{matter_title\}\}/g, ctx.matter.title)
       .replace(/\{\{matter_ref\}\}/g, ctx.matter.internalRef);
   }
+
+  /**
+   * Fire-and-forget notification to a matter's participant (client).
+   * Sends via email and/or WhatsApp depending on what contact info is available.
+   * Logs each send. Silently swallows errors to avoid breaking the caller.
+   */
+  async notifyParticipant(
+    matterId: string,
+    tenantId: string,
+    message: string,
+  ): Promise<void> {
+    try {
+      const matter = await this.prisma.matter.findFirst({
+        where: { id: matterId, tenantId, deletedAt: null },
+        select: {
+          title: true,
+          participant: { select: { id: true, name: true, email: true, phone: true } },
+        },
+      });
+      const participant = matter?.participant;
+      if (!participant) return;
+
+      if (participant.email) {
+        await this.email.sendCaseNotification(
+          participant.email,
+          participant.name,
+          message,
+          matter!.title,
+        );
+        await this.prisma.notificationLog.create({
+          data: { tenantId, matterId, recipientId: participant.id, channel: 'email', customMessage: message, status: 'sent', sentAt: new Date() },
+        });
+      }
+
+      if (participant.phone) {
+        await this.whatsapp.sendMessage(participant.phone, message);
+        await this.prisma.notificationLog.create({
+          data: { tenantId, matterId, recipientId: participant.id, channel: 'whatsapp', customMessage: message, status: 'sent', sentAt: new Date() },
+        });
+      }
+    } catch (err) {
+      this.logger.error(`notifyParticipant failed for matter ${matterId}: ${String(err)}`);
+    }
+  }
 }
