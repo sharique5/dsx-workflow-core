@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useRef, useEffect, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   usePortalCase,
@@ -9,7 +9,12 @@ import {
   usePortalCaseDocuments,
   usePortalDocumentDownloadUrl,
   usePortalUploadDocument,
+  usePortalMessages,
+  usePortalSendMessage,
+  usePortalMarkMessagesRead,
+  usePortalMessagesUnreadCount,
 } from '../hooks/usePortalCases';
+import type { MessageDto } from '@dsx/shared';
 
 function formatStatusKey(key: string) {
   return key
@@ -44,9 +49,9 @@ function EmptyState({ message }: { message: string }) {
   );
 }
 
-type Tab = 'overview' | 'hearings' | 'notes' | 'documents' | 'fees';
+type Tab = 'overview' | 'hearings' | 'notes' | 'documents' | 'fees' | 'messages';
 
-interface TabDef { id: Tab; label: string; icon: ReactNode }
+interface TabDef { id: Tab; label: string; icon: ReactNode; badge?: number }
 
 const TABS: TabDef[] = [
   {
@@ -76,16 +81,23 @@ const TABS: TabDef[] = [
   },
 ];
 
+const MESSAGES_TAB: TabDef = {
+  id: 'messages',
+  label: 'Messages',
+  icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>,
+};
+
 interface SidebarNavProps {
   title: string;
   internalRef: string;
   statusKey: string;
   isClosed: boolean;
   activeTab: Tab;
+  tabs: TabDef[];
   onNavigate: (tab: Tab) => void;
 }
 
-function SidebarNav({ title, internalRef, statusKey, isClosed, activeTab, onNavigate }: SidebarNavProps) {
+function SidebarNav({ title, internalRef, statusKey, isClosed, activeTab, tabs, onNavigate }: SidebarNavProps) {
   return (
     <>
       <div className="px-5 py-5 border-b border-slate-100">
@@ -102,7 +114,7 @@ function SidebarNav({ title, internalRef, statusKey, isClosed, activeTab, onNavi
         </div>
       </div>
       <nav className="p-3 space-y-0.5">
-        {TABS.map((tab) => (
+        {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => onNavigate(tab.id)}
@@ -115,7 +127,12 @@ function SidebarNav({ title, internalRef, statusKey, isClosed, activeTab, onNavi
             <span className={`shrink-0 ${activeTab === tab.id ? 'text-indigo-200' : 'text-slate-400'}`}>
               {tab.icon}
             </span>
-            {tab.label}
+            <span className="flex-1">{tab.label}</span>
+            {tab.badge !== undefined && (
+              <span className="ml-auto inline-flex items-center justify-center rounded-full bg-white text-indigo-600 px-1.5 py-0.5 text-xs font-bold min-w-[1.25rem]">
+                {tab.badge}
+              </span>
+            )}
           </button>
         ))}
       </nav>
@@ -137,6 +154,26 @@ export function PortalCaseDetailPage() {
   const { data: documents = [] } = usePortalCaseDocuments(id!);
   const { mutate: downloadDocument } = usePortalDocumentDownloadUrl(id!);
   const { mutate: uploadDocument, isPending: isUploading } = usePortalUploadDocument(id!);
+
+  const { data: messages = [] } = usePortalMessages(id!);
+  const { mutate: sendMessage, isPending: isSending } = usePortalSendMessage(id!);
+  const { mutate: markRead } = usePortalMarkMessagesRead(id!);
+  const { data: unreadData } = usePortalMessagesUnreadCount(id!);
+  const unreadCount = unreadData?.unread ?? 0;
+  const [messageInput, setMessageInput] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (activeTab === 'messages') {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      markRead();
+    }
+  }, [activeTab, messages.length]);
+
+  const allTabs: TabDef[] = [
+    ...TABS,
+    { ...MESSAGES_TAB, badge: unreadCount > 0 ? unreadCount : undefined },
+  ];
 
   function handleDownload(docId: string) {
     setDownloadingIds((prev) => new Set(prev).add(docId));
@@ -254,6 +291,7 @@ export function PortalCaseDetailPage() {
             statusKey={matter.statusKey}
             isClosed={isClosed}
             activeTab={activeTab}
+            tabs={allTabs}
             onNavigate={goToTab}
           />
         </div>
@@ -269,6 +307,7 @@ export function PortalCaseDetailPage() {
             statusKey={matter.statusKey}
             isClosed={isClosed}
             activeTab={activeTab}
+            tabs={allTabs}
             onNavigate={(tab) => setActiveTab(tab)}
           />
         </aside>
@@ -559,6 +598,73 @@ export function PortalCaseDetailPage() {
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* MESSAGES */}
+          {activeTab === 'messages' && (
+            <div className="flex flex-col rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden" style={{ height: '65vh' }}>
+              <div className="px-5 py-4 border-b border-slate-100">
+                <h2 className="text-sm font-semibold text-slate-900">Messages</h2>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+                {messages.length === 0 ? (
+                  <p className="text-sm text-slate-400 text-center mt-10">No messages yet. Send a message to your lawyer below.</p>
+                ) : (
+                  messages.map((msg: MessageDto) => {
+                    const isOwn = msg.sender?.role === 'client';
+                    return (
+                      <div key={msg.id} className={`flex flex-col gap-0.5 ${isOwn ? 'items-end' : 'items-start'}`}>
+                        <p className="text-xs text-slate-400">
+                          {isOwn ? 'You' : (msg.sender?.name ?? 'Your Lawyer')} · {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                        <div className={`max-w-xs rounded-2xl px-4 py-2 text-sm ${isOwn ? 'bg-indigo-600 text-white rounded-br-sm' : 'bg-slate-100 text-slate-800 rounded-bl-sm'}`}>
+                          {msg.content}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              <div className="px-5 py-4 border-t border-slate-100">
+                <form
+                  className="flex items-end gap-3"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const trimmed = messageInput.trim();
+                    if (!trimmed) return;
+                    sendMessage({ content: trimmed }, { onSuccess: () => setMessageInput('') });
+                  }}
+                >
+                  <textarea
+                    value={messageInput}
+                    onChange={(e) => setMessageInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        const trimmed = messageInput.trim();
+                        if (!trimmed) return;
+                        sendMessage({ content: trimmed }, { onSuccess: () => setMessageInput('') });
+                      }
+                    }}
+                    placeholder="Type a message… (Enter to send)"
+                    rows={2}
+                    className="flex-1 resize-none rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isSending || !messageInput.trim()}
+                    className="rounded-xl bg-indigo-600 p-2.5 text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+                    </svg>
+                  </button>
+                </form>
+              </div>
             </div>
           )}
 

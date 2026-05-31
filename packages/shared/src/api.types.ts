@@ -371,3 +371,25 @@ export interface ApiError {
   message: string | string[];
   error?: string;
 }
+
+// ─── Message ──────────────────────────────────────────────────────────────────
+
+export interface MessageDto {
+  id: string;
+  tenantId: string;
+  matterId: string;
+  senderId: string;
+  sender?: { id: string; name: string; role: string };
+  content: string;
+  isReadByLawyer: boolean;
+  isReadByClient: boolean;
+  createdAt: string;
+}
+
+export interface CreateMessageDto {
+  content: string;
+}
+
+export interface MessagesUnreadCountDto {
+  unread: number;
+}

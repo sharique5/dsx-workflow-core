@@ -20,6 +20,7 @@ import { FeesModule } from './modules/fees/fees.module';
 import { DocumentsModule } from './modules/documents/documents.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { CourtsModule } from './modules/courts/courts.module';
+import { MessagesModule } from './modules/messages/messages.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { CourtsModule } from './modules/courts/courts.module';
     DocumentsModule,
     NotificationsModule,
     CourtsModule,
+    MessagesModule,
     // Phase 3+ modules will be added here:
     // DocumentsModule,
     // FeesModule (already added),
