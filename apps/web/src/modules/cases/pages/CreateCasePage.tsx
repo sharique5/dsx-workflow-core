@@ -269,7 +269,7 @@ export function CreateCasePage() {
               {errors.externalRef ? (
                 <p className="mt-1 text-xs text-red-500">{errors.externalRef.message}</p>
               ) : (
-                <p className="mt-1 text-xs text-slate-400">Case type + number + year</p>
+                <p className="mt-1 text-xs text-slate-400">e.g. CS 123/2025, WP 45/2024</p>
               )}
             </div>
           </div>

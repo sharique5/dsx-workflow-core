@@ -23,6 +23,20 @@ import {
 } from '../hooks/useNotifications';
 import type { ScheduledEventDto, NoteDto, AuditLogDto, FeeType, BillingCycle, NotificationLogDto } from '@dsx/shared';
 
+/**
+ * Convert a datetime-local string ("YYYY-MM-DDTHH:mm") or date string ("YYYY-MM-DD")
+ * to a UTC ISO string, treating the input as LOCAL time.
+ *
+ * Reason: new Date("YYYY-MM-DDTHH:mm") is parsed as UTC by V8/Chrome, not local time,
+ * causing a +5:30 shift for IST users. The multi-arg constructor always uses local time.
+ */
+function localInputToISO(value: string): string {
+  const [datePart, timePart = '00:00'] = value.split('T');
+  const [yr, mo, dy] = datePart.split('-').map(Number);
+  const [hr, mn] = timePart.split(':').map(Number);
+  return new Date(yr, mo - 1, dy, hr, mn).toISOString();
+}
+
 function StatusBadge({ statusKey, statuses }: { statusKey: string; statuses: { key: string; label: string; isTerminal: boolean }[] }) {
   const status = statuses.find((s) => s.key === statusKey);
   const label = status?.label ?? statusKey;
@@ -754,7 +768,7 @@ export function CaseDetailPage() {
               onSubmit={(e: React.FormEvent) => {
                 e.preventDefault();
                 if (!hearingDate) return;
-                const utcDate = new Date(hearingDate).toISOString();
+                const utcDate = localInputToISO(hearingDate);
                 createEvent(
                   {
                     scheduledAt: utcDate,
@@ -1142,6 +1156,7 @@ export function CaseDetailPage() {
             )}
           </div>
 
+          <div className="px-6 py-4">
           {showAddDR && (
             <div className="mb-4 rounded-lg bg-slate-50 border border-slate-200 p-4 space-y-3">
               <div>
@@ -1183,8 +1198,6 @@ export function CaseDetailPage() {
               </button>
             </div>
           )}
-
-          <div className="px-6 py-4">
           {documentRequests.length === 0 && !showAddDR && (
             <p className="text-sm text-slate-400 py-2">No document requests yet.</p>
           )}
@@ -1388,7 +1401,7 @@ export function CaseDetailPage() {
                             onClick={() => {
                               const amt = parseFloat(paymentAmount);
                               if (!amt || amt <= 0) return;
-                              const paidAt = paymentDate ? new Date(paymentDate).toISOString() : undefined;
+                              const paidAt = paymentDate ? localInputToISO(paymentDate) : undefined;
                               logPayment(
                                 { feeId: fee.id, data: { amount: amt, note: paymentNote || undefined, paidAt } },
                                 {
