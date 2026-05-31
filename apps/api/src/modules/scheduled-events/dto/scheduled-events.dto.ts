@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsDateString, IsUrl, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsDateString, MaxLength } from 'class-validator';
 
 export class CreateScheduledEventDto {
   @IsDateString()

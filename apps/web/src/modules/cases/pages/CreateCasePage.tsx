@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { usePageTitle } from '../../../shared/hooks/usePageTitle';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -73,7 +73,7 @@ export function CreateCasePage() {
     register,
     handleSubmit,
     setValue,
-    watch,
+    control,
     formState: { errors },
   } = useForm<CreateMatterForm>({
     resolver: zodResolver(createMatterSchema),
@@ -83,7 +83,7 @@ export function CreateCasePage() {
     },
   });
 
-  const selectedParticipantId = watch('participantId');
+  const selectedParticipantId = useWatch({ control, name: 'participantId' });
 
   const {
     register: registerClient,
