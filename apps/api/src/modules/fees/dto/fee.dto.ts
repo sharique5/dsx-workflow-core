@@ -4,13 +4,18 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsISO8601,
   Min,
 } from 'class-validator';
-import { FeeType } from '@prisma/client';
+import { FeeType, BillingCycle } from '@prisma/client';
 
 export class CreateFeeDto {
   @IsEnum(FeeType)
   type!: FeeType;
+
+  @IsEnum(BillingCycle)
+  @IsOptional()
+  billingCycle?: BillingCycle;
 
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
@@ -26,4 +31,8 @@ export class LogPaymentDto {
   @IsString()
   @IsNotEmpty()
   note?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  paidAt?: string;
 }

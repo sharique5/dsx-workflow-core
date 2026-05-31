@@ -14,6 +14,7 @@ const FEE_SELECT = {
   tenantId: true,
   matterId: true,
   type: true,
+  billingCycle: true,
   totalAmount: true,
   paidAmount: true,
   paymentHistory: true,
@@ -26,6 +27,7 @@ function toFeeDto(fee: {
   tenantId: string;
   matterId: string;
   type: string;
+  billingCycle: string | null;
   totalAmount: { toNumber?: () => number } | string | number;
   paidAmount: { toNumber?: () => number } | string | number;
   paymentHistory: unknown;
@@ -90,6 +92,7 @@ export class FeesService {
         tenantId: user.tenantId,
         matterId,
         type: dto.type,
+        billingCycle: dto.billingCycle ?? null,
         totalAmount: dto.totalAmount,
       },
       select: FEE_SELECT,
@@ -124,7 +127,7 @@ export class FeesService {
     const history = (fee.paymentHistory as unknown as PaymentRecord[]) ?? [];
     const newRecord: PaymentRecord = {
       amount: dto.amount,
-      paidAt: new Date().toISOString(),
+      paidAt: dto.paidAt ?? new Date().toISOString(),
       ...(dto.note ? { note: dto.note } : {}),
     };
 

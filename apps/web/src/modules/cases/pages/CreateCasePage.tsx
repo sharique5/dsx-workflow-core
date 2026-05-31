@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { usePageTitle } from '../../../shared/hooks/usePageTitle';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -19,14 +19,14 @@ const createMatterSchema = z.object({
     .min(1, 'Internal ref is required')
     .max(50, 'Ref too long')
     .regex(/^[A-Za-z0-9\-/]+$/, 'Only letters, numbers, hyphens and slashes allowed'),
-  externalRef: z.string().max(50, 'Ref too long').optional(),
+  externalRef: z.string().min(1, 'Court case no. is required').max(50, 'Ref too long'),
   participantId: z.string().min(1, 'Please select a client'),
   statusKey: z.string().min(1, 'Status is required'),
 });
 
 const createClientSchema = z.object({
   name: z.string().min(1, 'Name is required').max(200),
-  email: z.string().optional(),
+  email: z.string().email('Enter a valid email').min(1, 'Email is required'),
   phone: z.string().max(20).optional(),
 });
 
@@ -35,6 +35,7 @@ type CreateClientForm = z.infer<typeof createClientSchema>;
 
 interface CourtDetails {
   cnr: string;
+  caseType: string;
   state: string;
   district: string;
   courtComplex: string;
@@ -42,7 +43,7 @@ interface CourtDetails {
   stage: string;
 }
 
-const EMPTY_COURT: CourtDetails = { cnr: '', state: '', district: '', courtComplex: '', judge: '', stage: '' };
+const EMPTY_COURT: CourtDetails = { cnr: '', caseType: '', state: '', district: '', courtComplex: '', judge: '', stage: '' };
 
 const INPUT_CLS =
   'block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20';
@@ -68,18 +69,25 @@ export function CreateCasePage() {
   const { data: districts = [], isLoading: districtsLoading } = useDistricts(selectedStateId);
   const { data: complexes = [], isLoading: complexesLoading } = useComplexes(selectedStateId, selectedDistrictId);
 
+  const [defaultInternalRef] = useState(
+    () => `NA-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,
+  );
+
   const {
     register,
     handleSubmit,
     setValue,
-    watch,
+    control,
     formState: { errors },
   } = useForm<CreateMatterForm>({
     resolver: zodResolver(createMatterSchema),
-    defaultValues: { statusKey: vocab.statuses[0]?.key ?? 'filed' },
+    defaultValues: {
+      statusKey: vocab.statuses[0]?.key ?? 'filed',
+      internalRef: defaultInternalRef,
+    },
   });
 
-  const selectedParticipantId = watch('participantId');
+  const selectedParticipantId = useWatch({ control, name: 'participantId' });
 
   const {
     register: registerClient,
@@ -134,8 +142,13 @@ export function CreateCasePage() {
         setShowNewClient(false);
         resetClientForm();
       },
-      onError: () => {
-        setNewClientError('Failed to create client. Check details and try again.');
+      onError: (err: unknown) => {
+        const msg = err instanceof Error ? err.message : '';
+        if (msg.toLowerCase().includes('already exists') || msg.toLowerCase().includes('unique')) {
+          setNewClientError('A client with this email already exists. Please select them from the client dropdown above instead.');
+        } else {
+          setNewClientError('Failed to create client. Check details and try again.');
+        }
       },
     });
   };
@@ -250,14 +263,18 @@ export function CreateCasePage() {
               )}
             </div>
             <div>
-              <label className={LABEL_CLS}>Court Case No.</label>
+              <label className={LABEL_CLS}>Court Case No. <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 placeholder="e.g. AC-83-2025"
                 className={INPUT_CLS}
                 {...register('externalRef')}
               />
-              <p className="mt-1 text-xs text-slate-400">Case type + number + year</p>
+              {errors.externalRef ? (
+                <p className="mt-1 text-xs text-red-500">{errors.externalRef.message}</p>
+              ) : (
+                <p className="mt-1 text-xs text-slate-400">e.g. CS 123/2025, WP 45/2024</p>
+              )}
             </div>
           </div>
 
@@ -315,8 +332,24 @@ export function CreateCasePage() {
                 loading={complexesLoading}
               />
             </div>
-            {/* CNR + Judge */}
+            {/* Case Type + CNR */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={LABEL_CLS}>Case Type</label>
+                <select
+                  value={courtDetails.caseType}
+                  onChange={(e) => setCourtDetails((p) => ({ ...p, caseType: e.target.value }))}
+                  className={INPUT_CLS}
+                >
+                  <option value="">Select case type</option>
+                  <option value="Civil">Civil</option>
+                  <option value="Criminal">Criminal</option>
+                  <option value="FIR">FIR</option>
+                  <option value="Writ">Writ</option>
+                  <option value="Execution">Execution</option>
+                  <option value="Misc">Misc</option>
+                </select>
+              </div>
               <div>
                 <label className={LABEL_CLS}>CNR Number</label>
                 <input
@@ -327,6 +360,9 @@ export function CreateCasePage() {
                   className={INPUT_CLS}
                 />
               </div>
+            </div>
+            {/* Judge + Stage */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className={LABEL_CLS}>Judge</label>
                 <input
@@ -337,16 +373,16 @@ export function CreateCasePage() {
                   className={INPUT_CLS}
                 />
               </div>
-            </div>
-            <div>
-              <label className={LABEL_CLS}>Stage</label>
-              <input
-                type="text"
-                value={courtDetails.stage}
-                onChange={(e) => setCourtDetails((p) => ({ ...p, stage: e.target.value }))}
-                placeholder="e.g. Arguments, Final Hearing, Evidence"
-                className={INPUT_CLS}
-              />
+              <div>
+                <label className={LABEL_CLS}>Stage</label>
+                <input
+                  type="text"
+                  value={courtDetails.stage}
+                  onChange={(e) => setCourtDetails((p) => ({ ...p, stage: e.target.value }))}
+                  placeholder="e.g. Arguments, Final Hearing, Evidence"
+                  className={INPUT_CLS}
+                />
+              </div>
             </div>
           </div>
 
@@ -423,13 +459,16 @@ export function CreateCasePage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Email</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Email <span className="text-red-500">*</span></label>
                     <input
                       type="email"
                       placeholder="client@example.com"
                       className={INPUT_CLS}
                       {...registerClient('email')}
                     />
+                    {clientErrors.email && (
+                      <p className="mt-1 text-xs text-red-500">{clientErrors.email.message}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-slate-700 mb-1">Phone</label>

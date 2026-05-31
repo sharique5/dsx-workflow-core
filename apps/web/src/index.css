@@ -32,6 +32,10 @@ html {
   scroll-behavior: smooth;
 }
 
+button, a, select, label, [role="button"] {
+  cursor: pointer;
+}
+
 body {
   margin: 0;
   height: 100%;

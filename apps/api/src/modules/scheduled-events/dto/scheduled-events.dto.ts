@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsDateString } from 'class-validator';
+import { IsString, IsOptional, IsDateString, MaxLength } from 'class-validator';
 
 export class CreateScheduledEventDto {
   @IsDateString()
@@ -7,6 +7,21 @@ export class CreateScheduledEventDto {
   @IsString()
   @IsOptional()
   outcomeNotes?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(500)
+  courtLink?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(1000)
+  judgeNotes?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(1000)
+  lawyerNotes?: string;
 }
 
 export class UpdateScheduledEventDto {
@@ -17,4 +32,19 @@ export class UpdateScheduledEventDto {
   @IsString()
   @IsOptional()
   outcomeNotes?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(500)
+  courtLink?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(1000)
+  judgeNotes?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(1000)
+  lawyerNotes?: string;
 }

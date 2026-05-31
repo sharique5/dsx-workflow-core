@@ -55,7 +55,7 @@ export class NotificationsService {
 
     // Resolve template body
     let body: string;
-    let templateId: string | undefined = dto.templateId;
+    const templateId: string | undefined = dto.templateId;
 
     if (dto.templateId) {
       const tpl = await this.prisma.notificationTemplate.findFirst({
@@ -160,6 +160,7 @@ export class NotificationsService {
         matterId,
         scheduledEventId: dto.scheduledEventId,
         remindAt: new Date(dto.remindAt),
+        message: dto.message,
       },
     });
   }

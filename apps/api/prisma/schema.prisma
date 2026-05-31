@@ -117,6 +117,9 @@ model ScheduledEvent {
   matterId     String   @map("matter_id")
   scheduledAt  DateTime @map("scheduled_at")
   outcomeNotes String?  @map("outcome_notes")
+  courtLink    String?  @map("court_link")
+  judgeNotes   String?  @map("judge_notes")
+  lawyerNotes  String?  @map("lawyer_notes")
   createdBy    String   @map("created_by")
   createdAt    DateTime @default(now()) @map("created_at")
 
@@ -161,6 +164,7 @@ model Document {
   storageKey    String   @map("storage_key")
   fileSizeBytes Int      @map("file_size_bytes")
   mimeType      String   @map("mime_type")
+  description   String?  @map("description")
   uploadedBy    String   @map("uploaded_by")
   createdAt     DateTime @default(now()) @map("created_at")
 
@@ -208,16 +212,25 @@ enum FeeType {
   per_consultation @map("per-consultation")
 }
 
+enum BillingCycle {
+  weekly
+  biweekly
+  monthly
+  quarterly
+  yearly
+}
+
 model Fee {
-  id             String   @id @default(uuid())
-  tenantId       String   @map("tenant_id")
-  matterId       String   @map("matter_id")
+  id             String        @id @default(uuid())
+  tenantId       String        @map("tenant_id")
+  matterId       String        @map("matter_id")
   type           FeeType
-  totalAmount    Decimal  @map("total_amount") @db.Decimal(12, 2)
-  paidAmount     Decimal  @default(0) @map("paid_amount") @db.Decimal(12, 2)
-  paymentHistory Json     @default("[]") @map("payment_history")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  billingCycle   BillingCycle? @map("billing_cycle")
+  totalAmount    Decimal       @map("total_amount") @db.Decimal(12, 2)
+  paidAmount     Decimal       @default(0) @map("paid_amount") @db.Decimal(12, 2)
+  paymentHistory Json          @default("[]") @map("payment_history")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
   matter Matter @relation(fields: [matterId], references: [id])
@@ -297,6 +310,7 @@ model Reminder {
   matterId         String   @map("matter_id")
   scheduledEventId String   @map("scheduled_event_id")
   remindAt         DateTime @map("remind_at")
+  message          String?  @map("message")
   isSent           Boolean  @default(false) @map("is_sent")
   createdAt        DateTime @default(now()) @map("created_at")
 

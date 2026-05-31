@@ -34,6 +34,6 @@ export function useLogPayment(matterId: string) {
       void qc.invalidateQueries({ queryKey: feesKey(matterId) });
       toast.success('Payment logged');
     },
-    onError: () => toast.error('Failed to log payment'),
+    onError: () => toast.error('Payment could not be saved. Please check the amount and try again.'),
   });
 }

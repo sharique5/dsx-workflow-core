@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Delete,
   Get,
@@ -32,9 +33,10 @@ export class DocumentsController {
   upload(
     @Param('matterId') matterId: string,
     @UploadedFile() file: any,
+    @Body('description') description: string | undefined,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.documentsService.upload(matterId, file, user);
+    return this.documentsService.upload(matterId, file, user, description);
   }
 
   @Get(':docId/download')

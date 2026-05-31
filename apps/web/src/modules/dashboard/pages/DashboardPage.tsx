@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Briefcase, Users, UserPlus } from 'lucide-react';
 import { useAuthStore } from '../../../store/auth.store';
 import { useVocabulary } from '../../../shared/hooks/useVocabulary';
 import { useDashboardStats } from '../../cases/hooks/useMatters';
@@ -32,6 +34,12 @@ export function DashboardPage() {
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const [hearingDays, setHearingDays] = useState<7 | 15 | 30>(7);
+  const [now] = useState(() => Date.now());
+  const cutoff = now + hearingDays * 24 * 60 * 60 * 1000;
+  const visibleHearings = (stats?.upcomingHearings ?? []).filter(
+    (h) => new Date(h.scheduledAt).getTime() <= cutoff,
+  );
 
   return (
     <div className="px-6 py-8 max-w-5xl mx-auto space-y-8">
@@ -77,8 +85,7 @@ export function DashboardPage() {
             <Link to="/cases" className="block hover:opacity-90 transition-opacity">
               <StatTile
                 value={stats?.openMatters ?? 0}
-                label="Active"
-                sublabel="Not closed"
+                label="Active cases"
                 accent="border-indigo-100"
               />
             </Link>
@@ -94,7 +101,22 @@ export function DashboardPage() {
       {/* Upcoming hearings */}
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <h2 className="text-sm font-semibold text-slate-900">Upcoming Hearings — next 7 days</h2>
+          <h2 className="text-sm font-semibold text-slate-900">Upcoming Hearings</h2>
+          <div className="flex gap-1">
+            {([7, 15, 30] as const).map((d) => (
+              <button
+                key={d}
+                onClick={() => setHearingDays(d)}
+                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  hearingDays === d
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-slate-500 hover:bg-slate-100'
+                }`}
+              >
+                {d}d
+              </button>
+            ))}
+          </div>
         </div>
         <div className="px-6 py-4">
           {isLoading && (
@@ -110,12 +132,12 @@ export function DashboardPage() {
               ))}
             </div>
           )}
-          {!isLoading && (!stats?.upcomingHearings || stats.upcomingHearings.length === 0) && (
-            <p className="text-sm text-slate-400 py-2">No hearings scheduled in the next 7 days.</p>
+          {!isLoading && (!visibleHearings || visibleHearings.length === 0) && (
+            <p className="text-sm text-slate-400 py-2">No hearings in the next {hearingDays} days.</p>
           )}
-          {!isLoading && stats?.upcomingHearings && stats.upcomingHearings.length > 0 && (
+          {!isLoading && visibleHearings && visibleHearings.length > 0 && (
             <ul className="divide-y divide-slate-100">
-              {stats.upcomingHearings.map((h) => {
+              {visibleHearings.map((h) => {
                 const d = new Date(h.scheduledAt);
                 const dayLabel = d.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short' });
                 const timeLabel = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
@@ -158,25 +180,30 @@ export function DashboardPage() {
       </div>
 
       {/* Quick links */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div className="flex flex-wrap gap-3">
         <Link
           to="/cases"
-          className="rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium text-slate-700 hover:border-indigo-200 hover:text-indigo-600 transition-all shadow-sm"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:border-indigo-200 hover:text-indigo-600 transition-all shadow-sm"
         >
-          View all {vocab.matter_plural.toLowerCase()} →
-        </Link>
-        <Link
-          to="/clients"
-          className="rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium text-slate-700 hover:border-indigo-200 hover:text-indigo-600 transition-all shadow-sm"
-        >
-          {vocab.participant_label}s →
+          <Briefcase size={15} />
+          All {vocab.matter_plural.toLowerCase()}
         </Link>
         {user?.role === 'admin' && (
           <Link
-            to="/staff"
-            className="rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-medium text-slate-700 hover:border-indigo-200 hover:text-indigo-600 transition-all shadow-sm"
+            to="/clients"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:border-indigo-200 hover:text-indigo-600 transition-all shadow-sm"
           >
-            Team →
+            <Users size={15} />
+            Clients
+          </Link>
+        )}
+        {user?.role === 'admin' && (
+          <Link
+            to="/staff"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:border-indigo-200 hover:text-indigo-600 transition-all shadow-sm"
+          >
+            <UserPlus size={15} />
+            Team
           </Link>
         )}
       </div>

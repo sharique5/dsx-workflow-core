@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
+import { Trash2, Download, Plus, ChevronLeft, CheckCheck, CreditCard, X, Bell } from 'lucide-react';
 import { useMatter, useCloseMatter, useDeleteMatter } from '../hooks/useMatters';
 import { useScheduledEvents, useCreateScheduledEvent, useDeleteScheduledEvent } from '../hooks/useScheduledEvents';
-import { useNotes, useCreateNote, useUpdateNote, useDeleteNote } from '../hooks/useNotes';
+import { useNotes, useCreateNote, useDeleteNote } from '../hooks/useNotes';
 import { useAuditLogs } from '../hooks/useAuditLogs';
 import { useDocumentRequests, useCreateDocumentRequest, useMarkDocumentRequestReceived } from '../hooks/useDocumentRequests';
 import { useFees, useCreateFee, useLogPayment } from '../hooks/useFees';
@@ -20,7 +21,21 @@ import {
   useCreateReminder,
   useDeleteReminder,
 } from '../hooks/useNotifications';
-import type { ScheduledEventDto, NoteDto, AuditLogDto, FeeType, NotificationLogDto } from '@dsx/shared';
+import type { ScheduledEventDto, NoteDto, AuditLogDto, FeeType, BillingCycle, NotificationLogDto } from '@dsx/shared';
+
+/**
+ * Convert a datetime-local string ("YYYY-MM-DDTHH:mm") or date string ("YYYY-MM-DD")
+ * to a UTC ISO string, treating the input as LOCAL time.
+ *
+ * Reason: new Date("YYYY-MM-DDTHH:mm") is parsed as UTC by V8/Chrome, not local time,
+ * causing a +5:30 shift for IST users. The multi-arg constructor always uses local time.
+ */
+function localInputToISO(value: string): string {
+  const [datePart, timePart = '00:00'] = value.split('T');
+  const [yr, mo, dy] = datePart.split('-').map(Number);
+  const [hr, mn] = timePart.split(':').map(Number);
+  return new Date(yr, mo - 1, dy, hr, mn).toISOString();
+}
 
 function StatusBadge({ statusKey, statuses }: { statusKey: string; statuses: { key: string; label: string; isTerminal: boolean }[] }) {
   const status = statuses.find((s) => s.key === statusKey);
@@ -206,7 +221,6 @@ function NotificationsCard({
 
 function RemindersCard({
   isClosed, events, reminders, showReminderForm, setShowReminderForm,
-  reminderEventId, setReminderEventId, reminderAt, setReminderAt,
   isCreatingReminder, onCreateReminder, onDeleteReminder,
 }: {
   isClosed: boolean;
@@ -214,20 +228,47 @@ function RemindersCard({
   reminders: import('@dsx/shared').ReminderDto[];
   showReminderForm: boolean;
   setShowReminderForm: React.Dispatch<React.SetStateAction<boolean>>;
-  reminderEventId: string;
-  setReminderEventId: (v: string) => void;
-  reminderAt: string;
-  setReminderAt: (v: string) => void;
   isCreatingReminder: boolean;
-  onCreateReminder: (payload: { scheduledEventId: string; remindAt: string }) => void;
+  onCreateReminder: (payload: { scheduledEventId: string; remindAt: string; message?: string }) => void;
   onDeleteReminder: (id: string) => void;
 }) {
   const hasEvents = events && events.length > 0;
 
+  // Reminder form: pick hearing + days/hours before + message
+  const [reminderEventId, setReminderEventId] = useState('');
+  const [reminderMessage, setReminderMessage] = useState('');
+
+  const presets = [
+    { label: '1 day before', value: '1' },
+    { label: '3 days before', value: '3' },
+    { label: '1 week before', value: '7' },
+    { label: 'Custom' , value: 'custom' },
+  ];
+  const [reminderPreset, setReminderPreset] = useState('1');
+  const [customDays, setCustomDays] = useState('');
+
+  const effectiveDays = reminderPreset === 'custom' ? Number(customDays) : Number(reminderPreset);
+
+  const selectedEvent = events?.find((e) => e.id === reminderEventId);
+  const remindAtPreview = selectedEvent && effectiveDays > 0
+    ? new Date(new Date(selectedEvent.scheduledAt).getTime() - effectiveDays * 24 * 60 * 60 * 1000)
+    : null;
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!reminderEventId || !reminderAt) return;
-    onCreateReminder({ scheduledEventId: reminderEventId, remindAt: reminderAt });
+    if (!reminderEventId || !selectedEvent || !effectiveDays) return;
+    const remindAt = new Date(
+      new Date(selectedEvent.scheduledAt).getTime() - effectiveDays * 24 * 60 * 60 * 1000,
+    ).toISOString();
+    onCreateReminder({
+      scheduledEventId: reminderEventId,
+      remindAt,
+      message: reminderMessage || undefined,
+    });
+    setReminderEventId('');
+    setReminderPreset('1');
+    setCustomDays('');
+    setReminderMessage('');
   }
 
   return (
@@ -239,7 +280,7 @@ function RemindersCard({
             onClick={() => setShowReminderForm((v) => !v)}
             className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
           >
-            {showReminderForm ? 'Cancel' : '+ Set reminder'}
+            {showReminderForm ? <><X size={14} className="inline mr-1" />Cancel</> : <><Bell size={14} className="inline mr-1" />Set reminder</>}
           </button>
         )}
       </div>
@@ -252,7 +293,7 @@ function RemindersCard({
         {showReminderForm && hasEvents && (
           <form className="mb-4 rounded-lg bg-slate-50 border border-slate-200 p-4 space-y-3" onSubmit={handleSubmit}>
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1.5">Hearing *</label>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">Hearing <span className="text-red-500">*</span></label>
               <select
                 value={reminderEventId}
                 onChange={(e) => setReminderEventId(e.target.value)}
@@ -260,7 +301,7 @@ function RemindersCard({
                 className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               >
                 <option value="">Select a hearing…</option>
-                {events.map((ev) => {
+                {events.filter((ev) => new Date(ev.scheduledAt) > new Date()).map((ev) => {
                   const label = new Date(ev.scheduledAt).toLocaleString('en-IN', {
                     day: '2-digit', month: 'short', year: 'numeric',
                     hour: '2-digit', minute: '2-digit',
@@ -268,14 +309,62 @@ function RemindersCard({
                   return <option key={ev.id} value={ev.id}>{label}</option>;
                 })}
               </select>
+              {events.filter((ev) => new Date(ev.scheduledAt) > new Date()).length === 0 && (
+                <p className="mt-1 text-xs text-amber-600">No upcoming hearings to set a reminder for.</p>
+              )}
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1.5">Remind at *</label>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">Remind me <span className="text-red-500">*</span></label>
+              <div className="flex gap-2 flex-wrap">
+                {presets.map((p) => (
+                  <button
+                    key={p.value}
+                    type="button"
+                    onClick={() => setReminderPreset(p.value)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                      reminderPreset === p.value
+                        ? 'bg-indigo-600 text-white border-indigo-600'
+                        : 'bg-white text-slate-600 border-slate-300 hover:border-indigo-400'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+              {reminderPreset === 'custom' && (
+                <div className="mt-2 flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={customDays}
+                    onChange={(e) => setCustomDays(e.target.value)}
+                    placeholder="e.g. 5"
+                    required
+                    className="w-24 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  />
+                  <span className="text-sm text-slate-500">days before the hearing</span>
+                </div>
+              )}
+              {remindAtPreview && (
+                <p className="mt-2 text-xs text-slate-500">
+                  Reminder will be sent on{' '}
+                  <span className="font-medium text-slate-700">
+                    {remindAtPreview.toLocaleString('en-IN', {
+                      day: '2-digit', month: 'short', year: 'numeric',
+                      hour: '2-digit', minute: '2-digit',
+                    })}
+                  </span>
+                </p>
+              )}
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">Message / Note <span className="text-slate-400 font-normal">(optional)</span></label>
               <input
-                type="datetime-local"
-                value={reminderAt}
-                onChange={(e) => setReminderAt(e.target.value)}
-                required
+                type="text"
+                value={reminderMessage}
+                onChange={(e) => setReminderMessage(e.target.value)}
+                placeholder="e.g. Ask client to bring payment receipt"
                 className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               />
             </div>
@@ -307,6 +396,9 @@ function RemindersCard({
                 <li key={reminder.id} className="py-3 flex items-start justify-between gap-4">
                   <div>
                     <p className="text-sm font-medium text-slate-900">{remindAtStr}</p>
+                    {reminder.message && (
+                      <p className="mt-0.5 text-xs text-slate-600 italic">"{reminder.message}"</p>
+                    )}
                     {reminder.scheduledEvent && (
                       <p className="mt-0.5 text-xs text-slate-400">
                         {'For hearing: ' + new Date(reminder.scheduledEvent.scheduledAt).toLocaleDateString('en-IN', {
@@ -324,9 +416,10 @@ function RemindersCard({
                         onClick={() => {
                           if (confirm('Delete this reminder?')) onDeleteReminder(reminder.id);
                         }}
-                        className="text-xs text-red-400 hover:text-red-600"
+                        className="text-red-400 hover:text-red-600"
+                        title="Delete reminder"
                       >
-                        Delete
+                        <Trash2 size={14} />
                       </button>
                     )}
                   </div>
@@ -364,11 +457,13 @@ export function CaseDetailPage() {
   const { mutate: deleteEvent } = useDeleteScheduledEvent(id!);
   const [showAddHearing, setShowAddHearing] = useState(false);
   const [hearingDate, setHearingDate] = useState('');
+  const [hearingCourtLink, setHearingCourtLink] = useState('');
+  const [hearingJudgeNotes, setHearingJudgeNotes] = useState('');
+  const [hearingLawyerNotes, setHearingLawyerNotes] = useState('');
 
   // Notes
   const { data: notes } = useNotes(id!);
   const { mutate: createNote, isPending: isCreatingNote } = useCreateNote(id!);
-  const { mutate: updateNote } = useUpdateNote(id!);
   const { mutate: deleteNote } = useDeleteNote(id!);
   const [newNoteContent, setNewNoteContent] = useState('');
   const [newNotePublished, setNewNotePublished] = useState(false);
@@ -390,11 +485,14 @@ export function CaseDetailPage() {
   const { mutate: createFee, isPending: isCreatingFee } = useCreateFee(id!);
   const { mutate: logPayment, isPending: isLoggingPayment } = useLogPayment(id!);
   const [showAddFee, setShowAddFee] = useState(false);
-  const [feeType, setFeeType] = useState<FeeType>('one-time');
+  const [feeType, setFeeType] = useState<FeeType>('one_time');
+  const [feeBillingCycle, setFeeBillingCycle] = useState<string>('monthly');
   const [feeTotalAmount, setFeeTotalAmount] = useState('');
   const [payingFeeId, setPayingFeeId] = useState<string | null>(null);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentNote, setPaymentNote] = useState('');
+  const [paymentDate, setPaymentDate] = useState('');
+  const [deleteNoteId, setDeleteNoteId] = useState<string | null>(null);
 
   // Documents
   const { data: documents = [] } = useDocuments(id!);
@@ -402,6 +500,7 @@ export function CaseDetailPage() {
   const { mutate: downloadDocument, isPending: isDownloading } = useDocumentDownloadUrl(id!);
   const { mutate: deleteDocument } = useDeleteDocument(id!);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
 
   // Notifications & reminders
   const { data: notifTemplates = [] } = useNotificationTemplates();
@@ -419,8 +518,6 @@ export function CaseDetailPage() {
 
   // Reminder form state
   const [showReminderForm, setShowReminderForm] = useState(false);
-  const [reminderEventId, setReminderEventId] = useState('');
-  const [reminderAt, setReminderAt] = useState('');
   const [activeTab, setActiveTab] = useState<'overview' | 'hearings' | 'documents' | 'fees' | 'notes' | 'admin'>('overview');
 
   if (isLoading) {
@@ -454,10 +551,18 @@ export function CaseDetailPage() {
   ];
 
   return (
+    <>
     <div className="max-w-4xl mx-auto">
       {/* Page header */}
       <div className="px-6 pt-8 pb-4 flex items-start justify-between">
         <div>
+          <Link
+            to="/cases"
+            className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600 mb-3 transition-colors"
+          >
+            <ChevronLeft size={14} />
+            Back to Cases
+          </Link>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-slate-900">{matter.title}</h1>
             <StatusBadge statusKey={matter.statusKey} statuses={vocab.statuses} />
@@ -469,7 +574,7 @@ export function CaseDetailPage() {
             disabled={isClosing}
             className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-colors"
           >
-            {isClosing ? 'Closing…' : `Close ${vocab.matter_label}`}
+            {isClosing ? 'Closing…' : 'Mark as Closed'}
           </button>
         )}
       </div>
@@ -648,7 +753,7 @@ export function CaseDetailPage() {
                 onClick={() => setShowAddHearing((v) => !v)}
                 className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
               >
-                {showAddHearing ? 'Cancel' : `+ Add ${vocab.scheduled_event_label}`}
+                {showAddHearing ? <><X size={14} className="inline mr-1" />Cancel</> : <><Plus size={14} className="inline mr-1" />Add {vocab.scheduled_event_label}</>}
               </button>
             )}
           </div>
@@ -657,19 +762,33 @@ export function CaseDetailPage() {
 
           {showAddHearing && (
             <form
-              className="mb-4 flex gap-3 items-end rounded-lg bg-slate-50 border border-slate-200 p-4"
+              className="mb-4 rounded-lg bg-slate-50 border border-slate-200 p-4 space-y-3"
               onSubmit={(e: React.FormEvent) => {
                 e.preventDefault();
                 if (!hearingDate) return;
+                const utcDate = localInputToISO(hearingDate);
                 createEvent(
-                  { scheduledAt: hearingDate },
-                  { onSuccess: () => { setShowAddHearing(false); setHearingDate(''); } },
+                  {
+                    scheduledAt: utcDate,
+                    courtLink: hearingCourtLink || undefined,
+                    judgeNotes: hearingJudgeNotes || undefined,
+                    lawyerNotes: hearingLawyerNotes || undefined,
+                  },
+                  {
+                    onSuccess: () => {
+                      setShowAddHearing(false);
+                      setHearingDate('');
+                      setHearingCourtLink('');
+                      setHearingJudgeNotes('');
+                      setHearingLawyerNotes('');
+                    },
+                  },
                 );
               }}
             >
-              <div className="flex-1">
+              <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">
-                  Date &amp; Time
+                  Date &amp; Time <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="datetime-local"
@@ -679,13 +798,49 @@ export function CaseDetailPage() {
                   className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 />
               </div>
-              <button
-                type="submit"
-                disabled={isCreatingEvent}
-                className="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
-              >
-                {isCreatingEvent ? 'Saving…' : 'Save'}
-              </button>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                  Court Link <span className="text-slate-400 font-normal">(optional URL)</span>
+                </label>
+                <input
+                  type="text"
+                  value={hearingCourtLink}
+                  onChange={(e) => setHearingCourtLink(e.target.value)}
+                  placeholder="https://…"
+                  className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1.5">Judge Notes</label>
+                  <textarea
+                    value={hearingJudgeNotes}
+                    onChange={(e) => setHearingJudgeNotes(e.target.value)}
+                    rows={2}
+                    placeholder="Notes from the judge…"
+                    className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1.5">Lawyer Notes</label>
+                  <textarea
+                    value={hearingLawyerNotes}
+                    onChange={(e) => setHearingLawyerNotes(e.target.value)}
+                    rows={2}
+                    placeholder="Internal notes…"
+                    className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={isCreatingEvent}
+                  className="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {isCreatingEvent ? 'Saving…' : 'Save'}
+                </button>
+              </div>
             </form>
           )}
 
@@ -694,11 +849,16 @@ export function CaseDetailPage() {
           )}
 
           {events && events.length > 0 && (
-            <ul className="divide-y divide-slate-100">
-              {events.map((event: ScheduledEventDto) => (
+            <ul className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
+              {events.map((event: ScheduledEventDto) => {
+                const isUpcoming = new Date(event.scheduledAt) > new Date();
+                const isFirstUpcoming = isUpcoming && !events.slice(0, events.indexOf(event)).some(
+                  (e) => new Date(e.scheduledAt) > new Date()
+                );
+                return (
                 <li key={event.id} className="py-3 flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-slate-900">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-slate-900 flex items-center gap-2">
                       {new Date(event.scheduledAt).toLocaleString('en-IN', {
                         day: '2-digit',
                         month: 'short',
@@ -706,9 +866,31 @@ export function CaseDetailPage() {
                         hour: '2-digit',
                         minute: '2-digit',
                       })}
+                      {isFirstUpcoming && (
+                        <span className="inline-flex items-center rounded-full bg-indigo-50 border border-indigo-200 px-2 py-0.5 text-[10px] font-semibold text-indigo-700">
+                          Upcoming
+                        </span>
+                      )}
                     </p>
+                    {event.courtLink && (
+                      <a
+                        href={event.courtLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-0.5 inline-flex items-center gap-1 text-xs text-indigo-600 hover:underline"
+                      >
+                        <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                        Court link
+                      </a>
+                    )}
+                    {event.judgeNotes && (
+                      <p className="mt-1 text-xs text-slate-500"><span className="font-medium text-slate-600">Judge: </span>{event.judgeNotes}</p>
+                    )}
+                    {event.lawyerNotes && (
+                      <p className="mt-0.5 text-xs text-slate-500"><span className="font-medium text-slate-600">Notes: </span>{event.lawyerNotes}</p>
+                    )}
                     {event.outcomeNotes && (
-                      <p className="mt-0.5 text-sm text-slate-500">{event.outcomeNotes}</p>
+                      <p className="mt-0.5 text-xs text-slate-500"><span className="font-medium text-slate-600">Outcome: </span>{event.outcomeNotes}</p>
                     )}
                     <p className="mt-0.5 text-xs text-slate-400">Added by {event.creator?.name}</p>
                   </div>
@@ -717,59 +899,85 @@ export function CaseDetailPage() {
                       onClick={() => {
                         if (confirm('Delete this hearing?')) deleteEvent(event.id);
                       }}
-                      className="text-xs text-red-400 hover:text-red-600 shrink-0"
+                      className="text-red-400 hover:text-red-600 shrink-0"
+                      title="Delete hearing"
                     >
-                      Delete
+                      <Trash2 size={14} />
                     </button>
                   )}
                 </li>
-              ))}
+                );
+              })}
             </ul>
           )}
           </div>
         </div>
         </div>
 
-        {/* Documents */}
+          {/* Documents */}
         <div className={activeTab !== 'documents' ? 'hidden' : undefined}>
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
             <h3 className="text-sm font-semibold text-slate-900">Documents</h3>
-            {!isClosed && user?.role !== 'client' && (
-              <label className="cursor-pointer text-sm text-indigo-600 hover:text-indigo-700 font-medium inline-flex items-center gap-1.5">
-                {isUploading ? 'Uploading…' : (
-                  <>
-                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                    </svg>
-                    Upload
-                  </>
-                )}
-                <input
-                  type="file"
-                  className="sr-only"
-                  disabled={isUploading}
-                  accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    setUploadError(null);
-                    uploadDocument(file, {
-                      onError: (err: unknown) => {
-                        const msg = err instanceof Error ? err.message : 'Upload failed';
-                        setUploadError(msg);
-                      },
-                    });
-                    e.target.value = '';
-                  }}
-                />
-              </label>
-            )}
           </div>
 
           <div className="px-6 py-4">
           {uploadError && (
             <p className="mb-3 text-xs text-red-500">{uploadError}</p>
+          )}
+
+          {!isClosed && user?.role !== 'client' && (
+            <label
+              className={`mb-4 flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-8 transition-colors ${
+                dragOver ? 'border-indigo-400 bg-indigo-50' : 'border-slate-200 bg-slate-50 hover:border-indigo-300 hover:bg-indigo-50/50'
+              } ${isUploading ? 'opacity-60 pointer-events-none' : 'cursor-pointer'}`}
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+                const file = e.dataTransfer.files?.[0];
+                if (!file) return;
+                setUploadError(null);
+                uploadDocument({ file }, { onError: (err: unknown) => { setUploadError(err instanceof Error ? err.message : 'Upload failed'); } });
+              }}
+            >
+              <input
+                type="file"
+                className="sr-only"
+                disabled={isUploading}
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setUploadError(null);
+                  uploadDocument({ file }, { onError: (err: unknown) => { setUploadError(err instanceof Error ? err.message : 'Upload failed'); } });
+                  e.target.value = '';
+                }}
+              />
+              {isUploading ? (
+                <>
+                  <svg className="animate-spin h-6 w-6 text-indigo-500" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  <p className="text-sm text-indigo-600 font-medium">Uploading…</p>
+                  <div className="w-full max-w-xs h-1 bg-slate-200 rounded-full overflow-hidden mt-1">
+                    <div className="h-full bg-indigo-500 rounded-full animate-pulse" style={{ width: '60%' }} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke={dragOver ? '#4f46e5' : '#94a3b8'} strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                  </svg>
+                  <p className="text-sm font-medium text-slate-600">
+                    {dragOver ? 'Drop to upload' : 'Drag & drop or click to upload'}
+                  </p>
+                  <p className="text-xs text-slate-400">PDF, Word, Excel, Images</p>
+                </>
+              )}
+            </label>
           )}
 
           {documents.length === 0 && !isUploading && (
@@ -788,6 +996,9 @@ export function CaseDetailPage() {
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-slate-900 truncate">{doc.fileName}</p>
+                      {doc.description && (
+                        <p className="mt-0.5 text-xs text-slate-600">{doc.description}</p>
+                      )}
                       <p className="mt-0.5 text-xs text-slate-400">{(doc.fileSizeBytes / 1024).toFixed(1)} KB</p>
                     </div>
                   </div>
@@ -795,18 +1006,20 @@ export function CaseDetailPage() {
                     <button
                       onClick={() => downloadDocument(doc.id)}
                       disabled={isDownloading}
-                      className="text-xs text-indigo-600 hover:text-indigo-700 font-medium disabled:opacity-50"
+                      className="text-indigo-600 hover:text-indigo-700 disabled:opacity-50"
+                      title="Download"
                     >
-                      Download
+                      <Download size={14} />
                     </button>
                     {isAdmin && (
                       <button
                         onClick={() => {
                           if (confirm(`Delete "${doc.fileName}"?`)) deleteDocument(doc.id);
                         }}
-                        className="text-xs text-red-400 hover:text-red-600"
+                        className="text-red-400 hover:text-red-600"
+                        title="Delete document"
                       >
-                        Delete
+                        <Trash2 size={14} />
                       </button>
                     )}
                   </div>
@@ -827,7 +1040,7 @@ export function CaseDetailPage() {
               onClick={() => setShowAddNote((v) => !v)}
               className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
             >
-              {showAddNote ? 'Cancel' : '+ Add Note'}
+              {showAddNote ? <><X size={14} className="inline mr-1" />Cancel</> : <><Plus size={14} className="inline mr-1" />Add Note</>}
             </button>
           </div>
 
@@ -907,23 +1120,13 @@ export function CaseDetailPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
-                      <button
-                        onClick={() =>
-                          updateNote({ id: note.id, data: { isPublished: !note.isPublished } })
-                        }
-                        className="text-xs text-slate-400 hover:text-slate-600"
-                        title={note.isPublished ? 'Make internal' : 'Publish to client'}
-                      >
-                        {note.isPublished ? 'Unpublish' : 'Publish'}
-                      </button>
                       {(note.createdBy === user?.id || isAdmin) && (
                         <button
-                          onClick={() => {
-                            if (confirm('Delete this note?')) deleteNote(note.id);
-                          }}
-                          className="text-xs text-red-400 hover:text-red-600"
+                          onClick={() => setDeleteNoteId(note.id)}
+                          className="text-red-400 hover:text-red-600"
+                          title="Delete note"
                         >
-                          Delete
+                          <Trash2 size={14} />
                         </button>
                       )}
                     </div>
@@ -951,6 +1154,7 @@ export function CaseDetailPage() {
             )}
           </div>
 
+          <div className="px-6 py-4">
           {showAddDR && (
             <div className="mb-4 rounded-lg bg-slate-50 border border-slate-200 p-4 space-y-3">
               <div>
@@ -992,7 +1196,6 @@ export function CaseDetailPage() {
               </button>
             </div>
           )}
-
           {documentRequests.length === 0 && !showAddDR && (
             <p className="text-sm text-slate-400 py-2">No document requests yet.</p>
           )}
@@ -1022,9 +1225,10 @@ export function CaseDetailPage() {
                     {dr.status === 'pending' && !isClosed && (
                       <button
                         onClick={() => markReceived(dr.id)}
-                        className="text-xs text-slate-400 hover:text-slate-600"
+                        className="text-xs text-slate-400 hover:text-emerald-600 flex items-center gap-1"
+                        title="Mark received"
                       >
-                        Mark received
+                        <CheckCheck size={13} />Mark received
                       </button>
                     )}
                   </div>
@@ -1032,6 +1236,7 @@ export function CaseDetailPage() {
               ))}
             </ul>
           )}
+          </div>
         </div>
         </div>
 
@@ -1045,7 +1250,7 @@ export function CaseDetailPage() {
                 onClick={() => setShowAddFee((v) => !v)}
                 className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
               >
-                {showAddFee ? 'Cancel' : '+ Add Fee'}
+                {showAddFee ? <><X size={14} className="inline mr-1" />Cancel</> : <><Plus size={14} className="inline mr-1" />Add Fee</>}
               </button>
             )}
           </div>
@@ -1059,11 +1264,12 @@ export function CaseDetailPage() {
                 const amount = parseFloat(feeTotalAmount);
                 if (!amount || amount <= 0) return;
                 createFee(
-                  { type: feeType, totalAmount: amount },
+                  { type: feeType, totalAmount: amount, billingCycle: feeType === 'periodic' ? feeBillingCycle as BillingCycle : undefined },
                   {
                     onSuccess: () => {
                       setFeeTotalAmount('');
-                      setFeeType('one-time');
+                      setFeeType('one_time');
+                      setFeeBillingCycle('monthly');
                       setShowAddFee(false);
                     },
                   },
@@ -1077,12 +1283,28 @@ export function CaseDetailPage() {
                   onChange={(e) => setFeeType(e.target.value as FeeType)}
                   className="block rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 >
-                  <option value="one-time">One-time</option>
+                  <option value="one_time">One-time</option>
                   <option value="periodic">Periodic</option>
-                  <option value="per-hearing">Per hearing</option>
-                  <option value="per-consultation">Per consultation</option>
+                  <option value="per_hearing">Per hearing</option>
+                  <option value="per_consultation">Per consultation</option>
                 </select>
               </div>
+              {feeType === 'periodic' && (
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1.5">Billing Cycle</label>
+                  <select
+                    value={feeBillingCycle}
+                    onChange={(e) => setFeeBillingCycle(e.target.value)}
+                    className="block rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  >
+                    <option value="weekly">Weekly</option>
+                    <option value="biweekly">Bi-weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="quarterly">Quarterly</option>
+                    <option value="yearly">Yearly</option>
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1.5">Total Amount (₹)</label>
                 <input
@@ -1117,7 +1339,10 @@ export function CaseDetailPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-slate-900 capitalize">
-                        {fee.type.replace(/-/g, ' ')}
+                        {fee.type.replace(/_/g, ' ')}
+                        {fee.billingCycle && (
+                          <span className="ml-2 text-xs font-normal text-slate-500 capitalize">({fee.billingCycle})</span>
+                        )}
                       </p>
                       <div className="mt-1.5 flex gap-4 text-xs text-slate-500">
                         <span>Total: ₹{fee.totalAmount.toLocaleString('en-IN')}</span>
@@ -1151,6 +1376,15 @@ export function CaseDetailPage() {
                             />
                           </div>
                           <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1.5">Date</label>
+                            <input
+                              type="date"
+                              value={paymentDate}
+                              onChange={(e) => setPaymentDate(e.target.value)}
+                              className="block w-36 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                            />
+                          </div>
+                          <div>
                             <label className="block text-xs font-medium text-slate-700 mb-1.5">Note (optional)</label>
                             <input
                               type="text"
@@ -1165,13 +1399,15 @@ export function CaseDetailPage() {
                             onClick={() => {
                               const amt = parseFloat(paymentAmount);
                               if (!amt || amt <= 0) return;
+                              const paidAt = paymentDate ? localInputToISO(paymentDate) : undefined;
                               logPayment(
-                                { feeId: fee.id, data: { amount: amt, note: paymentNote || undefined } },
+                                { feeId: fee.id, data: { amount: amt, note: paymentNote || undefined, paidAt } },
                                 {
                                   onSuccess: () => {
                                     setPayingFeeId(null);
                                     setPaymentAmount('');
                                     setPaymentNote('');
+                                    setPaymentDate('');
                                   },
                                 },
                               );
@@ -1181,7 +1417,7 @@ export function CaseDetailPage() {
                             {isLoggingPayment ? 'Saving…' : 'Log payment'}
                           </button>
                           <button
-                            onClick={() => { setPayingFeeId(null); setPaymentAmount(''); setPaymentNote(''); }}
+                            onClick={() => { setPayingFeeId(null); setPaymentAmount(''); setPaymentNote(''); setPaymentDate(''); }}
                             className="text-xs text-slate-400 hover:text-slate-600"
                           >
                             Cancel
@@ -1191,10 +1427,10 @@ export function CaseDetailPage() {
                     </div>
                     {isAdmin && fee.dueAmount > 0 && !isClosed && payingFeeId !== fee.id && (
                       <button
-                        onClick={() => { setPayingFeeId(fee.id); setPaymentAmount(''); setPaymentNote(''); }}
-                        className="shrink-0 text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+                    onClick={() => { setPayingFeeId(fee.id); setPaymentAmount(''); setPaymentNote(''); setPaymentDate(new Date().toISOString().slice(0, 10)); }}
+                        className="shrink-0 text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
                       >
-                        Log payment
+                        <CreditCard size={13} />Log payment
                       </button>
                     )}
                   </div>
@@ -1279,17 +1515,9 @@ export function CaseDetailPage() {
           reminders={reminders}
           showReminderForm={showReminderForm}
           setShowReminderForm={setShowReminderForm}
-          reminderEventId={reminderEventId}
-          setReminderEventId={setReminderEventId}
-          reminderAt={reminderAt}
-          setReminderAt={setReminderAt}
           isCreatingReminder={isCreatingReminder}
           onCreateReminder={(payload) => createReminder(payload, {
-            onSuccess: () => {
-              setShowReminderForm(false);
-              setReminderEventId('');
-              setReminderAt('');
-            },
+            onSuccess: () => setShowReminderForm(false),
           })}
           onDeleteReminder={(remId) => deleteReminder(remId)}
         />}
@@ -1320,5 +1548,30 @@ export function CaseDetailPage() {
         )}
       </div>
     </div>
+
+    {/* Delete note confirmation modal */}
+    {deleteNoteId && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">
+          <h3 className="text-base font-semibold text-slate-900 mb-2">Delete note?</h3>
+          <p className="text-sm text-slate-500 mb-5">This action cannot be undone.</p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setDeleteNoteId(null)}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => { deleteNote(deleteNoteId); setDeleteNoteId(null); }}
+              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
