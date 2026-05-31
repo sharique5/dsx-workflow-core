@@ -554,6 +554,7 @@ export function CaseDetailPage() {
   ];
 
   return (
+    <>
     <div className="max-w-4xl mx-auto">
       {/* Page header */}
       <div className="px-6 pt-8 pb-4 flex items-start justify-between">
@@ -1574,5 +1575,6 @@ export function CaseDetailPage() {
         </div>
       </div>
     )}
+    </>
   );
 }
