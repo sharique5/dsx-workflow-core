@@ -69,6 +69,10 @@ export function CreateCasePage() {
   const { data: districts = [], isLoading: districtsLoading } = useDistricts(selectedStateId);
   const { data: complexes = [], isLoading: complexesLoading } = useComplexes(selectedStateId, selectedDistrictId);
 
+  const [defaultInternalRef] = useState(
+    () => `NA-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,
+  );
+
   const {
     register,
     handleSubmit,
@@ -77,10 +81,10 @@ export function CreateCasePage() {
     formState: { errors },
   } = useForm<CreateMatterForm>({
     resolver: zodResolver(createMatterSchema),
-    defaultValues: () => ({
+    defaultValues: {
       statusKey: vocab.statuses[0]?.key ?? 'filed',
-      internalRef: `NA-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,
-    }),
+      internalRef: defaultInternalRef,
+    },
   });
 
   const selectedParticipantId = useWatch({ control, name: 'participantId' });
