@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { portalCasesApi } from '../api/portal-cases.api';
 import { portalDocumentRequestsApi } from '../api/portal-document-requests.api';
@@ -96,5 +96,24 @@ export function usePortalDocumentDownloadUrl(matterId: string) {
     onError: () => {
       toast.error('Download failed', { description: 'Could not get the download link. Please try again.' });
     },
+  });
+}
+
+export function usePortalUploadDocument(matterId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ file, drId }: { file: File; drId?: string }) =>
+      portalDocumentsApi.upload(matterId, file).then(async (r) => {
+        if (drId) {
+          await portalDocumentRequestsApi.markReceived(matterId, drId);
+        }
+        return r.data;
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: portalMatterDocsKey(matterId) });
+      void queryClient.invalidateQueries({ queryKey: portalMatterDRKey(matterId) });
+      toast.success('Document uploaded');
+    },
+    onError: () => toast.error('Upload failed'),
   });
 }

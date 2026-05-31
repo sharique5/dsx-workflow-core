@@ -8,6 +8,7 @@ import {
   usePortalCaseFees,
   usePortalCaseDocuments,
   usePortalDocumentDownloadUrl,
+  usePortalUploadDocument,
 } from '../hooks/usePortalCases';
 
 function formatStatusKey(key: string) {
@@ -135,6 +136,7 @@ export function PortalCaseDetailPage() {
   const { data: fees = [] } = usePortalCaseFees(id!);
   const { data: documents = [] } = usePortalCaseDocuments(id!);
   const { mutate: downloadDocument } = usePortalDocumentDownloadUrl(id!);
+  const { mutate: uploadDocument, isPending: isUploading } = usePortalUploadDocument(id!);
 
   function handleDownload(docId: string) {
     setDownloadingIds((prev) => new Set(prev).add(docId));
@@ -411,16 +413,37 @@ export function PortalCaseDetailPage() {
                   ) : (
                     <ul className="divide-y divide-slate-100 -my-1">
                       {documentRequests.map((dr) => (
-                        <li key={dr.id} className="py-3.5 flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-sm text-slate-800">{dr.description}</p>
-                            {dr.dueDate && <p className="mt-0.5 text-xs text-slate-400">Due: {formatDate(dr.dueDate)}</p>}
+                        <li key={dr.id} className="py-3.5">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-sm text-slate-800">{dr.description}</p>
+                              {dr.dueDate && <p className="mt-0.5 text-xs text-slate-400">Due: {formatDate(dr.dueDate)}</p>}
+                            </div>
+                            <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold border ${
+                              dr.status === 'received' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'
+                            }`}>
+                              {dr.status === 'received' ? 'Received' : 'Pending'}
+                            </span>
                           </div>
-                          <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold border ${
-                            dr.status === 'received' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'
-                          }`}>
-                            {dr.status === 'received' ? 'Received' : 'Pending'}
-                          </span>
+                          {dr.status !== 'received' && (
+                            <label className="mt-2 inline-flex items-center gap-1.5 cursor-pointer bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 text-indigo-600 text-xs font-semibold rounded-lg px-3 py-1.5 transition-colors">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                              </svg>
+                              {isUploading ? 'Uploading…' : 'Upload'}
+                              <input
+                                type="file"
+                                className="sr-only"
+                                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp"
+                                disabled={isUploading}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) uploadDocument({ file, drId: dr.id });
+                                  e.target.value = '';
+                                }}
+                              />
+                            </label>
+                          )}
                         </li>
                       ))}
                     </ul>

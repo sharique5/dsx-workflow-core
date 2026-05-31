@@ -76,9 +76,6 @@ export class DocumentsService {
     user: AuthenticatedUser,
     description?: string,
   ) {
-    if (user.role === 'client') {
-      throw new ForbiddenException('Clients cannot upload documents');
-    }
     if (!file) {
       throw new BadRequestException('No file provided');
     }

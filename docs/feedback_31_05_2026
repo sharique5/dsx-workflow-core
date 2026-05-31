@@ -1,0 +1,12 @@
+1. OTP not working on phone
+2. Lawyer asked to upload a document, client logged in and can see a document is pending but there is no provision to upload the document
+3. There was a case with client A(email A + mobile M + Name N). Now, I had created a new case and added client A with email B (email B + mobile M + Name N).
+When I loggedin with client A, why am I able to see new case?
+4. At "/cases/{caseId}", when a lawyer clicked on "Invite Client" then it should be updated with Invited / resend. ... right now, it remains as "Invite Client"
+5. There should be a mechanism to send a notification to client on email and phone whenever a lawyer:
+a. Published a note
+b. Due date is approaching
+c. Payment reminder (custom + periodic)
+d. Asked any document
+6.  At "/cases/{caseId}", fees tab: Cancel link should be replaced with X icon under log payment flow
+7.  At "/cases/{caseId}", notes tab: toooo long notes should be truncated by default so that it won't occupy most of the spaces. Maybe adding a "view more" is better which can either expand inline or open in a modal

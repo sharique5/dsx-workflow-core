@@ -6,10 +6,14 @@ import {
 import { PrismaService } from '../../shared/database/prisma.service';
 import type { AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
 import { CreateNoteDto, UpdateNoteDto } from './dto/notes.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class NotesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notifications: NotificationsService,
+  ) {}
 
   private async assertMatterAccess(matterId: string, user: AuthenticatedUser) {
     const matter = await this.prisma.matter.findFirst({
@@ -41,7 +45,7 @@ export class NotesService {
   async create(matterId: string, dto: CreateNoteDto, user: AuthenticatedUser) {
     await this.assertMatterAccess(matterId, user);
 
-    return this.prisma.note.create({
+    const note = await this.prisma.note.create({
       data: {
         tenantId: user.tenantId,
         matterId,
@@ -51,6 +55,16 @@ export class NotesService {
       },
       include: { creator: { select: { id: true, name: true } } },
     });
+
+    if (note.isPublished) {
+      void this.notifications.notifyParticipant(
+        matterId,
+        user.tenantId,
+        `Your lawyer has shared a new note on your case: "${note.content.slice(0, 120)}${note.content.length > 120 ? '…' : ''}"`,
+      );
+    }
+
+    return note;
   }
 
   async update(
@@ -71,7 +85,7 @@ export class NotesService {
       throw new ForbiddenException('You can only edit your own notes');
     }
 
-    return this.prisma.note.update({
+    const updated = await this.prisma.note.update({
       where: { id },
       data: {
         ...(dto.content !== undefined && { content: dto.content }),
@@ -79,6 +93,17 @@ export class NotesService {
       },
       include: { creator: { select: { id: true, name: true } } },
     });
+
+    // Notify when a previously internal note is published
+    if (dto.isPublished === true && !note.isPublished) {
+      void this.notifications.notifyParticipant(
+        matterId,
+        user.tenantId,
+        `Your lawyer has shared a note on your case: "${updated.content.slice(0, 120)}${updated.content.length > 120 ? '…' : ''}"`,
+      );
+    }
+
+    return updated;
   }
 
   async remove(matterId: string, id: string, user: AuthenticatedUser) {

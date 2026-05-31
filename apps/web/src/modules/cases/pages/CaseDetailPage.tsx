@@ -433,6 +433,60 @@ function RemindersCard({
   );
 }
 
+// ─── Note card with expand/collapse ─────────────────────────────────────────
+
+const NOTE_CLAMP_LINES = 4;
+
+function NoteCard({ note, userId, isAdmin, onDelete }: {
+  note: NoteDto;
+  userId: string | undefined;
+  isAdmin: boolean;
+  onDelete: (id: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const lineCount = note.content.split('\n').length;
+  const approxLong = lineCount > NOTE_CLAMP_LINES || note.content.length > 300;
+
+  return (
+    <li className="py-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <p className={`text-sm text-slate-800 whitespace-pre-wrap leading-relaxed${!expanded && approxLong ? ' line-clamp-4' : ''}`}>
+            {note.content}
+          </p>
+          {approxLong && (
+            <button
+              onClick={() => setExpanded((v) => !v)}
+              className="mt-1 text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+            >
+              {expanded ? 'Show less' : 'View more'}
+            </button>
+          )}
+          <div className="mt-2 flex items-center gap-3">
+            <span className="text-xs text-slate-400">
+              {note.creator?.name} · {new Date(note.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+            </span>
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+              note.isPublished
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                : 'bg-slate-100 text-slate-500'
+            }`}>
+              {note.isPublished ? 'Visible to client' : 'Internal'}
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          {(note.createdBy === userId || isAdmin) && (
+            <button onClick={() => onDelete(note.id)} className="text-red-400 hover:text-red-600" title="Delete note">
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
+      </div>
+    </li>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function CaseDetailPage() {
@@ -1100,38 +1154,7 @@ export function CaseDetailPage() {
           {notes && notes.length > 0 && (
             <ul className="divide-y divide-slate-100">
               {notes.map((note: NoteDto) => (
-                <li key={note.id} className="py-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{note.content}</p>
-                      <div className="mt-2 flex items-center gap-3">
-                        <span className="text-xs text-slate-400">
-                          {note.creator?.name} · {new Date(note.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                        </span>
-                        <span
-                          className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                            note.isPublished
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                              : 'bg-slate-100 text-slate-500'
-                          }`}
-                        >
-                          {note.isPublished ? 'Visible to client' : 'Internal'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      {(note.createdBy === user?.id || isAdmin) && (
-                        <button
-                          onClick={() => setDeleteNoteId(note.id)}
-                          className="text-red-400 hover:text-red-600"
-                          title="Delete note"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </li>
+                <NoteCard key={note.id} note={note} userId={user?.id} isAdmin={isAdmin} onDelete={(id) => setDeleteNoteId(id)} />
               ))}
             </ul>
           )}
@@ -1418,9 +1441,10 @@ export function CaseDetailPage() {
                           </button>
                           <button
                             onClick={() => { setPayingFeeId(null); setPaymentAmount(''); setPaymentNote(''); setPaymentDate(''); }}
-                            className="text-xs text-slate-400 hover:text-slate-600"
+                            className="text-slate-400 hover:text-slate-600"
+                            title="Cancel"
                           >
-                            Cancel
+                            <X size={16} />
                           </button>
                         </div>
                       )}

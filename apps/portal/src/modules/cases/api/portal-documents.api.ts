@@ -9,4 +9,13 @@ export const portalDocumentsApi = {
     api.get<{ downloadUrl: string }>(
       `/matters/${matterId}/documents/${docId}/download`,
     ),
+
+  upload: (matterId: string, file: File, description?: string) => {
+    const form = new FormData();
+    form.append('file', file);
+    if (description) form.append('description', description);
+    return api.post<DocumentDto>(`/matters/${matterId}/documents`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 };

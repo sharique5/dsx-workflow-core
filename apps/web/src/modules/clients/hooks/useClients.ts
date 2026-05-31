@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { clientsApi } from '../api/clients.api';
 import type { CreateClientDto, UpdateClientDto } from '@dsx/shared';
+import { MATTERS_KEY } from '../../cases/hooks/useMatters';
 
 export const CLIENTS_KEY = ['clients'] as const;
 export const clientKey = (id: string) => ['clients', id] as const;
@@ -56,6 +57,7 @@ export function useInviteClient() {
     onSuccess: (updated) => {
       void queryClient.invalidateQueries({ queryKey: CLIENTS_KEY });
       void queryClient.invalidateQueries({ queryKey: clientKey(updated.id) });
+      void queryClient.invalidateQueries({ queryKey: MATTERS_KEY });
       toast.success('Invite sent');
     },
     onError: () => toast.error('Failed to send invite'),
