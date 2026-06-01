@@ -13,6 +13,7 @@ const CasesPage = () => import('../modules/cases/pages/CasesPage').then((m) => (
 const CreateCasePage = () => import('../modules/cases/pages/CreateCasePage').then((m) => ({ Component: m.CreateCasePage }));
 const CaseDetailPage = () => import('../modules/cases/pages/CaseDetailPage').then((m) => ({ Component: m.CaseDetailPage }));
 const StaffPage = () => import('../modules/staff/pages/StaffPage').then((m) => ({ Component: m.StaffPage }));
+const ClientsPage = () => import('../modules/clients/pages/ClientsPage').then((m) => ({ Component: m.ClientsPage }));
 const NotificationsPage = () => import('../modules/notifications/pages/NotificationsPage').then((m) => ({ Component: m.NotificationsPage }));
 
 export const router = createBrowserRouter([
@@ -32,6 +33,7 @@ export const router = createBrowserRouter([
           { path: '/cases/new', lazy: CreateCasePage, handle: { crumb: 'New Case' } },
           { path: '/cases/:id', lazy: CaseDetailPage, handle: { crumb: CaseCrumb } },
           { path: '/staff', lazy: StaffPage, handle: { crumb: 'Team' } },
+          { path: '/clients', lazy: ClientsPage, handle: { crumb: 'Clients' } },
           { path: '/notifications', lazy: NotificationsPage, handle: { crumb: 'Notifications' } },
         ],
       },

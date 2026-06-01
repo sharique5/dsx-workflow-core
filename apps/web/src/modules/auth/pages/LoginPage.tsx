@@ -66,26 +66,34 @@ export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const { mutate: loginWithPassword, isPending: pwPending, error: pwError } = useLoginWithPassword();
+  const [pwErrorMsg, setPwErrorMsg] = useState<string | null>(null);
+  const { mutate: loginWithPassword, isPending: pwPending } = useLoginWithPassword();
 
   // OTP login (email or phone)
   const [identifier, setIdentifier] = useState('');
-  const { mutate: requestOtp, isPending: otpPending, error: otpError } = useRequestOtp();
+  const [otpErrorMsg, setOtpErrorMsg] = useState<string | null>(null);
+  const { mutate: requestOtp, isPending: otpPending } = useRequestOtp();
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password) return;
-    loginWithPassword({ email: email.trim(), password });
+    setPwErrorMsg(null);
+    loginWithPassword(
+      { email: email.trim(), password },
+      { onError: () => setPwErrorMsg('Invalid email or password. Please try again.') },
+    );
   };
 
   const handleOtpSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const id = identifier.trim();
     if (!id) return;
+    setOtpErrorMsg(null);
     requestOtp(
       { identifier: id },
       {
         onSuccess: () => navigate('/verify-otp', { state: { identifier: id } }),
+        onError: () => setOtpErrorMsg('Could not send login code. Please check your details and try again.'),
       },
     );
   };
@@ -95,6 +103,8 @@ export function LoginPage() {
     setEmail('');
     setPassword('');
     setIdentifier('');
+    setPwErrorMsg(null);
+    setOtpErrorMsg(null);
   };
 
   return (
@@ -143,7 +153,7 @@ export function LoginPage() {
                   id="email"
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => { setEmail(e.target.value); setPwErrorMsg(null); }}
                   placeholder="you@nairassociates.com"
                   autoComplete="email"
                   required
@@ -159,7 +169,7 @@ export function LoginPage() {
                     id="password"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => { setPassword(e.target.value); setPwErrorMsg(null); }}
                     placeholder="••••••••"
                     autoComplete="current-password"
                     required
@@ -185,7 +195,7 @@ export function LoginPage() {
                 </div>
               </div>
 
-              {pwError && <ErrorBanner />}
+              {pwErrorMsg && <ErrorBanner message={pwErrorMsg} />}
 
               <button
                 type="submit"
@@ -219,7 +229,7 @@ export function LoginPage() {
                   id="email-otp-id"
                   type="email"
                   value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
+                  onChange={(e) => { setIdentifier(e.target.value); setOtpErrorMsg(null); }}
                   placeholder="you@nairassociates.com"
                   autoComplete="email"
                   required
@@ -227,7 +237,7 @@ export function LoginPage() {
                 />
               </div>
 
-              {otpError && <ErrorBanner />}
+              {otpErrorMsg && <ErrorBanner message={otpErrorMsg} />}
 
               <button
                 type="submit"
@@ -250,7 +260,7 @@ export function LoginPage() {
                   id="phone-otp-id"
                   type="tel"
                   value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
+                  onChange={(e) => { setIdentifier(e.target.value); setOtpErrorMsg(null); }}
                   placeholder="+91 98765 43210"
                   autoComplete="tel"
                   required
@@ -261,7 +271,7 @@ export function LoginPage() {
                 </p>
               </div>
 
-              {otpError && <ErrorBanner />}
+              {otpErrorMsg && <ErrorBanner message={otpErrorMsg} />}
 
               <button
                 type="submit"
@@ -270,12 +280,6 @@ export function LoginPage() {
               >
                 {otpPending ? 'Sending code…' : 'Send login code →'}
               </button>
-
-              <div className="rounded-lg bg-amber-50 border border-amber-100 px-3.5 py-2.5">
-                <p className="text-xs text-amber-700">
-                  Phone OTP requires SMS configuration by your administrator.
-                </p>
-              </div>
             </form>
           )}
         </div>
@@ -284,14 +288,14 @@ export function LoginPage() {
   );
 }
 
-function ErrorBanner() {
+function ErrorBanner({ message = 'Something went wrong. Please try again.' }: { message?: string }) {
   return (
     <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-3.5 py-2.5">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth={2}>
         <circle cx="12" cy="12" r="10" />
         <path strokeLinecap="round" d="M12 8v4m0 4h.01" />
       </svg>
-      <p className="text-sm text-red-600">Something went wrong. Please try again.</p>
+      <p className="text-sm text-red-600">{message}</p>
     </div>
   );
 }

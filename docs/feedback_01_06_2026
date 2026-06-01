@@ -1,0 +1,14 @@
+Portal app i.e. client app
+
+1. Notes section: we need to truncate the large notes here with "view more" or "view less" option. Right now, it shows everything
+2. Message section: Once user sends a message, there is no activity in component until message is send. Can we please add loader or something to show message has been sending?
+3. Document section: Once clients uploads a document, we add a banner "Received". Isn't it better to either remove the request from "Document requests" section because its already fulfilled. Even if you want to keep it then updated the banner to "Uploaded" because "Received" makes more sense to lawyer
+
+Teams app i.e. lawyer app
+
+1. Upon entering invalid credentials, error shows up in form and then it gets reset. Better to keep the error on screen
+2. /dashboard: Clicking on "Clients" button navigates to "https://teams.nairandassociates.in/clients" and we don't have this route, probably we need to work on this view
+3. When a clients sends a message, until and unless lawyer went to particular case's message; it won't show up the messages sent by client. I think such actions should be added to notifications so that as soon as lawyer logged in, notification should pop up
+4. There isn't any option for admin lawyer to assign a particular case to team members, please verify if we are showing all cases to each team member
+5. "hiresharique@gmail.com" email added as staff then why email otp says 500
+6. On selecting phone otp, UI says: "Phone OTP requires SMS configuration by your administrator."; is this expected?
