@@ -14,7 +14,7 @@ import {
   usePortalMarkMessagesRead,
   usePortalMessagesUnreadCount,
 } from '../hooks/usePortalCases';
-import type { MessageDto } from '@dsx/shared';
+import type { MessageDto, NoteDto } from '@dsx/shared';
 
 function formatStatusKey(key: string) {
   return key
@@ -45,6 +45,31 @@ function EmptyState({ message }: { message: string }) {
   return (
     <div className="py-10 text-center">
       <p className="text-sm text-slate-400">{message}</p>
+    </div>
+  );
+}
+
+function PortalNoteCard({ note }: { note: NoteDto }) {
+  const [expanded, setExpanded] = useState(false);
+  const LIMIT = 300;
+  const isLong = note.content.length > LIMIT;
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="h-0.5 bg-indigo-600" />
+      <div className="px-5 py-4">
+        <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
+          {isLong && !expanded ? `${note.content.slice(0, LIMIT)}…` : note.content}
+        </p>
+        {isLong && (
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="mt-2 text-xs font-medium text-indigo-600 hover:underline"
+          >
+            {expanded ? 'Show less' : 'View more'}
+          </button>
+        )}
+        <p className="mt-3 text-xs text-slate-400">{formatDate(note.createdAt)}</p>
+      </div>
     </div>
   );
 }
@@ -421,14 +446,8 @@ export function PortalCaseDetailPage() {
                 <EmptyState message="No notes have been shared yet." />
               ) : (
                 <div className="space-y-3">
-                  {notes.map((n) => (
-                    <div key={n.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                      <div className="h-0.5 bg-indigo-600" />
-                      <div className="px-5 py-4">
-                        <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{n.content}</p>
-                        <p className="mt-3 text-xs text-slate-400">{formatDate(n.createdAt)}</p>
-                      </div>
-                    </div>
+                  {notes.map((n: NoteDto) => (
+                    <PortalNoteCard key={n.id} note={n} />
                   ))}
                 </div>
               )}
@@ -461,7 +480,7 @@ export function PortalCaseDetailPage() {
                             <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold border ${
                               dr.status === 'received' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'
                             }`}>
-                              {dr.status === 'received' ? 'Received' : 'Pending'}
+                              {dr.status === 'received' ? 'Uploaded' : 'Pending'}
                             </span>
                           </div>
                           {dr.status !== 'received' && (
@@ -659,9 +678,15 @@ export function PortalCaseDetailPage() {
                     disabled={isSending || !messageInput.trim()}
                     className="rounded-xl bg-indigo-600 p-2.5 text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
                   >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
-                    </svg>
+                    {isSending ? (
+                      <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" />
+                      </svg>
+                    ) : (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+                      </svg>
+                    )}
                   </button>
                 </form>
               </div>
