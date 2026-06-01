@@ -9,10 +9,14 @@ import {
   CreateScheduledEventDto,
   UpdateScheduledEventDto,
 } from './dto/scheduled-events.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class ScheduledEventsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notifications: NotificationsService,
+  ) {}
 
   private async assertMatterAccess(matterId: string, user: AuthenticatedUser) {
     const matter = await this.prisma.matter.findFirst({
@@ -44,7 +48,7 @@ export class ScheduledEventsService {
   ) {
     await this.assertMatterAccess(matterId, user);
 
-    return this.prisma.scheduledEvent.create({
+    const event = await this.prisma.scheduledEvent.create({
       data: {
         tenantId: user.tenantId,
         matterId,
@@ -57,6 +61,23 @@ export class ScheduledEventsService {
       },
       include: { creator: { select: { id: true, name: true } } },
     });
+
+    const hearingDate = event.scheduledAt.toLocaleDateString('en-IN', {
+      day: '2-digit', month: 'short', year: 'numeric', weekday: 'long',
+    });
+    const matter = await this.prisma.matter.findUnique({
+      where: { id: matterId },
+      select: { title: true, internalRef: true, participantId: true },
+    });
+    if (matter?.participantId) {
+      void this.notifications.notifyParticipant(
+        matterId,
+        user.tenantId,
+        `A new hearing has been scheduled for your case "${matter.title}" (${matter.internalRef}) on ${hearingDate}.`,
+      );
+    }
+
+    return event;
   }
 
   async update(

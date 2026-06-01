@@ -62,6 +62,7 @@ model User {
 
   tenant           Tenant             @relation(fields: [tenantId], references: [id])
   mattersAsClient  Matter[]           @relation("MatterParticipant")
+  mattersAssigned  Matter[]           @relation("MatterAssignedTo")
   mattersCreated   Matter[]           @relation("MatterCreatedBy")
   scheduledEvents  ScheduledEvent[]
   notes            Note[]
@@ -86,6 +87,7 @@ model Matter {
   externalRef   String?   @map("external_ref")
   title         String
   participantId String?   @map("participant_id")
+  assignedToId  String?   @map("assigned_to_id")
   statusKey     String    @map("status_key")
   metadata      Json      @default("{}")
   createdBy     String    @map("created_by")
@@ -95,6 +97,7 @@ model Matter {
 
   tenant          Tenant           @relation(fields: [tenantId], references: [id])
   participant     User?            @relation("MatterParticipant", fields: [participantId], references: [id])
+  assignedTo      User?            @relation("MatterAssignedTo", fields: [assignedToId], references: [id])
   creator         User             @relation("MatterCreatedBy", fields: [createdBy], references: [id])
   scheduledEvents ScheduledEvent[]
   notes           Note[]

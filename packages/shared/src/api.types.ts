@@ -90,6 +90,8 @@ export interface MatterDto {
   title: string;
   participantId: string | null;
   participant?: Pick<UserDto, 'id' | 'name' | 'email' | 'phone' | 'portalInviteStatus'>;
+  assignedToId: string | null;
+  assignedTo?: { id: string; name: string } | null;
   creator?: { id: string; name: string };
   statusKey: string;
   metadata: Record<string, string>;
@@ -104,6 +106,7 @@ export interface CreateMatterDto {
   internalRef: string;
   externalRef?: string;
   participantId?: string;
+  assignedToId?: string;
   statusKey: string;
   metadata?: Record<string, string>;
 }
@@ -112,6 +115,7 @@ export interface UpdateMatterDto {
   title?: string;
   externalRef?: string;
   participantId?: string;
+  assignedToId?: string;
   statusKey?: string;
   metadata?: Record<string, string>;
 }
