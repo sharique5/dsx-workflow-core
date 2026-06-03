@@ -82,6 +82,20 @@ export class ClientsService {
       }
     }
 
+    // Prevent duplicate client by phone within tenant
+    if (dto.phone) {
+      const existingPhone = await this.prisma.user.findFirst({
+        where: {
+          tenantId: user.tenantId,
+          phone: dto.phone,
+          deletedAt: null,
+        },
+      });
+      if (existingPhone) {
+          throw new ConflictException('A client with this phone number already exists');
+      }
+    }
+
     return this.prisma.user.create({
       data: {
         tenantId: user.tenantId,
@@ -118,6 +132,21 @@ export class ClientsService {
       });
       if (conflict) {
         throw new ConflictException('A user with this email already exists');
+      }
+    }
+
+    // Prevent duplicate phone conflict with another user in tenant
+    if (dto.phone !== undefined && dto.phone !== null && dto.phone !== client.phone) {
+      const phoneConflict = await this.prisma.user.findFirst({
+        where: {
+          tenantId: user.tenantId,
+          phone: dto.phone,
+          deletedAt: null,
+          NOT: { id },
+        },
+      });
+      if (phoneConflict) {
+        throw new ConflictException('A user with this phone number already exists');
       }
     }
 

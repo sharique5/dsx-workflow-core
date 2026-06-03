@@ -59,7 +59,17 @@ export class AuthService {
     if (identifier.includes('@')) {
       await this.email.sendOtp(identifier, otp);
     } else {
-      await this.sms.sendOtp(identifier, otp);
+      // Try SMS first; fall back to email if SMS provider is not configured
+      const smsProviderConfigured = !!process.env.SMS_PROVIDER;
+      if (smsProviderConfigured) {
+        await this.sms.sendOtp(identifier, otp);
+      } else if (user.email) {
+        // Dev / unconfigured SMS: send OTP via email so the flow is testable
+        await this.email.sendOtp(user.email, otp);
+      } else {
+        // No SMS provider and no email — fall back to console log only
+        await this.sms.sendOtp(identifier, otp);
+      }
     }
 
     return { message: 'If your account exists, a code has been sent.' };
