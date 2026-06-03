@@ -8,16 +8,21 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../shared/database/prisma.service';
 import type { AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
 import { CreateMatterDto, UpdateMatterDto } from './dto/matters.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class MattersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notifications: NotificationsService,
+  ) {}
 
   async findAll(user: AuthenticatedUser, page = 1, limit = 50) {
     const where: Prisma.MatterWhereInput = {
       tenantId: user.tenantId,
       deletedAt: null,
       ...(user.role === 'client' && { participantId: user.id }),
+      ...(user.role === 'staff' && { assignedToId: user.id }),
     };
 
     const [data, total] = await Promise.all([
@@ -32,6 +37,7 @@ export class MattersService {
               portalInviteStatus: true,
             },
           },
+          assignedTo: { select: { id: true, name: true } },
           creator: { select: { id: true, name: true } },
         },
         orderBy: { createdAt: 'desc' },
@@ -62,6 +68,7 @@ export class MattersService {
             portalInviteStatus: true,
           },
         },
+        assignedTo: { select: { id: true, name: true } },
         creator: { select: { id: true, name: true } },
       },
     });
@@ -92,6 +99,7 @@ export class MattersService {
         internalRef: dto.internalRef,
         externalRef: dto.externalRef,
         participantId: dto.participantId,
+        assignedToId: dto.assignedToId,
         statusKey: dto.statusKey,
         metadata: (dto.metadata ?? {}) as Prisma.InputJsonValue,
         createdBy: user.id,
@@ -105,6 +113,7 @@ export class MattersService {
             portalInviteStatus: true,
           },
         },
+        assignedTo: { select: { id: true, name: true } },
         creator: { select: { id: true, name: true } },
       },
     });
@@ -113,13 +122,18 @@ export class MattersService {
   async update(id: string, dto: UpdateMatterDto, user: AuthenticatedUser) {
     await this.findOne(id, user); // throws if not found / wrong tenant
 
-    return this.prisma.matter.update({
+    const previous = await this.findOne(id, user);
+
+    const updated = await this.prisma.matter.update({
       where: { id },
       data: {
         ...(dto.title !== undefined && { title: dto.title }),
         ...(dto.externalRef !== undefined && { externalRef: dto.externalRef }),
         ...(dto.participantId !== undefined && {
           participantId: dto.participantId,
+        }),
+        ...(dto.assignedToId !== undefined && {
+          assignedToId: dto.assignedToId,
         }),
         ...(dto.statusKey !== undefined && { statusKey: dto.statusKey }),
         ...(dto.metadata !== undefined && {
@@ -135,9 +149,21 @@ export class MattersService {
             portalInviteStatus: true,
           },
         },
+        assignedTo: { select: { id: true, name: true } },
         creator: { select: { id: true, name: true } },
       },
     });
+
+    // Auto-notify participant on status change
+    if (dto.statusKey !== undefined && dto.statusKey !== previous.statusKey && updated.participantId) {
+      void this.notifications.notifyParticipant(
+        id,
+        user.tenantId,
+        `Your case "${updated.title}" (${updated.internalRef}) status has been updated to: ${dto.statusKey.replace(/_/g, ' ')}.`,
+      );
+    }
+
+    return updated;
   }
 
   async close(id: string, user: AuthenticatedUser) {
@@ -151,7 +177,7 @@ export class MattersService {
       throw new ForbiddenException('Only admins can close matters');
     }
 
-    return this.prisma.matter.update({
+    const closed = await this.prisma.matter.update({
       where: { id },
       data: { statusKey: 'closed' },
       include: {
@@ -163,9 +189,20 @@ export class MattersService {
             portalInviteStatus: true,
           },
         },
+        assignedTo: { select: { id: true, name: true } },
         creator: { select: { id: true, name: true } },
       },
     });
+
+    if (matter.participantId) {
+      void this.notifications.notifyParticipant(
+        id,
+        user.tenantId,
+        `Your case "${matter.title}" (${matter.internalRef}) has been closed.`,
+      );
+    }
+
+    return closed;
   }
 
   async remove(id: string, user: AuthenticatedUser) {

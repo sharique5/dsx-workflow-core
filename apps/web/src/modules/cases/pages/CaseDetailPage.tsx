@@ -10,6 +10,7 @@ import { useFees, useCreateFee, useLogPayment } from '../hooks/useFees';
 import { useDocuments, useUploadDocument, useDocumentDownloadUrl, useDeleteDocument } from '../hooks/useDocuments';
 import { useInviteClient, useClients } from '../../clients/hooks/useClients';
 import { useUpdateMatter } from '../hooks/useMatters';
+import { useStaff } from '../../staff/hooks/useStaff';
 import { useVocabulary } from '../../../shared/hooks/useVocabulary';
 import { useAuthStore } from '../../../store/auth.store';
 import { usePageTitle } from '../../../shared/hooks/usePageTitle';
@@ -504,7 +505,9 @@ export function CaseDetailPage() {
   const { mutate: inviteClient, isPending: isInviting } = useInviteClient();
   const { mutate: updateMatter, isPending: isAssigningClient } = useUpdateMatter(id!);
   const { data: allClients = [] } = useClients();
+  const { data: staffList = [] } = useStaff();
   const [assignClientId, setAssignClientId] = useState('');
+  const [assignStaffId, setAssignStaffId] = useState('');
 
   // Hearings
   const { data: events } = useScheduledEvents(id!);
@@ -779,6 +782,35 @@ export function CaseDetailPage() {
             <div>
               <dt className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Created by</dt>
               <dd className="text-slate-800">{matter.creator?.name ?? '—'}</dd>
+            </div>
+
+            {/* Staff Assignment */}
+            <div>
+              <dt className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Assigned to</dt>
+              {isAdmin && !isClosed ? (
+                <div className="flex items-center gap-2">
+                  <select
+                    value={assignStaffId || matter.assignedToId || ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setAssignStaffId(val);
+                      updateMatter({ assignedToId: val || undefined });
+                    }}
+                    className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  >
+                    <option value="">Unassigned</option>
+                    {staffList
+                      .filter((m) => m.isActive)
+                      .map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name}{m.role === 'admin' ? ' (Admin)' : ''}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              ) : (
+                <dd className="text-slate-800">{matter.assignedTo?.name ?? '—'}</dd>
+              )}
             </div>
 
             <div>

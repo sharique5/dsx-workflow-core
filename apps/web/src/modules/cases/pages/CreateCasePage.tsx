@@ -6,6 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useCreateMatter } from '../hooks/useMatters';
 import { useClients, useCreateClient } from '../../clients/hooks/useClients';
+import { useStaff } from '../../staff/hooks/useStaff';
+import { useAuthStore } from '../../../store/auth.store';
 import { useVocabulary } from '../../../shared/hooks/useVocabulary';
 import type { CreateMatterDto, CreateClientDto } from '@dsx/shared';
 import { parseCnr } from '../utils/cnr';
@@ -53,12 +55,16 @@ const LABEL_CLS = 'block text-sm font-medium text-slate-700 mb-1.5';
 export function CreateCasePage() {
   usePageTitle('New Case');
   const vocab = useVocabulary();
+  const currentUser = useAuthStore((s) => s.user);
+  const isAdmin = currentUser?.role === 'admin';
   const { mutate: createMatter, isPending, error } = useCreateMatter();
   const { data: clients = [], isLoading: clientsLoading } = useClients();
+  const { data: staffList = [] } = useStaff();
   const { mutate: createClient, isPending: creatingClient } = useCreateClient();
 
   const [showNewClient, setShowNewClient] = useState(false);
   const [newClientError, setNewClientError] = useState<string | null>(null);
+  const [assignedToId, setAssignedToId] = useState('');
   const [cnrInput, setCnrInput] = useState('');
   const [cnrHint, setCnrHint] = useState<{ ok: boolean; text: string } | null>(null);
   const [courtDetails, setCourtDetails] = useState<CourtDetails>(EMPTY_COURT);
@@ -130,6 +136,7 @@ export function CreateCasePage() {
     }
     createMatter({
       ...data,
+      ...(assignedToId ? { assignedToId } : {}),
       ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
     } as CreateMatterDto);
   };
@@ -399,6 +406,28 @@ export function CreateCasePage() {
               ))}
             </select>
           </div>
+
+          {/* Staff Assignment (admin only) */}
+          {isAdmin && staffList.length > 0 && (
+            <div>
+              <label className={LABEL_CLS}>Assign to (optional)</label>
+              <select
+                className={INPUT_CLS}
+                value={assignedToId}
+                onChange={(e) => setAssignedToId(e.target.value)}
+              >
+                <option value="">Unassigned</option>
+                {staffList
+                  .filter((m) => m.isActive)
+                  .map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                      {m.role === 'admin' ? ' (Admin)' : ''}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          )}
 
           {/* Client picker */}
           <div>

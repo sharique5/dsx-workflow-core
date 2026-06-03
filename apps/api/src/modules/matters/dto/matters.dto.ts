@@ -27,6 +27,10 @@ export class CreateMatterDto {
   @IsOptional()
   participantId?: string;
 
+  @IsUUID()
+  @IsOptional()
+  assignedToId?: string;
+
   @IsString()
   @IsNotEmpty()
   statusKey!: string;
@@ -50,6 +54,10 @@ export class UpdateMatterDto {
   @IsUUID()
   @IsOptional()
   participantId?: string;
+
+  @IsUUID()
+  @IsOptional()
+  assignedToId?: string;
 
   @IsString()
   @IsOptional()
