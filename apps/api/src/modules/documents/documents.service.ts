@@ -31,6 +31,7 @@ const DOC_SELECT = {
   fileSizeBytes: true,
   mimeType: true,
   description: true,
+  tags: true,
   uploadedBy: true,
   createdAt: true,
 } as const;
@@ -75,6 +76,7 @@ export class DocumentsService {
     file: Express.Multer.File,
     user: AuthenticatedUser,
     description?: string,
+    tags: string[] = [],
   ) {
     if (!file) {
       throw new BadRequestException('No file provided');
@@ -106,6 +108,7 @@ export class DocumentsService {
         fileSizeBytes: file.size,
         mimeType: file.mimetype,
         description: description ?? null,
+        tags,
         uploadedBy: user.id,
       },
       select: DOC_SELECT,
@@ -115,6 +118,38 @@ export class DocumentsService {
       ...doc,
       storageKey: undefined,
       createdAt: doc.createdAt.toISOString(),
+    };
+  }
+
+  async update(
+    matterId: string,
+    docId: string,
+    data: { description?: string; tags?: string[] },
+    user: AuthenticatedUser,
+  ) {
+    if (user.role === 'client') {
+      throw new ForbiddenException('Clients cannot update documents');
+    }
+    await this.assertMatterAccess(matterId, user);
+
+    const doc = await this.prisma.document.findFirst({
+      where: { id: docId, matterId, tenantId: user.tenantId },
+    });
+    if (!doc) throw new NotFoundException('Document not found');
+
+    const updated = await this.prisma.document.update({
+      where: { id: docId },
+      data: {
+        ...(data.description !== undefined && { description: data.description }),
+        ...(data.tags !== undefined && { tags: data.tags }),
+      },
+      select: DOC_SELECT,
+    });
+
+    return {
+      ...updated,
+      storageKey: undefined,
+      createdAt: updated.createdAt.toISOString(),
     };
   }
 

@@ -211,9 +211,15 @@ export interface DocumentDto {
   fileSizeBytes: number;
   mimeType: string;
   description: string | null;
+  tags: string[];
   uploadedBy: string;
   createdAt: string;
   downloadUrl?: string; // signed URL — ephemeral
+}
+
+export interface UpdateDocumentDto {
+  description?: string;
+  tags?: string[];
 }
 
 // ─── Document Request ────────────────────────────────────────────────────────
