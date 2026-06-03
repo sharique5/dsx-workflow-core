@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   UploadedFile,
   UseGuards,
@@ -34,9 +35,13 @@ export class DocumentsController {
     @Param('matterId') matterId: string,
     @UploadedFile() file: any,
     @Body('description') description: string | undefined,
+    @Body('tags') tagsRaw: string | undefined,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.documentsService.upload(matterId, file, user, description);
+    const tags = tagsRaw
+      ? tagsRaw.split(',').map((t) => t.trim()).filter(Boolean)
+      : [];
+    return this.documentsService.upload(matterId, file, user, description, tags);
   }
 
   @Get(':docId/download')
@@ -46,6 +51,16 @@ export class DocumentsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.documentsService.getDownloadUrl(matterId, docId, user);
+  }
+
+  @Patch(':docId')
+  update(
+    @Param('matterId') matterId: string,
+    @Param('docId') docId: string,
+    @Body() body: { description?: string; tags?: string[] },
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.documentsService.update(matterId, docId, body, user);
   }
 
   @Delete(':docId')

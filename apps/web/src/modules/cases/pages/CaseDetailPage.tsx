@@ -7,7 +7,8 @@ import { useNotes, useCreateNote, useDeleteNote } from '../hooks/useNotes';
 import { useAuditLogs } from '../hooks/useAuditLogs';
 import { useDocumentRequests, useCreateDocumentRequest, useMarkDocumentRequestReceived } from '../hooks/useDocumentRequests';
 import { useFees, useCreateFee, useLogPayment } from '../hooks/useFees';
-import { useDocuments, useUploadDocument, useDocumentDownloadUrl, useDeleteDocument } from '../hooks/useDocuments';
+import { useDocuments, useUploadDocument, useUpdateDocument, useDocumentDownloadUrl, useDeleteDocument } from '../hooks/useDocuments';
+import { documentsApi } from '../api/documents.api';
 import { useInviteClient, useClients } from '../../clients/hooks/useClients';
 import { useUpdateMatter } from '../hooks/useMatters';
 import { useStaff } from '../../staff/hooks/useStaff';
@@ -555,10 +556,22 @@ export function CaseDetailPage() {
   // Documents
   const { data: documents = [] } = useDocuments(id!);
   const { mutate: uploadDocument, isPending: isUploading } = useUploadDocument(id!);
+  const { mutate: updateDocument } = useUpdateDocument(id!);
   const { mutate: downloadDocument, isPending: isDownloading } = useDocumentDownloadUrl(id!);
   const { mutate: deleteDocument } = useDeleteDocument(id!);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  // Pending-upload form (2-step: pick file → fill description+tags → submit)
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingDescription, setPendingDescription] = useState('');
+  const [pendingTagInput, setPendingTagInput] = useState('');
+  // Tag filter & inline edit
+  const [docTagFilter, setDocTagFilter] = useState('');
+  const [editDocId, setEditDocId] = useState<string | null>(null);
+  const [editDocTagInput, setEditDocTagInput] = useState('');
+  // Preview modal
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewMime, setPreviewMime] = useState<string>('');
 
   // Notifications & reminders
   const { data: notifTemplates = [] } = useNotificationTemplates();
@@ -576,7 +589,7 @@ export function CaseDetailPage() {
 
   // Reminder form state
   const [showReminderForm, setShowReminderForm] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'hearings' | 'documents' | 'fees' | 'notes' | 'messages' | 'admin'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'hearings' | 'documents' | 'fees' | 'notes' | 'messages' | 'admin' | 'timeline'>('overview');
   const [messageInput, setMessageInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -616,13 +629,14 @@ export function CaseDetailPage() {
 
   const isClosed = matter.statusKey === 'closed';
 
-  const tabs: Array<{ key: 'overview' | 'hearings' | 'documents' | 'fees' | 'notes' | 'messages' | 'admin'; label: string; badge?: number }> = [
+  const tabs: Array<{ key: 'overview' | 'hearings' | 'documents' | 'fees' | 'notes' | 'messages' | 'admin' | 'timeline'; label: string; badge?: number }> = [
     { key: 'overview', label: 'Overview' },
     { key: 'hearings', label: 'Hearings' },
     { key: 'documents', label: 'Documents' },
     { key: 'fees', label: 'Fees' },
     { key: 'notes', label: 'Notes' },
     { key: 'messages', label: 'Messages', badge: unreadCount > 0 ? unreadCount : undefined },
+    { key: 'timeline', label: 'Timeline' },
     ...(isAdmin ? [{ key: 'admin' as const, label: 'Admin' }] : []),
   ];
 
@@ -1036,105 +1050,256 @@ export function CaseDetailPage() {
             <p className="mb-3 text-xs text-red-500">{uploadError}</p>
           )}
 
-          {!isClosed && user?.role !== 'client' && (
-            <label
-              className={`mb-4 flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-8 transition-colors ${
-                dragOver ? 'border-indigo-400 bg-indigo-50' : 'border-slate-200 bg-slate-50 hover:border-indigo-300 hover:bg-indigo-50/50'
-              } ${isUploading ? 'opacity-60 pointer-events-none' : 'cursor-pointer'}`}
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setDragOver(false);
-                const file = e.dataTransfer.files?.[0];
-                if (!file) return;
-                setUploadError(null);
-                uploadDocument({ file }, { onError: (err: unknown) => { setUploadError(err instanceof Error ? err.message : 'Upload failed'); } });
-              }}
-            >
-              <input
-                type="file"
-                className="sr-only"
-                disabled={isUploading}
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  setUploadError(null);
-                  uploadDocument({ file }, { onError: (err: unknown) => { setUploadError(err instanceof Error ? err.message : 'Upload failed'); } });
-                  e.target.value = '';
-                }}
-              />
-              {isUploading ? (
-                <>
-                  <svg className="animate-spin h-6 w-6 text-indigo-500" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  <p className="text-sm text-indigo-600 font-medium">Uploading…</p>
-                  <div className="w-full max-w-xs h-1 bg-slate-200 rounded-full overflow-hidden mt-1">
-                    <div className="h-full bg-indigo-500 rounded-full animate-pulse" style={{ width: '60%' }} />
+          {/* Preview modal */}
+          {previewUrl && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setPreviewUrl(null)}>
+              <div className="relative bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+                  <span className="text-sm font-medium text-slate-700">Preview</span>
+                  <button onClick={() => setPreviewUrl(null)} className="text-slate-400 hover:text-slate-600"><X size={16} /></button>
+                </div>
+                {previewMime.startsWith('image/') ? (
+                  <div className="flex items-center justify-center p-4 max-h-[80vh] overflow-auto">
+                    <img src={previewUrl} alt="preview" className="max-w-full max-h-[75vh] object-contain rounded" />
                   </div>
-                </>
+                ) : (
+                  <iframe src={previewUrl} className="w-full" style={{ height: '80vh' }} title="Document preview" />
+                )}
+              </div>
+            </div>
+          )}
+
+          {!isClosed && user?.role !== 'client' && (
+            <>
+              {pendingFile ? (
+                /* Step 2: description + tags */
+                <div className="mb-4 rounded-xl border border-indigo-200 bg-indigo-50/40 p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    <span className="truncate max-w-xs">{pendingFile.name}</span>
+                    <span className="ml-auto text-xs text-slate-400 font-normal">{(pendingFile.size / 1024).toFixed(1)} KB</span>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Description (optional)"
+                    value={pendingDescription}
+                    onChange={(e) => setPendingDescription(e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Tags (comma separated, e.g. contract, hearing)"
+                    value={pendingTagInput}
+                    onChange={(e) => setPendingTagInput(e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      disabled={isUploading}
+                      onClick={() => {
+                        setUploadError(null);
+                        const tags = pendingTagInput.split(',').map((t) => t.trim()).filter(Boolean);
+                        uploadDocument(
+                          { file: pendingFile, description: pendingDescription || undefined, tags },
+                          {
+                            onSuccess: () => { setPendingFile(null); setPendingDescription(''); setPendingTagInput(''); },
+                            onError: (err: unknown) => setUploadError(err instanceof Error ? err.message : 'Upload failed'),
+                          },
+                        );
+                      }}
+                      className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                    >
+                      {isUploading ? 'Uploading…' : 'Upload'}
+                    </button>
+                    <button
+                      onClick={() => { setPendingFile(null); setPendingDescription(''); setPendingTagInput(''); setUploadError(null); }}
+                      className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
               ) : (
-                <>
+                /* Step 1: pick file */
+                <label
+                  className={`mb-4 flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-8 transition-colors ${
+                    dragOver ? 'border-indigo-400 bg-indigo-50' : 'border-slate-200 bg-slate-50 hover:border-indigo-300 hover:bg-indigo-50/50'
+                  } cursor-pointer`}
+                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragOver(false);
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) { setUploadError(null); setPendingFile(file); }
+                  }}
+                >
+                  <input
+                    type="file"
+                    className="sr-only"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) { setUploadError(null); setPendingFile(file); }
+                      e.target.value = '';
+                    }}
+                  />
                   <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke={dragOver ? '#4f46e5' : '#94a3b8'} strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
                   </svg>
-                  <p className="text-sm font-medium text-slate-600">
-                    {dragOver ? 'Drop to upload' : 'Drag & drop or click to upload'}
-                  </p>
+                  <p className="text-sm font-medium text-slate-600">{dragOver ? 'Drop to upload' : 'Drag & drop or click to upload'}</p>
                   <p className="text-xs text-slate-400">PDF, Word, Excel, Images</p>
-                </>
+                </label>
               )}
-            </label>
+            </>
           )}
 
-          {documents.length === 0 && !isUploading && (
+          {/* Tag filter */}
+          {documents.length > 0 && (() => {
+            const allTags = [...new Set(documents.flatMap((d) => d.tags ?? []))].sort();
+            return allTags.length > 0 ? (
+              <div className="mb-3 flex flex-wrap gap-1.5 items-center">
+                <span className="text-xs text-slate-500 mr-1">Filter:</span>
+                <button
+                  onClick={() => setDocTagFilter('')}
+                  className={`rounded-full px-2.5 py-0.5 text-xs font-medium border transition-colors ${!docTagFilter ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-300 hover:border-indigo-400'}`}
+                >
+                  All
+                </button>
+                {allTags.map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={() => setDocTagFilter(tag === docTagFilter ? '' : tag)}
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium border transition-colors ${docTagFilter === tag ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-300 hover:border-indigo-400'}`}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            ) : null;
+          })()}
+
+          {documents.length === 0 && !pendingFile && (
             <p className="text-sm text-slate-400 py-2">No documents uploaded yet.</p>
           )}
 
           {documents.length > 0 && (
             <ul className="divide-y divide-slate-100">
-              {documents.map((doc) => (
-                <li key={doc.id} className="py-3 flex items-center justify-between gap-4">
-                  <div className="min-w-0 flex items-center gap-3">
-                    <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
-                      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#64748b" strokeWidth={1.75}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
+              {documents
+                .filter((doc) => !docTagFilter || (doc.tags ?? []).includes(docTagFilter))
+                .map((doc) => {
+                const isImage = doc.mimeType.startsWith('image/');
+                const isPdf = doc.mimeType === 'application/pdf';
+                const canPreview = isImage || isPdf;
+                return (
+                  <li key={doc.id} className="py-3 space-y-2">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="min-w-0 flex items-center gap-3">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
+                          {isImage ? (
+                            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#64748b" strokeWidth={1.75}><path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" /></svg>
+                          ) : (
+                            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#64748b" strokeWidth={1.75}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-slate-900 truncate">{doc.fileName}</p>
+                          {doc.description && (
+                            <p className="mt-0.5 text-xs text-slate-600">{doc.description}</p>
+                          )}
+                          <p className="mt-0.5 text-xs text-slate-400">{(doc.fileSizeBytes / 1024).toFixed(1)} KB</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        {canPreview && (
+                          <button
+                            title="Preview"
+                            onClick={() => {
+                              documentsApi.getDownloadUrl(id!, doc.id).then((r) => {
+                                setPreviewMime(doc.mimeType);
+                                setPreviewUrl(r.data.downloadUrl);
+                              });
+                            }}
+                            className="text-slate-400 hover:text-indigo-600"
+                          >
+                            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                          </button>
+                        )}
+                        <button
+                          onClick={() => downloadDocument(doc.id)}
+                          disabled={isDownloading}
+                          className="text-indigo-600 hover:text-indigo-700 disabled:opacity-50"
+                          title="Download"
+                        >
+                          <Download size={14} />
+                        </button>
+                        {user?.role !== 'client' && (
+                          <button
+                            title="Edit tags"
+                            onClick={() => {
+                              setEditDocId(editDocId === doc.id ? null : doc.id);
+                              setEditDocTagInput((doc.tags ?? []).join(', '));
+                            }}
+                            className={`${editDocId === doc.id ? 'text-indigo-600' : 'text-slate-400 hover:text-indigo-600'}`}
+                          >
+                            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L9.568 3z" /><path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6z" /></svg>
+                          </button>
+                        )}
+                        {isAdmin && (
+                          <button
+                            onClick={() => { if (confirm(`Delete "${doc.fileName}"?`)) deleteDocument(doc.id); }}
+                            className="text-red-400 hover:text-red-600"
+                            title="Delete document"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-900 truncate">{doc.fileName}</p>
-                      {doc.description && (
-                        <p className="mt-0.5 text-xs text-slate-600">{doc.description}</p>
-                      )}
-                      <p className="mt-0.5 text-xs text-slate-400">{(doc.fileSizeBytes / 1024).toFixed(1)} KB</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <button
-                      onClick={() => downloadDocument(doc.id)}
-                      disabled={isDownloading}
-                      className="text-indigo-600 hover:text-indigo-700 disabled:opacity-50"
-                      title="Download"
-                    >
-                      <Download size={14} />
-                    </button>
-                    {isAdmin && (
-                      <button
-                        onClick={() => {
-                          if (confirm(`Delete "${doc.fileName}"?`)) deleteDocument(doc.id);
-                        }}
-                        className="text-red-400 hover:text-red-600"
-                        title="Delete document"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+
+                    {/* Tags display */}
+                    {(doc.tags ?? []).length > 0 && editDocId !== doc.id && (
+                      <div className="flex flex-wrap gap-1 pl-11">
+                        {(doc.tags ?? []).map((tag) => (
+                          <span key={tag} className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
                     )}
-                  </div>
-                </li>
-              ))}
+
+                    {/* Inline tag editor */}
+                    {editDocId === doc.id && (
+                      <div className="pl-11 flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={editDocTagInput}
+                          onChange={(e) => setEditDocTagInput(e.target.value)}
+                          placeholder="Tags (comma separated)"
+                          className="flex-1 rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              const tags = editDocTagInput.split(',').map((t) => t.trim()).filter(Boolean);
+                              updateDocument({ docId: doc.id, data: { tags } }, { onSuccess: () => setEditDocId(null) });
+                            }
+                            if (e.key === 'Escape') setEditDocId(null);
+                          }}
+                        />
+                        <button
+                          onClick={() => {
+                            const tags = editDocTagInput.split(',').map((t) => t.trim()).filter(Boolean);
+                            updateDocument({ docId: doc.id, data: { tags } }, { onSuccess: () => setEditDocId(null) });
+                          }}
+                          className="rounded-lg bg-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
+                        >
+                          Save
+                        </button>
+                        <button onClick={() => setEditDocId(null)} className="text-slate-400 hover:text-slate-600"><X size={13} /></button>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
           </div>
@@ -1696,6 +1861,108 @@ export function CaseDetailPage() {
         )}
       </div>
     </div>
+
+    {/* ─── Timeline tab ─────────────────────────────────────────────────────── */}
+    {activeTab === 'timeline' && (() => {
+      type TimelineEvent =
+        | { kind: 'hearing'; at: string; label: string; detail?: string }
+        | { kind: 'status'; at: string; label: string; actor?: string }
+        | { kind: 'note'; at: string; label: string; published: boolean }
+        | { kind: 'document'; at: string; label: string }
+        | { kind: 'docrequest'; at: string; label: string }
+        | { kind: 'notification'; at: string; label: string };
+
+      const evts: TimelineEvent[] = [];
+
+      // Hearings
+      (events ?? []).forEach((e: ScheduledEventDto) => {
+        evts.push({ kind: 'hearing', at: e.scheduledAt, label: `Hearing scheduled: ${new Date(e.scheduledAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`, detail: e.judgeNotes ?? undefined });
+      });
+
+      // Audit log: status changes
+      (auditLogs ?? []).forEach((log: AuditLogDto) => {
+        if (log.action === 'update' && log.diff?.after?.statusKey) {
+          evts.push({ kind: 'status', at: log.createdAt, label: `Status changed to "${log.diff.after.statusKey}"`, actor: log.actor?.name });
+        } else if (log.action === 'create') {
+          evts.push({ kind: 'status', at: log.createdAt, label: `Case created`, actor: log.actor?.name });
+        } else if (log.action === 'close') {
+          evts.push({ kind: 'status', at: log.createdAt, label: `Case closed`, actor: log.actor?.name });
+        }
+      });
+
+      // Notes
+      (notes ?? []).forEach((n: NoteDto) => {
+        evts.push({ kind: 'note', at: n.createdAt, label: `Note added${n.isPublished ? ' (published)' : ''}`, published: n.isPublished });
+      });
+
+      // Documents
+      (documents ?? []).forEach((d) => {
+        evts.push({ kind: 'document', at: d.createdAt, label: `Document uploaded: ${d.fileName}` });
+      });
+
+      // Document requests
+      (documentRequests ?? []).forEach((dr) => {
+        evts.push({ kind: 'docrequest', at: dr.createdAt, label: `Document requested: ${dr.description.slice(0, 60)}${dr.description.length > 60 ? '…' : ''}` });
+      });
+
+      // Notification logs
+      (notifLogs ?? []).forEach((nl: NotificationLogDto) => {
+        evts.push({ kind: 'notification', at: nl.createdAt, label: `Notification sent (${nl.channel})` });
+      });
+
+      evts.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+
+      const kindMeta: Record<TimelineEvent['kind'], { color: string; icon: JSX.Element }> = {
+        hearing: { color: 'bg-violet-100 text-violet-700', icon: <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg> },
+        status: { color: 'bg-indigo-100 text-indigo-700', icon: <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg> },
+        note: { color: 'bg-amber-100 text-amber-700', icon: <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg> },
+        document: { color: 'bg-emerald-100 text-emerald-700', icon: <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg> },
+        docrequest: { color: 'bg-orange-100 text-orange-700', icon: <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 8.25H7.5a2.25 2.25 0 00-2.25 2.25v9a2.25 2.25 0 002.25 2.25h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25H15m0-3l-3-3m0 0l-3 3m3-3V15" /></svg> },
+        notification: { color: 'bg-sky-100 text-sky-700', icon: <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" /></svg> },
+      };
+
+      return (
+        <div className="max-w-4xl mx-auto px-6 pb-8">
+          <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100">
+              <h3 className="text-sm font-semibold text-slate-900">Case Timeline</h3>
+              <p className="mt-0.5 text-xs text-slate-500">All events for this case, newest first</p>
+            </div>
+            <div className="px-6 py-4">
+              {evts.length === 0 && <p className="text-sm text-slate-400">No events yet.</p>}
+              <ol className="relative border-l border-slate-200 ml-3 space-y-0">
+                {evts.map((evt, i) => {
+                  const meta = kindMeta[evt.kind];
+                  return (
+                    <li key={i} className="mb-6 ml-5">
+                      <span className={`absolute -left-3 flex h-6 w-6 items-center justify-center rounded-full ring-4 ring-white ${meta.color}`}>
+                        {meta.icon}
+                      </span>
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="text-sm font-medium text-slate-900">{evt.label}</p>
+                          {'actor' in evt && evt.actor && (
+                            <p className="mt-0.5 text-xs text-slate-500">by {evt.actor}</p>
+                          )}
+                          {'detail' in evt && evt.detail && (
+                            <p className="mt-0.5 text-xs text-slate-500 italic">{evt.detail}</p>
+                          )}
+                        </div>
+                        <time className="shrink-0 text-xs text-slate-400 mt-0.5">
+                          {new Date(evt.at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          {' · '}
+                          {new Date(evt.at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                        </time>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+          </div>
+        </div>
+      );
+    })()}
 
     {/* Delete note confirmation modal */}
     {deleteNoteId && (

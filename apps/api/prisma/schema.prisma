@@ -171,6 +171,7 @@ model Document {
   fileSizeBytes Int      @map("file_size_bytes")
   mimeType      String   @map("mime_type")
   description   String?  @map("description")
+  tags          String[] @default([])
   uploadedBy    String   @map("uploaded_by")
   createdAt     DateTime @default(now()) @map("created_at")
 

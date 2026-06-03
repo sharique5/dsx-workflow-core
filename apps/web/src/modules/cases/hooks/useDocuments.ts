@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { documentsApi } from '../api/documents.api';
+import type { UpdateDocumentDto } from '@dsx/shared';
 
 const docsKey = (matterId: string) =>
   ['matters', matterId, 'documents'] as const;
@@ -16,13 +17,25 @@ export function useDocuments(matterId: string) {
 export function useUploadDocument(matterId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ file, description }: { file: File; description?: string }) =>
-      documentsApi.upload(matterId, file, description).then((r) => r.data),
+    mutationFn: ({ file, description, tags }: { file: File; description?: string; tags?: string[] }) =>
+      documentsApi.upload(matterId, file, description, tags).then((r) => r.data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: docsKey(matterId) });
       toast.success('Document uploaded');
     },
     onError: () => toast.error('Upload failed'),
+  });
+}
+
+export function useUpdateDocument(matterId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ docId, data }: { docId: string; data: UpdateDocumentDto }) =>
+      documentsApi.update(matterId, docId, data).then((r) => r.data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: docsKey(matterId) });
+    },
+    onError: () => toast.error('Failed to update document'),
   });
 }
 
