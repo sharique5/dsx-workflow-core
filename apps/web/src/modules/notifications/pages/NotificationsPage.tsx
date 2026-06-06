@@ -56,6 +56,7 @@ export function NotificationsPage() {
 
       {!isLoading && logs.length > 0 && (
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-500 tracking-wider">
@@ -111,6 +112,7 @@ export function NotificationsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

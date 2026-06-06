@@ -111,7 +111,7 @@ export function ClientsPage() {
               <h2 className="text-sm font-semibold text-slate-900">Add client</h2>
             </div>
             <div className="px-6 py-5 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1.5">
                     Name <span className="text-red-500">*</span>
@@ -182,7 +182,9 @@ export function ClientsPage() {
 
         {clients && clients.length > 0 && (
           <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
-            <table className="w-full text-left">
+            {/* Desktop table */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-500 tracking-wider">
                   <th className="px-4 py-3">Name</th>
@@ -203,6 +205,31 @@ export function ClientsPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+            {/* Mobile card list */}
+            <div className="sm:hidden divide-y divide-slate-100">
+              {clients.map((client) => (
+                <div key={client.id} className="px-4 py-3.5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-900 truncate">{client.name}</p>
+                      {client.email && <p className="text-xs text-slate-500 truncate">{client.email}</p>}
+                      {client.phone && <p className="text-xs text-slate-400">{client.phone}</p>}
+                    </div>
+                    <div className="shrink-0 flex flex-col items-end gap-2">
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${INVITE_CLASSES[client.portalInviteStatus]}`}>
+                        {INVITE_LABELS[client.portalInviteStatus]}
+                      </span>
+                      {isAdmin && client.portalInviteStatus === 'not_invited' && (
+                        <button onClick={() => inviteClient(client.id)} className="text-xs text-indigo-600 hover:text-indigo-700 font-medium">
+                          Send Invite
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
