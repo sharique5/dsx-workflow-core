@@ -9,7 +9,7 @@ import { useDocumentRequests, useCreateDocumentRequest, useMarkDocumentRequestRe
 import { useFees, useCreateFee, useLogPayment } from '../hooks/useFees';
 import { useDocuments, useUploadDocument, useUpdateDocument, useDocumentDownloadUrl, useDeleteDocument } from '../hooks/useDocuments';
 import { documentsApi } from '../api/documents.api';
-import { useInviteClient, useClients } from '../../clients/hooks/useClients';
+import { useInviteClient, useAllClients } from '../../clients/hooks/useClients';
 import { useUpdateMatter } from '../hooks/useMatters';
 import { useStaff } from '../../staff/hooks/useStaff';
 import { useVocabulary } from '../../../shared/hooks/useVocabulary';
@@ -505,8 +505,7 @@ export function CaseDetailPage() {
   const { mutate: deleteMatter, isPending: isDeleting } = useDeleteMatter();
   const { mutate: inviteClient, isPending: isInviting } = useInviteClient();
   const { mutate: updateMatter, isPending: isAssigningClient } = useUpdateMatter(id!);
-  const { data: allClientsPaged } = useClients();
-  const allClients = allClientsPaged?.data ?? [];
+  const { data: allClients = [] } = useAllClients();
   const { data: staffList = [] } = useStaff();
   const [assignClientId, setAssignClientId] = useState('');
   const [assignStaffId, setAssignStaffId] = useState('');

@@ -16,6 +16,15 @@ export function useClients(page = 1, limit = 25) {
   });
 }
 
+/** Flat list of all clients — for dropdowns, no pagination UI needed. */
+export function useAllClients() {
+  return useQuery<UserDto[]>({
+    queryKey: ['clients', 'all'],
+    queryFn: () => clientsApi.list(1, 1000).then((r) => r.data.data),
+    staleTime: 30_000,
+  });
+}
+
 export function useClient(id: string) {
   return useQuery({
     queryKey: clientKey(id),

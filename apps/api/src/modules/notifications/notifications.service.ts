@@ -338,4 +338,93 @@ export class NotificationsService {
       this.logger.error(`notifyParticipant failed for matter ${matterId}: ${String(err)}`);
     }
   }
+
+  // ─── Cron: document request due-date reminders ───────────────────────────
+
+  /**
+   * Finds pending document requests whose due date is within the next 2 days
+   * and have not yet had a due-date reminder sent. Notifies the matter's client.
+   * Called daily by ReminderScheduler.
+   */
+  async processDueDateReminders(): Promise<void> {
+    const now = new Date();
+    const in2Days = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+
+    const dueSoon = await this.prisma.documentRequest.findMany({
+      where: {
+        status: 'pending',
+        dueDate: { gte: now, lte: in2Days },
+        dueDateReminderSentAt: null,
+      },
+      include: {
+        matter: {
+          select: {
+            id: true,
+            title: true,
+            internalRef: true,
+            tenantId: true,
+            participant: { select: { id: true, name: true, email: true, phone: true } },
+          },
+        },
+      },
+    });
+
+    this.logger.log(`Due-date reminder: ${dueSoon.length} document request(s) approaching`);
+
+    for (const dr of dueSoon) {
+      const { matter } = dr;
+      const participant = matter?.participant;
+      if (!participant) continue;
+
+      const dueDateStr = dr.dueDate!.toLocaleDateString('en-IN', {
+        day: '2-digit', month: 'short', year: 'numeric',
+      });
+      const message = `Reminder: Your lawyer has requested a document "${dr.description}" for case "${matter.title}" (${matter.internalRef}). Please submit it by ${dueDateStr}.`;
+
+      try {
+        if (participant.email) {
+          await this.email.sendCaseNotification(
+            participant.email,
+            participant.name,
+            message,
+            matter.title,
+          );
+          await this.prisma.notificationLog.create({
+            data: {
+              tenantId: matter.tenantId,
+              matterId: matter.id,
+              recipientId: participant.id,
+              channel: 'email',
+              customMessage: message,
+              status: 'sent',
+              sentAt: new Date(),
+            },
+          });
+        }
+
+        if (participant.phone) {
+          await this.whatsapp.sendMessage(participant.phone, message);
+          await this.prisma.notificationLog.create({
+            data: {
+              tenantId: matter.tenantId,
+              matterId: matter.id,
+              recipientId: participant.id,
+              channel: 'whatsapp',
+              customMessage: message,
+              status: 'sent',
+              sentAt: new Date(),
+            },
+          });
+        }
+
+        // Mark as notified so we don't resend
+        await this.prisma.documentRequest.update({
+          where: { id: dr.id },
+          data: { dueDateReminderSentAt: new Date() },
+        });
+      } catch (err) {
+        this.logger.error(`Due-date reminder failed for DR ${dr.id}: ${String(err)}`);
+      }
+    }
+  }
 }

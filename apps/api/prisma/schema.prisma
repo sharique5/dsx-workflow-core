@@ -199,6 +199,7 @@ model DocumentRequest {
   requestedBy String                @map("requested_by")
   status      DocumentRequestStatus @default(pending)
   dueDate     DateTime?             @map("due_date") @db.Date
+  dueDateReminderSentAt DateTime?   @map("due_date_reminder_sent_at")
   createdAt   DateTime              @default(now()) @map("created_at")
 
   tenant    Tenant @relation(fields: [tenantId], references: [id])
