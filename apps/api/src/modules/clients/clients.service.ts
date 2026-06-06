@@ -32,17 +32,24 @@ export class ClientsService {
     private email: EmailService,
   ) {}
 
-  /** List all clients for the authenticated user's tenant */
-  async findAll(user: AuthenticatedUser) {
-    return this.prisma.user.findMany({
-      where: {
-        tenantId: user.tenantId,
-        role: UserRole.client,
-        deletedAt: null,
-      },
-      select: CLIENT_SELECT,
-      orderBy: { createdAt: 'asc' },
-    });
+  /** List clients for the authenticated user's tenant (paginated) */
+  async findAll(user: AuthenticatedUser, page = 1, limit = 25) {
+    const where = {
+      tenantId: user.tenantId,
+      role: UserRole.client,
+      deletedAt: null,
+    };
+    const [data, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        select: CLIENT_SELECT,
+        orderBy: { createdAt: 'asc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+    return { data, total, page, limit };
   }
 
   /** Find a single client by id within the tenant */

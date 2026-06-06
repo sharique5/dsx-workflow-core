@@ -1,8 +1,9 @@
 import { api } from '../../../shared/utils/api';
-import type { UserDto, CreateClientDto, UpdateClientDto } from '@dsx/shared';
+import type { UserDto, CreateClientDto, UpdateClientDto, PaginatedResponse } from '@dsx/shared';
 
 export const clientsApi = {
-  list: () => api.get<UserDto[]>('/clients'),
+  list: (page = 1, limit = 25) =>
+    api.get<PaginatedResponse<UserDto>>('/clients', { params: { page, limit } }),
 
   get: (id: string) => api.get<UserDto>(`/clients/${id}`),
 

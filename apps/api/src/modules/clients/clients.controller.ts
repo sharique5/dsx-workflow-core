@@ -5,10 +5,13 @@ import {
   Patch,
   Param,
   Body,
+  Query,
   UseGuards,
   HttpCode,
   HttpStatus,
   ParseUUIDPipe,
+  ParseIntPipe,
+  DefaultValuePipe,
 } from '@nestjs/common';
 import { ClientsService } from './clients.service';
 import { CreateClientDto, UpdateClientDto } from './dto/client.dto';
@@ -23,8 +26,12 @@ export class ClientsController {
 
   /** GET /api/v1/clients */
   @Get()
-  findAll(@CurrentUser() user: AuthenticatedUser) {
-    return this.clientsService.findAll(user);
+  findAll(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(25), ParseIntPipe) limit: number,
+  ) {
+    return this.clientsService.findAll(user, page, limit);
   }
 
   /** GET /api/v1/clients/:id */
