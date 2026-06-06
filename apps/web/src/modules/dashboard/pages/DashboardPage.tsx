@@ -62,7 +62,30 @@ export function DashboardPage() {
         </Link>
       </div>
 
+      {/* First-time empty state */}
+      {!isLoading && stats?.totalMatters === 0 && (
+        <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 border border-indigo-100">
+            <Briefcase size={22} className="text-indigo-600" />
+          </div>
+          <h2 className="text-base font-semibold text-slate-900">No cases yet</h2>
+          <p className="mt-1 text-sm text-slate-500 max-w-xs mx-auto">
+            Create your first {vocab.matter_label.toLowerCase()} to get started. Your hearings, notes, and fees will appear here.
+          </p>
+          <Link
+            to="/cases/new"
+            className="mt-5 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition-colors"
+          >
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            New {vocab.matter_label}
+          </Link>
+        </div>
+      )}
+
       {/* Stats row */}
+      {(isLoading || (stats?.totalMatters ?? 0) > 0) && (
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {isLoading ? (
           <>
@@ -97,6 +120,7 @@ export function DashboardPage() {
           </>
         )}
       </div>
+      )}
 
       {/* Upcoming hearings */}
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">

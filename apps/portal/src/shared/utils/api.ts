@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { usePortalAuthStore } from '../../store/auth.store';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1';
 
@@ -12,6 +13,7 @@ api.interceptors.response.use(
   (response) => response,
   (error: unknown) => {
     if (axios.isAxiosError(error) && error.response?.status === 401) {
+      usePortalAuthStore.getState().clearAuth();
       window.location.href = '/login';
     }
     return Promise.reject(error);

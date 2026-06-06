@@ -63,8 +63,13 @@ export function ClientsPage() {
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === 'admin';
   const [showForm, setShowForm] = useState(false);
+  const [page, setPage] = useState(1);
+  const PAGE_LIMIT = 25;
 
-  const { data: clients, isLoading, isError } = useClients();
+  const { data: paged, isLoading, isError } = useClients(page, PAGE_LIMIT);
+  const clients = paged?.data;
+  const total = paged?.total ?? 0;
+  const totalPages = Math.ceil(total / PAGE_LIMIT);
   const { mutate: createClient, isPending: isCreating, error: createError } = useCreateClient();
   const { mutate: inviteClient } = useInviteClient();
 
@@ -229,6 +234,29 @@ export function ClientsPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!isLoading && totalPages > 1 && (
+          <div className="flex items-center justify-between gap-3 text-sm">
+            <p className="text-xs text-slate-400">Page {page} of {totalPages} · {total} total</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                ← Prev
+              </button>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Next →
+              </button>
             </div>
           </div>
         )}

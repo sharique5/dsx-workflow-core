@@ -505,7 +505,8 @@ export function CaseDetailPage() {
   const { mutate: deleteMatter, isPending: isDeleting } = useDeleteMatter();
   const { mutate: inviteClient, isPending: isInviting } = useInviteClient();
   const { mutate: updateMatter, isPending: isAssigningClient } = useUpdateMatter(id!);
-  const { data: allClients = [] } = useClients();
+  const { data: allClientsPaged } = useClients();
+  const allClients = allClientsPaged?.data ?? [];
   const { data: staffList = [] } = useStaff();
   const [assignClientId, setAssignClientId] = useState('');
   const [assignStaffId, setAssignStaffId] = useState('');
