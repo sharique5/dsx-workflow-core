@@ -58,7 +58,8 @@ export function CreateCasePage() {
   const currentUser = useAuthStore((s) => s.user);
   const isAdmin = currentUser?.role === 'admin';
   const { mutate: createMatter, isPending, error } = useCreateMatter();
-  const { data: clients = [], isLoading: clientsLoading } = useClients();
+  const { data: clientsPaged, isLoading: clientsLoading } = useClients();
+  const clients = clientsPaged?.data ?? [];
   const { data: staffList = [] } = useStaff();
   const { mutate: createClient, isPending: creatingClient } = useCreateClient();
 
