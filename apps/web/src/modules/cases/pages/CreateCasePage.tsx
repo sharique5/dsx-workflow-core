@@ -5,7 +5,7 @@ import { usePageTitle } from '../../../shared/hooks/usePageTitle';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useCreateMatter } from '../hooks/useMatters';
-import { useClients, useCreateClient } from '../../clients/hooks/useClients';
+import { useAllClients, useCreateClient } from '../../clients/hooks/useClients';
 import { useStaff } from '../../staff/hooks/useStaff';
 import { useAuthStore } from '../../../store/auth.store';
 import { useVocabulary } from '../../../shared/hooks/useVocabulary';
@@ -58,8 +58,7 @@ export function CreateCasePage() {
   const currentUser = useAuthStore((s) => s.user);
   const isAdmin = currentUser?.role === 'admin';
   const { mutate: createMatter, isPending, error } = useCreateMatter();
-  const { data: clientsPaged, isLoading: clientsLoading } = useClients();
-  const clients = clientsPaged?.data ?? [];
+  const { data: clients = [], isLoading: clientsLoading } = useAllClients();
   const { data: staffList = [] } = useStaff();
   const { mutate: createClient, isPending: creatingClient } = useCreateClient();
 
