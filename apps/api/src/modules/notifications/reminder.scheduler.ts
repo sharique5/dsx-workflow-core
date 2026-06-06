@@ -8,10 +8,17 @@ export class ReminderScheduler {
 
   constructor(private notificationsService: NotificationsService) {}
 
-  /** Runs every 5 minutes — checks for due reminders and sends them */
+  /** Runs every 5 minutes — checks for due hearing reminders and sends them */
   @Cron(CronExpression.EVERY_5_MINUTES)
   async handleReminders() {
     this.logger.debug('Checking due reminders...');
     await this.notificationsService.processDueReminders();
+  }
+
+  /** Runs once daily at 09:00 — sends due-date reminders for pending document requests */
+  @Cron('0 9 * * *')
+  async handleDueDateReminders() {
+    this.logger.debug('Checking document request due dates...');
+    await this.notificationsService.processDueDateReminders();
   }
 }
