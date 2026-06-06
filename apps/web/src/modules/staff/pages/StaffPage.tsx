@@ -218,6 +218,12 @@ export function StaffPage() {
           </div>
         )}
 
+        {!isLoading && !isError && staff && staff.length === 0 && (
+          <div className="text-center py-12 text-slate-400 text-sm">
+            No team members yet. Invite your first staff member above.
+          </div>
+        )}
+
         {staff && staff.length > 0 && (
           <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
             <table className="w-full text-left">
