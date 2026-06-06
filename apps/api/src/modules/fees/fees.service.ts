@@ -5,6 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../shared/database/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import type { AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
 import { CreateFeeDto, LogPaymentDto } from './dto/fee.dto';
 import type { PaymentRecord } from '@dsx/shared';
@@ -59,7 +60,10 @@ function toFeeDto(fee: {
 
 @Injectable()
 export class FeesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notifications: NotificationsService,
+  ) {}
 
   private async assertMatterAccess(matterId: string, user: AuthenticatedUser) {
     const matter = await this.prisma.matter.findFirst({
@@ -97,6 +101,14 @@ export class FeesService {
       },
       select: FEE_SELECT,
     });
+
+    // Notify client about new fee
+    void this.notifications.notifyParticipant(
+      matterId,
+      user.tenantId,
+      `A new fee of ₹${dto.totalAmount.toLocaleString('en-IN')} (${dto.type.replace(/_/g, ' ')}) has been added to your case.`,
+    );
+
     return toFeeDto(fee);
   }
 
@@ -139,6 +151,13 @@ export class FeesService {
       },
       select: FEE_SELECT,
     });
+
+    const remaining = currentTotal - newPaid;
+    const msg = remaining > 0
+      ? `Payment of ₹${dto.amount.toLocaleString('en-IN')} received. Outstanding balance: ₹${remaining.toLocaleString('en-IN')}.`
+      : `Payment of ₹${dto.amount.toLocaleString('en-IN')} received. Your balance is now cleared.`;
+    void this.notifications.notifyParticipant(matterId, user.tenantId, msg);
+
     return toFeeDto(updated);
   }
 }

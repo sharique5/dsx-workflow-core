@@ -102,7 +102,7 @@ function NotificationsCard({
             onClick={() => setShowSendForm((v) => !v)}
             className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
           >
-            {showSendForm ? 'Cancel' : '+ Send notification'}
+            {showSendForm ? <><X size={14} className="inline mr-1" />Cancel</> : '+ Send notification'}
           </button>
         )}
       </div>
@@ -1461,7 +1461,7 @@ export function CaseDetailPage() {
                 onClick={() => setShowAddDR((v) => !v)}
                 className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
               >
-                {showAddDR ? 'Cancel' : '+ Request document'}
+                {showAddDR ? <><X size={14} className="inline mr-1" />Cancel</> : '+ Request document'}
               </button>
             )}
           </div>
