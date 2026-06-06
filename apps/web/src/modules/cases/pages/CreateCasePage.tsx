@@ -486,7 +486,7 @@ export function CreateCasePage() {
                     <p className="mt-1 text-xs text-red-500">{clientErrors.name.message}</p>
                   )}
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-slate-700 mb-1">Email <span className="text-red-500">*</span></label>
                     <input
