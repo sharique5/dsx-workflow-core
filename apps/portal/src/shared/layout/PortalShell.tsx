@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Toaster } from 'sonner';
+import { Sparkles } from 'lucide-react';
 import { usePortalAuthStore } from '../../store/auth.store';
 import { authApi } from '../../modules/auth/api/auth.api';
+import { AiChatPanel } from '../../modules/ai/components/AiChatPanel';
 
 export function PortalShell() {
   const { user, clearAuth } = usePortalAuthStore();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = () => {
@@ -84,6 +87,18 @@ export function PortalShell() {
       <footer className="py-6 text-center">
         <p className="text-xs text-slate-400">Nair &amp; Associates &middot; Client Portal</p>
       </footer>
+
+      {/* AI chat floating button */}
+      <button
+        onClick={() => setChatOpen((o) => !o)}
+        className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg ring-4 ring-indigo-100 transition-transform hover:scale-105 hover:bg-indigo-700 focus:outline-none focus:ring-indigo-300"
+        aria-label="Open case assistant"
+      >
+        <Sparkles className="h-6 w-6" />
+      </button>
+
+      {chatOpen && <AiChatPanel onClose={() => setChatOpen(false)} />}
+
       <Toaster position="bottom-right" richColors closeButton />
     </div>
   );
