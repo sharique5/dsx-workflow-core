@@ -4,6 +4,7 @@ import { useAuthStore } from '../store/auth.store';
 import { useLogout } from '../modules/auth/hooks/useAuth';
 import { useVocabulary } from '../shared/hooks/useVocabulary';
 import { Breadcrumbs } from '../shared/components/Breadcrumbs';
+import { AiLawyerChatPanel } from '../modules/ai/components/AiLawyerChatPanel';
 
 // ─── Icons (inline SVG to avoid deps) ────────────────────────────────────────
 
@@ -181,6 +182,7 @@ export function AppShell() {
   const user = useAuthStore((s) => s.user);
   const vocab = useVocabulary();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
   const sidebarWidth = 'w-60';
 
@@ -231,6 +233,20 @@ export function AppShell() {
           <Outlet />
         </main>
       </div>
+
+      {/* AI research floating button */}
+      <button
+        onClick={() => setChatOpen((o) => !o)}
+        className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-indigo-700 text-white shadow-lg ring-4 ring-indigo-100 transition-transform hover:scale-105 hover:bg-indigo-800 focus:outline-none focus:ring-indigo-300"
+        aria-label="Open legal research assistant"
+        title="AI Legal Research Assistant"
+      >
+        <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" />
+        </svg>
+      </button>
+
+      {chatOpen && <AiLawyerChatPanel onClose={() => setChatOpen(false)} />}
     </div>
   );
 }
