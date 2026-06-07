@@ -9,6 +9,10 @@
   box-sizing: border-box;
 }
 
+button, a, select, label, [role="button"], [role="tab"], [role="menuitem"] {
+  cursor: pointer;
+}
+
 body {
   margin: 0;
   font-family: 'Inter', system-ui, sans-serif;
