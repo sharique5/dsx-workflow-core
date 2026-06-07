@@ -15,6 +15,7 @@ const CaseDetailPage = () => import('../modules/cases/pages/CaseDetailPage').the
 const StaffPage = () => import('../modules/staff/pages/StaffPage').then((m) => ({ Component: m.StaffPage }));
 const ClientsPage = () => import('../modules/clients/pages/ClientsPage').then((m) => ({ Component: m.ClientsPage }));
 const NotificationsPage = () => import('../modules/notifications/pages/NotificationsPage').then((m) => ({ Component: m.NotificationsPage }));
+const SettingsPage = () => import('../modules/settings/pages/SettingsPage').then((m) => ({ Component: m.SettingsPage }));
 
 export const router = createBrowserRouter([
   // ─── Public routes ────────────────────────────────────────────────────────
@@ -35,6 +36,7 @@ export const router = createBrowserRouter([
           { path: '/staff', lazy: StaffPage, handle: { crumb: 'Team' } },
           { path: '/clients', lazy: ClientsPage, handle: { crumb: 'Clients' } },
           { path: '/notifications', lazy: NotificationsPage, handle: { crumb: 'Notifications' } },
+          { path: '/settings', lazy: SettingsPage, handle: { crumb: 'Settings' } },
         ],
       },
     ],

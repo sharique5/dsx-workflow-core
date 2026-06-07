@@ -41,6 +41,12 @@ export function useSetPassword() {
   });
 }
 
+export function useClearPassword() {
+  return useMutation({
+    mutationFn: () => authApi.clearPassword(),
+  });
+}
+
 export function useLogout() {
   const { clearAuth } = useAuthStore();
   const navigate = useNavigate();
