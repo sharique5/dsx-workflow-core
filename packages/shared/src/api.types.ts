@@ -234,6 +234,9 @@ export interface DocumentRequestDto {
   requestedBy: string;
   status: DocumentRequestStatus;
   dueDate: string | null;
+  uploadedFileName: string | null;
+  uploadedStorageKey: string | null;
+  uploadedAt: string | null;
   createdAt: string;
 }
 

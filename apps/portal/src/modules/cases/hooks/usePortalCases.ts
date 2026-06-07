@@ -101,22 +101,27 @@ export function usePortalDocumentDownloadUrl(matterId: string) {
   });
 }
 
-export function usePortalUploadDocument(matterId: string) {
+export function usePortalUploadDocumentRequest(matterId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ file, drId }: { file: File; drId?: string }) =>
-      portalDocumentsApi.upload(matterId, file).then(async (r) => {
-        if (drId) {
-          await portalDocumentRequestsApi.markReceived(matterId, drId);
-        }
-        return r.data;
-      }),
+    mutationFn: ({ file, drId }: { file: File; drId: string }) =>
+      portalDocumentRequestsApi.upload(matterId, drId, file).then((r) => r.data),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: portalMatterDocsKey(matterId) });
       void queryClient.invalidateQueries({ queryKey: portalMatterDRKey(matterId) });
-      toast.success('Document uploaded');
+      toast.success('Document uploaded successfully');
     },
-    onError: () => toast.error('Upload failed'),
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(typeof msg === 'string' ? msg : 'Upload failed');
+    },
+  });
+}
+
+export function usePortalDocumentRequestDownloadUrl(matterId: string, drId: string) {
+  return useMutation({
+    mutationFn: () =>
+      portalDocumentRequestsApi.getDownloadUrl(matterId, drId).then((r) => r.data),
+    onError: () => toast.error('Could not get download link'),
   });
 }
 

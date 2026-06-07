@@ -12,4 +12,14 @@ export const documentRequestsApi = {
     api.patch<DocumentRequestDto>(
       `/matters/${matterId}/document-requests/${id}/receive`,
     ),
+
+  revert: (matterId: string, id: string) =>
+    api.patch<DocumentRequestDto>(
+      `/matters/${matterId}/document-requests/${id}/revert`,
+    ),
+
+  getDownloadUrl: (matterId: string, id: string) =>
+    api.get<{ downloadUrl: string; fileName: string }>(
+      `/matters/${matterId}/document-requests/${id}/download`,
+    ),
 };
