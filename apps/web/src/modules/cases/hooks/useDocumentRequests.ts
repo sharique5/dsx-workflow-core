@@ -41,3 +41,25 @@ export function useMarkDocumentRequestReceived(matterId: string) {
     onError: () => toast.error('Failed to update document request'),
   });
 }
+
+export function useRevertDocumentRequest(matterId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) =>
+      documentRequestsApi.revert(matterId, id).then((r) => r.data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: drKey(matterId) });
+      toast.success('Reverted to pending');
+    },
+    onError: () => toast.error('Failed to revert document request'),
+  });
+}
+
+export function useDocumentRequestDownloadUrl(matterId: string) {
+  return useMutation({
+    mutationFn: (id: string) =>
+      documentRequestsApi.getDownloadUrl(matterId, id).then((r) => r.data),
+    onError: () => toast.error('Could not get download link'),
+  });
+}

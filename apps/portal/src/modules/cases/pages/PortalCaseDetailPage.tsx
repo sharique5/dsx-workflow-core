@@ -8,7 +8,8 @@ import {
   usePortalCaseFees,
   usePortalCaseDocuments,
   usePortalDocumentDownloadUrl,
-  usePortalUploadDocument,
+  usePortalUploadDocumentRequest,
+  usePortalDocumentRequestDownloadUrl,
   usePortalMessages,
   usePortalSendMessage,
   usePortalMarkMessagesRead,
@@ -46,6 +47,22 @@ function EmptyState({ message }: { message: string }) {
     <div className="py-10 text-center">
       <p className="text-sm text-slate-400">{message}</p>
     </div>
+  );
+}
+
+function DrDownloadLink({ matterId, drId, fileName }: { matterId: string; drId: string; fileName: string }) {
+  const { mutate: getUrl, isPending } = usePortalDocumentRequestDownloadUrl(matterId, drId);
+  return (
+    <button
+      onClick={() => getUrl(undefined, { onSuccess: (d) => window.open(d.downloadUrl, '_blank') })}
+      disabled={isPending}
+      className="mt-1 inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 disabled:opacity-50"
+    >
+      <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+      </svg>
+      {isPending ? 'Getting link…' : fileName}
+    </button>
   );
 }
 
@@ -178,7 +195,7 @@ export function PortalCaseDetailPage() {
   const { data: fees = [] } = usePortalCaseFees(id!);
   const { data: documents = [] } = usePortalCaseDocuments(id!);
   const { mutate: downloadDocument } = usePortalDocumentDownloadUrl(id!);
-  const { mutate: uploadDocument, isPending: isUploading } = usePortalUploadDocument(id!);
+  const { mutate: uploadDocumentRequest, isPending: isUploading } = usePortalUploadDocumentRequest(id!);
 
   const { data: messages = [] } = usePortalMessages(id!);
   const { mutate: sendMessage, isPending: isSending } = usePortalSendMessage(id!);
@@ -476,6 +493,9 @@ export function PortalCaseDetailPage() {
                             <div className="min-w-0">
                               <p className="text-sm text-slate-800">{dr.description}</p>
                               {dr.dueDate && <p className="mt-0.5 text-xs text-slate-400">Due: {formatDate(dr.dueDate)}</p>}
+                              {dr.status === 'received' && dr.uploadedFileName && (
+                                <DrDownloadLink matterId={id!} drId={dr.id} fileName={dr.uploadedFileName} />
+                              )}
                             </div>
                             <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold border ${
                               dr.status === 'received' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'
@@ -492,11 +512,11 @@ export function PortalCaseDetailPage() {
                               <input
                                 type="file"
                                 className="sr-only"
-                                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp"
+                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                                 disabled={isUploading}
                                 onChange={(e) => {
                                   const file = e.target.files?.[0];
-                                  if (file) uploadDocument({ file, drId: dr.id });
+                                  if (file) uploadDocumentRequest({ file, drId: dr.id });
                                   e.target.value = '';
                                 }}
                               />

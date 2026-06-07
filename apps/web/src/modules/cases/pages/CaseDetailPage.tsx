@@ -5,7 +5,7 @@ import { useMatter, useCloseMatter, useDeleteMatter } from '../hooks/useMatters'
 import { useScheduledEvents, useCreateScheduledEvent, useDeleteScheduledEvent } from '../hooks/useScheduledEvents';
 import { useNotes, useCreateNote, useDeleteNote } from '../hooks/useNotes';
 import { useAuditLogs } from '../hooks/useAuditLogs';
-import { useDocumentRequests, useCreateDocumentRequest, useMarkDocumentRequestReceived } from '../hooks/useDocumentRequests';
+import { useDocumentRequests, useCreateDocumentRequest, useMarkDocumentRequestReceived, useRevertDocumentRequest, useDocumentRequestDownloadUrl } from '../hooks/useDocumentRequests';
 import { useFees, useCreateFee, useLogPayment } from '../hooks/useFees';
 import { useDocuments, useUploadDocument, useUpdateDocument, useDocumentDownloadUrl, useDeleteDocument } from '../hooks/useDocuments';
 import { documentsApi } from '../api/documents.api';
@@ -535,6 +535,8 @@ export function CaseDetailPage() {
   const { data: documentRequests = [] } = useDocumentRequests(id!);
   const { mutate: createDocumentRequest, isPending: isCreatingDR } = useCreateDocumentRequest(id!);
   const { mutate: markReceived } = useMarkDocumentRequestReceived(id!);
+  const { mutate: revertDR } = useRevertDocumentRequest(id!);
+  const { mutate: getDRDownloadUrl } = useDocumentRequestDownloadUrl(id!);
   const [showAddDR, setShowAddDR] = useState(false);
   const [drDescription, setDrDescription] = useState('');
   const [drDueDate, setDrDueDate] = useState('');
@@ -1523,6 +1525,17 @@ export function CaseDetailPage() {
                         Due: {new Date(dr.dueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </p>
                     )}
+                    {dr.status === 'received' && dr.uploadedFileName && (
+                      <button
+                        onClick={() => getDRDownloadUrl(dr.id, { onSuccess: (d) => window.open(d.downloadUrl, '_blank') })}
+                        className="mt-1 inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800"
+                      >
+                        <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        {dr.uploadedFileName}
+                      </button>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span
@@ -1541,6 +1554,18 @@ export function CaseDetailPage() {
                         title="Mark received"
                       >
                         <CheckCheck size={13} />Mark received
+                      </button>
+                    )}
+                    {dr.status === 'received' && !isClosed && (
+                      <button
+                        onClick={() => revertDR(dr.id)}
+                        className="text-xs text-slate-400 hover:text-amber-600 flex items-center gap-1"
+                        title="Mark as pending again"
+                      >
+                        <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+                        </svg>
+                        Revert
                       </button>
                     )}
                   </div>
