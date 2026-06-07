@@ -1,18 +1,20 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-const CONVERSATIONS_API = 'https://conversations.messagebird.com/v1/send';
-
 /**
- * WhatsApp messaging via MessageBird Conversations API.
+ * WhatsApp OTP via Bird.com (new MessageBird) Channels API.
  *
  * Env vars required:
- *   MESSAGEBIRD_API_KEY              — MessageBird access key
- *   MESSAGEBIRD_WHATSAPP_CHANNEL_ID  — WhatsApp channel ID from MessageBird dashboard
- *
- * If either var is unset the service falls back to a console log (dev mode).
+ *   MESSAGEBIRD_API_KEY                — Bird.com access key (Settings → Access keys)
+ *   MESSAGEBIRD_WHATSAPP_CHANNEL_ID    — WhatsApp channel ID (Channels → WhatsApp → channel id)
+ *   BIRD_WORKSPACE_ID                  — Workspace ID (Settings → Workspace)
+ *   BIRD_OTP_TEMPLATE_PROJECT_ID       — Template project ID (Messaging → Templates → project id)
+ *   BIRD_OTP_TEMPLATE_VERSION          — Template version ID (Messaging → Templates → version id)
  *
  * API reference:
- *   https://developers.messagebird.com/api/conversations/#send-a-conversation-message
+ *   https://docs.bird.com/api/channels-api/send-messages/whatsapp
+ *
+ * Template must have a single variable named "otp".
+ * Example template body: "Your login code is {{otp}}. Valid for 10 minutes."
  */
 @Injectable()
 export class WhatsAppService {
@@ -26,55 +28,68 @@ export class WhatsAppService {
     return process.env.MESSAGEBIRD_WHATSAPP_CHANNEL_ID ?? '';
   }
 
+  private get workspaceId(): string {
+    return process.env.BIRD_WORKSPACE_ID ?? '';
+  }
+
+  private get templateProjectId(): string {
+    return process.env.BIRD_OTP_TEMPLATE_PROJECT_ID ?? '';
+  }
+
+  private get templateVersion(): string {
+    return process.env.BIRD_OTP_TEMPLATE_VERSION ?? '';
+  }
+
   private get isConfigured(): boolean {
-    return !!(this.apiKey && this.channelId);
+    return !!(
+      this.apiKey &&
+      this.channelId &&
+      this.workspaceId &&
+      this.templateProjectId &&
+      this.templateVersion
+    );
   }
 
   /**
-   * Send a free-form text message to a WhatsApp number.
-   * @param to   Phone number in E.164 format (e.g. +919876543210)
-   * @param text Message body — plain text
+   * Send a login OTP via WhatsApp using Bird.com Channels API.
+   * Used by SmsService when SMS_PROVIDER=messagebird_whatsapp.
+   *
+   * @param to  Phone number in E.164 format (e.g. +919876543210)
+   * @param otp 6-digit OTP string
    */
-  async sendMessage(to: string, text: string): Promise<void> {
+  async sendOtp(to: string, otp: string): Promise<void> {
     if (!this.isConfigured) {
-      this.logger.warn(`[DEV] WhatsApp → ${to}: ${text}`);
+      this.logger.warn(`[DEV] WhatsApp OTP → ${to}: ${otp}`);
       return;
     }
 
-    const res = await fetch(CONVERSATIONS_API, {
+    const url = `https://api.bird.com/workspaces/${this.workspaceId}/channels/${this.channelId}/messages`;
+
+    const res = await fetch(url, {
       method: 'POST',
       headers: {
         Authorization: `AccessKey ${this.apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        to,
-        from: this.channelId,
-        type: 'text',
-        content: {
-          text,
-          disableUrlPreview: false,
+        receiver: {
+          contacts: [{ identifierValue: to }],
+        },
+        template: {
+          projectId: this.templateProjectId,
+          version: this.templateVersion,
+          locale: 'en',
+          variables: { otp },
         },
       }),
     });
 
     if (!res.ok) {
       const body = await res.text();
-      this.logger.error(`MessageBird WhatsApp failed for ${to}: ${body}`);
-      throw new Error('Failed to send WhatsApp message');
+      this.logger.error(`Bird.com WhatsApp OTP failed for ${to}: ${body}`);
+      throw new Error('Failed to send WhatsApp OTP');
     }
 
-    this.logger.log(`WhatsApp sent to ${to}`);
-  }
-
-  /**
-   * Send a login OTP via WhatsApp.
-   * Used by SmsService when SMS_PROVIDER=messagebird_whatsapp.
-   */
-  async sendOtp(to: string, otp: string): Promise<void> {
-    const text =
-      `Your login code is: *${otp}*\n\n` +
-      `This code expires in 10 minutes. Do not share it with anyone.`;
-    await this.sendMessage(to, text);
+    this.logger.log(`WhatsApp OTP sent to ${to}`);
   }
 }

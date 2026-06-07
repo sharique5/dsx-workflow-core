@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../shared/database/prisma.service';
 import { EmailService } from '../../shared/email/email.service';
-import { WhatsAppService } from '../../shared/whatsapp/whatsapp.service';
 import type { AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
 import { SendNotificationDto, CreateReminderDto, NotificationChannelDto } from './dto/notifications.dto';
 
@@ -17,7 +16,6 @@ export class NotificationsService {
   constructor(
     private prisma: PrismaService,
     private email: EmailService,
-    private whatsapp: WhatsAppService,
   ) {}
 
   // ─── Templates ───────────────────────────────────────────────────────────
@@ -91,10 +89,13 @@ export class NotificationsService {
         }
         await this.email.sendCaseNotification(recipient.email, recipient.name, body, matter.title);
       } else if (dto.channel === NotificationChannelDto.whatsapp) {
-        if (!recipient.phone) {
-          throw new BadRequestException('Recipient has no phone number for WhatsApp');
+        // WhatsApp Business API requires pre-approved templates for each message type.
+        // Case notifications fall back to email until per-type templates are registered.
+        const emailTarget = recipient.email;
+        if (!emailTarget) {
+          throw new BadRequestException('Recipient has no email address for WhatsApp fallback notification');
         }
-        await this.whatsapp.sendMessage(recipient.phone, body);
+        await this.email.sendCaseNotification(emailTarget, recipient.name, body, matter.title);
       }
 
       await this.prisma.notificationLog.update({
@@ -226,20 +227,11 @@ export class NotificationsService {
             });
           }
 
-          // Send WhatsApp if phone is available
-          if (participant.phone) {
-            await this.whatsapp.sendMessage(participant.phone, body);
-            await this.prisma.notificationLog.create({
-              data: {
-                tenantId: reminder.tenantId,
-                matterId: reminder.matterId,
-                recipientId: participant.id,
-                channel: 'whatsapp',
-                customMessage: body,
-                status: 'sent',
-                sentAt: new Date(),
-              },
-            });
+          // Send WhatsApp if phone is available — currently falls back to email
+          // (Bird.com WhatsApp requires pre-approved templates per message type)
+          if (participant.phone && !participant.email) {
+            // phone-only user: log skipped, no email to fall back to
+            this.logger.warn(`Reminder for participant ${participant.id}: phone-only, WhatsApp templates not configured`);
           }
         }
 
@@ -287,9 +279,6 @@ export class NotificationsService {
       if (user.email) {
         await this.email.sendCaseNotification(user.email, user.name, message, caseTitle);
       }
-      if (user.phone) {
-        await this.whatsapp.sendMessage(user.phone, message);
-      }
     } catch (err) {
       this.logger.error(`notifyUser failed for user ${userId}: ${String(err)}`);
     }
@@ -325,13 +314,6 @@ export class NotificationsService {
         );
         await this.prisma.notificationLog.create({
           data: { tenantId, matterId, recipientId: participant.id, channel: 'email', customMessage: message, status: 'sent', sentAt: new Date() },
-        });
-      }
-
-      if (participant.phone) {
-        await this.whatsapp.sendMessage(participant.phone, message);
-        await this.prisma.notificationLog.create({
-          data: { tenantId, matterId, recipientId: participant.id, channel: 'whatsapp', customMessage: message, status: 'sent', sentAt: new Date() },
         });
       }
     } catch (err) {
@@ -402,19 +384,8 @@ export class NotificationsService {
           });
         }
 
-        if (participant.phone) {
-          await this.whatsapp.sendMessage(participant.phone, message);
-          await this.prisma.notificationLog.create({
-            data: {
-              tenantId: matter.tenantId,
-              matterId: matter.id,
-              recipientId: participant.id,
-              channel: 'whatsapp',
-              customMessage: message,
-              status: 'sent',
-              sentAt: new Date(),
-            },
-          });
+        if (participant.phone && !participant.email) {
+          this.logger.warn(`Due-date reminder for DR ${dr.id}: phone-only participant, WhatsApp templates not configured`);
         }
 
         // Mark as notified so we don't resend
