@@ -2,6 +2,38 @@ import { useState, useRef, useEffect } from 'react';
 import { Send, X, Sparkles, AlertCircle } from 'lucide-react';
 import { useAiChat } from '../hooks/useAiChat';
 
+function MarkdownText({ text }: { text: string }) {
+  const lines = text.split('\n');
+  const elements: React.ReactNode[] = [];
+  let key = 0;
+
+  function renderInline(line: string): React.ReactNode {
+    const parts = line.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((part, i) =>
+      part.startsWith('**') && part.endsWith('**')
+        ? <strong key={i}>{part.slice(2, -2)}</strong>
+        : part
+    );
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    if (!trimmed) { elements.push(<div key={key++} className="h-2" />); continue; }
+    const numMatch = trimmed.match(/^(\d+)\.\s+(.+)/);
+    if (numMatch) {
+      elements.push(<div key={key++} className="flex gap-2"><span className="flex-shrink-0 w-5 text-right opacity-60">{numMatch[1]}.</span><span>{renderInline(numMatch[2])}</span></div>);
+      continue;
+    }
+    const bulletMatch = trimmed.match(/^[-*]\s+(.+)/);
+    if (bulletMatch) {
+      elements.push(<div key={key++} className="flex gap-2"><span className="flex-shrink-0 opacity-50 mt-0.5">•</span><span>{renderInline(bulletMatch[1])}</span></div>);
+      continue;
+    }
+    elements.push(<p key={key++}>{renderInline(trimmed)}</p>);
+  }
+  return <div className="space-y-0.5 text-sm leading-relaxed">{elements}</div>;
+}
+
 interface Message {
   role: 'user' | 'ai';
   content: string;
@@ -96,14 +128,13 @@ export function AiChatPanel({ onClose }: AiChatPanelProps) {
           <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[85%] ${msg.role === 'user' ? '' : 'space-y-2'}`}>
               <div
-                className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                className={`rounded-2xl px-4 py-2.5 ${
                   msg.role === 'user'
-                    ? 'rounded-br-sm bg-indigo-600 text-white'
+                    ? 'rounded-br-sm bg-indigo-600 text-white text-sm leading-relaxed'
                     : 'rounded-bl-sm bg-slate-100 text-slate-800'
                 }`}
-                style={{ whiteSpace: 'pre-wrap' }}
               >
-                {msg.content}
+                {msg.role === 'user' ? msg.content : <MarkdownText text={msg.content} />}
               </div>
               {msg.routedToLawyer && (
                 <div className="flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
