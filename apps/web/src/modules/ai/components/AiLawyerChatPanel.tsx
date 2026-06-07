@@ -3,6 +3,71 @@ import { Send, X, Sparkles, AlertTriangle, ShieldCheck, BookOpen, AlertCircle } 
 import { useAiLawyerChat } from '../hooks/useAiLawyerChat';
 import type { AiLawyerResponse } from '../api/ai.api';
 
+/** Lightweight markdown renderer — handles bold, numbered lists, bullets, headings */
+function MarkdownText({ text }: { text: string }) {
+  const lines = text.split('\n');
+  const elements: React.ReactNode[] = [];
+  let key = 0;
+
+  function renderInline(line: string): React.ReactNode {
+    // Bold: **text**
+    const parts = line.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((part, i) =>
+      part.startsWith('**') && part.endsWith('**')
+        ? <strong key={i}>{part.slice(2, -2)}</strong>
+        : part
+    );
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      elements.push(<div key={key++} className="h-2" />);
+      continue;
+    }
+
+    // Heading: ## or ###
+    if (/^#{2,3}\s/.test(trimmed)) {
+      elements.push(
+        <p key={key++} className="font-semibold text-slate-900 mt-2 mb-0.5">
+          {renderInline(trimmed.replace(/^#{2,3}\s/, ''))}
+        </p>
+      );
+      continue;
+    }
+
+    // Numbered list: 1. ...
+    const numMatch = trimmed.match(/^(\d+)\.\s+(.+)/);
+    if (numMatch) {
+      elements.push(
+        <div key={key++} className="flex gap-2">
+          <span className="text-slate-500 flex-shrink-0 w-5 text-right">{numMatch[1]}.</span>
+          <span>{renderInline(numMatch[2])}</span>
+        </div>
+      );
+      continue;
+    }
+
+    // Bullet: - or *
+    const bulletMatch = trimmed.match(/^[-*]\s+(.+)/);
+    if (bulletMatch) {
+      elements.push(
+        <div key={key++} className="flex gap-2">
+          <span className="text-slate-400 flex-shrink-0 mt-0.5">•</span>
+          <span>{renderInline(bulletMatch[1])}</span>
+        </div>
+      );
+      continue;
+    }
+
+    elements.push(<p key={key++}>{renderInline(trimmed)}</p>);
+  }
+
+  return <div className="space-y-0.5 text-sm leading-relaxed">{elements}</div>;
+}
+
 interface Message {
   role: 'user' | 'ai';
   content: string;
@@ -158,14 +223,15 @@ export function AiLawyerChatPanel({ onClose }: AiLawyerChatPanelProps) {
           <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[90%] ${msg.role === 'user' ? '' : 'space-y-1'}`}>
               <div
-                className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                className={`rounded-2xl px-4 py-2.5 ${
                   msg.role === 'user'
-                    ? 'rounded-br-sm bg-indigo-600 text-white'
+                    ? 'rounded-br-sm bg-indigo-600 text-white text-sm leading-relaxed'
                     : 'rounded-bl-sm bg-slate-100 text-slate-800'
                 }`}
-                style={{ whiteSpace: 'pre-wrap' }}
               >
-                {msg.content}
+                {msg.role === 'user'
+                  ? msg.content
+                  : <MarkdownText text={msg.content} />}
               </div>
               {msg.meta && <MessageMeta meta={msg.meta} />}
             </div>
