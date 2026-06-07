@@ -1,50 +1,52 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 /**
- * WhatsApp OTP via Bird.com (new MessageBird) Channels API.
+ * WhatsApp OTP via Bird.com Channels API.
  *
  * Env vars required:
- *   MESSAGEBIRD_API_KEY                — Bird.com access key (Settings → Access keys)
- *   MESSAGEBIRD_WHATSAPP_CHANNEL_ID    — WhatsApp channel ID (Channels → WhatsApp → channel id)
- *   BIRD_WORKSPACE_ID                  — Workspace ID (Settings → Workspace)
- *   BIRD_OTP_TEMPLATE_PROJECT_ID       — Template project ID (Messaging → Templates → project id)
- *   BIRD_OTP_TEMPLATE_VERSION          — Template version ID (Messaging → Templates → version id)
- *
- * API reference:
- *   https://docs.bird.com/api/channels-api/send-messages/whatsapp
+ *   BIRD_ACCESS_KEY              — Bird.com access key (Settings → Access keys)
+ *   BIRD_WORKSPACE_ID            — Workspace ID (Settings → Workspace)
+ *   BIRD_WHATSAPP_CHANNEL_ID     — WhatsApp channel ID (Channels → WhatsApp)
+ *   BIRD_TEMPLATE_PROJECT_ID     — OTP template project ID (Messaging → Templates)
+ *   BIRD_TEMPLATE_VERSION        — OTP template version ID (Messaging → Templates)
+ *   BIRD_TEMPLATE_LOCALE         — Template locale, e.g. "en" (default: "en")
  *
  * Template must have a single variable named "otp".
- * Example template body: "Your login code is {{otp}}. Valid for 10 minutes."
+ * Example: "Your login code is {otp}. Valid for 2 minutes. Do not share it."
  */
 @Injectable()
 export class WhatsAppService {
   private readonly logger = new Logger(WhatsAppService.name);
 
-  private get apiKey(): string {
-    return process.env.MESSAGEBIRD_API_KEY ?? '';
-  }
-
-  private get channelId(): string {
-    return process.env.MESSAGEBIRD_WHATSAPP_CHANNEL_ID ?? '';
+  private get accessKey(): string {
+    return process.env.BIRD_ACCESS_KEY ?? '';
   }
 
   private get workspaceId(): string {
     return process.env.BIRD_WORKSPACE_ID ?? '';
   }
 
+  private get channelId(): string {
+    return process.env.BIRD_WHATSAPP_CHANNEL_ID ?? '';
+  }
+
   private get templateProjectId(): string {
-    return process.env.BIRD_OTP_TEMPLATE_PROJECT_ID ?? '';
+    return process.env.BIRD_TEMPLATE_PROJECT_ID ?? '';
   }
 
   private get templateVersion(): string {
-    return process.env.BIRD_OTP_TEMPLATE_VERSION ?? '';
+    return process.env.BIRD_TEMPLATE_VERSION ?? '';
+  }
+
+  private get templateLocale(): string {
+    return process.env.BIRD_TEMPLATE_LOCALE ?? 'en';
   }
 
   private get isConfigured(): boolean {
     return !!(
-      this.apiKey &&
-      this.channelId &&
+      this.accessKey &&
       this.workspaceId &&
+      this.channelId &&
       this.templateProjectId &&
       this.templateVersion
     );
@@ -52,8 +54,6 @@ export class WhatsAppService {
 
   /**
    * Send a login OTP via WhatsApp using Bird.com Channels API.
-   * Used by SmsService when SMS_PROVIDER=messagebird_whatsapp.
-   *
    * @param to  Phone number in E.164 format (e.g. +919876543210)
    * @param otp 6-digit OTP string
    */
@@ -68,7 +68,7 @@ export class WhatsAppService {
     const res = await fetch(url, {
       method: 'POST',
       headers: {
-        Authorization: `AccessKey ${this.apiKey}`,
+        Authorization: `AccessKey ${this.accessKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -78,7 +78,7 @@ export class WhatsAppService {
         template: {
           projectId: this.templateProjectId,
           version: this.templateVersion,
-          locale: 'en',
+          locale: this.templateLocale,
           variables: { otp },
         },
       }),
