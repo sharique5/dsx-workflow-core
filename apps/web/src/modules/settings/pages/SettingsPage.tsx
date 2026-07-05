@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '../../../store/auth.store';
 import { useSetPassword, useClearPassword } from '../../auth/hooks/useAuth';
 import { usePageTitle } from '../../../shared/hooks/usePageTitle';
+import { useBrand } from '../../../app/brand.context';
+import { usePatchBranding, useUploadLogo } from '../hooks/useBrandingSettings';
+import { BrandLogo } from '../../../shared/components/BrandLogo';
 
 const INPUT_CLS =
   'block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20';
@@ -45,11 +48,244 @@ function ErrorBanner({ message }: { message: string }) {
   );
 }
 
+// ─── Color picker widget ──────────────────────────────────────────────────────
+// A native <input type="color"> swatch paired with a hex text field.
+
+function ColorPickerInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (hex: string) => void;
+}) {
+  const [text, setText] = useState(value);
+  const HEX_RE = /^#[0-9a-fA-F]{6}$/;
+
+  // Keep text in sync when value changes externally
+  useEffect(() => { setText(value); }, [value]);
+
+  const handleTextChange = (raw: string) => {
+    setText(raw);
+    if (HEX_RE.test(raw)) onChange(raw.toLowerCase());
+  };
+
+  return (
+    <div>
+      <label className="block text-sm font-medium text-slate-700 mb-1.5">{label}</label>
+      <div className="flex items-center gap-2">
+        {/* Native color swatch */}
+        <div className="relative w-10 h-10 rounded-lg overflow-hidden border border-slate-300 shadow-sm flex-shrink-0">
+          <input
+            type="color"
+            value={HEX_RE.test(text) ? text : '#000000'}
+            onChange={(e) => { setText(e.target.value); onChange(e.target.value); }}
+            className="absolute inset-0 w-[200%] h-[200%] -translate-x-1/4 -translate-y-1/4 cursor-pointer opacity-0 peer"
+          />
+          <div
+            className="w-full h-full rounded-lg cursor-pointer peer-focus:ring-2 peer-focus:ring-indigo-500"
+            style={{ backgroundColor: HEX_RE.test(text) ? text : '#cccccc' }}
+          />
+        </div>
+        {/* Hex text field */}
+        <input
+          type="text"
+          value={text}
+          onChange={(e) => handleTextChange(e.target.value)}
+          placeholder="#4f46e5"
+          maxLength={7}
+          spellCheck={false}
+          className={`${INPUT_CLS} w-32 font-mono uppercase`}
+        />
+        {text && !HEX_RE.test(text) && (
+          <span className="text-xs text-red-500">Use #rrggbb format</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Logo upload widget ────────────────────────────────────────────────────────
+
+function LogoUploadWidget({
+  onUpload,
+  uploading,
+}: {
+  onUpload: (file: File) => void;
+  uploading: boolean;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleFile = (file: File | undefined) => {
+    if (!file) return;
+    setError(null);
+    if (!file.type.startsWith('image/')) {
+      setError('Must be an image file (JPEG, PNG, WebP or SVG).');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setError('File must be 2 MB or smaller.');
+      return;
+    }
+    onUpload(file);
+  };
+
+  return (
+    <div>
+      <label className="block text-sm font-medium text-slate-700 mb-1.5">Logo</label>
+      <div className="flex items-center gap-4">
+        <BrandLogo size="xl" className="shadow-sm" />
+        <div>
+          <button
+            type="button"
+            disabled={uploading}
+            onClick={() => fileRef.current?.click()}
+            className="rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
+          >
+            {uploading ? 'Uploading…' : 'Upload logo'}
+          </button>
+          <p className="mt-1 text-xs text-slate-400">JPEG, PNG, WebP or SVG · max 2 MB</p>
+          {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
+        </div>
+      </div>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/svg+xml"
+        className="hidden"
+        onChange={(e) => handleFile(e.target.files?.[0])}
+      />
+    </div>
+  );
+}
+
+// ─── Branding section ─────────────────────────────────────────────────────────
+
+function BrandingSection() {
+  const brand = useBrand();
+  const { mutate: patchBranding, isPending: patching } = usePatchBranding();
+  const { mutate: uploadLogo, isPending: uploading } = useUploadLogo();
+
+  const [firmName, setFirmName] = useState(brand.firmName);
+  const [tagline, setTagline] = useState(brand.tagline);
+  const [primaryColor, setPrimaryColor] = useState(brand.primaryColor);
+  const [secondaryColor, setSecondaryColor] = useState(brand.secondaryColor);
+  const [status, setStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+
+  // Keep form in sync if brand loads after initial render
+  useEffect(() => {
+    setFirmName(brand.firmName);
+    setTagline(brand.tagline);
+    setPrimaryColor(brand.primaryColor);
+    setSecondaryColor(brand.secondaryColor);
+  }, [brand.firmName, brand.tagline, brand.primaryColor, brand.secondaryColor]);
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    setStatus(null);
+    patchBranding(
+      { firmName, tagline, primaryColor, secondaryColor },
+      {
+        onSuccess: () => setStatus({ type: 'success', msg: 'Branding updated.' }),
+        onError: () => setStatus({ type: 'error', msg: 'Failed to save. Please try again.' }),
+      },
+    );
+  };
+
+  return (
+    <section className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
+      <div className="px-6 py-4">
+        <h2 className="text-sm font-semibold text-slate-900">Branding</h2>
+        <p className="mt-0.5 text-xs text-slate-500">
+          Customise how your firm appears to clients and staff across all pages.
+        </p>
+      </div>
+
+      <div className="px-6 py-5">
+        <LogoUploadWidget
+          onUpload={(file) =>
+            uploadLogo(file, {
+              onSuccess: () => setStatus({ type: 'success', msg: 'Logo uploaded.' }),
+              onError: () => setStatus({ type: 'error', msg: 'Logo upload failed.' }),
+            })
+          }
+          uploading={uploading}
+        />
+      </div>
+
+      <form onSubmit={handleSave} className="px-6 py-5 space-y-5">
+        {/* Firm name */}
+        <div>
+          <label htmlFor="brand-firmName" className="block text-sm font-medium text-slate-700 mb-1.5">
+            Firm name
+          </label>
+          <input
+            id="brand-firmName"
+            type="text"
+            value={firmName}
+            onChange={(e) => setFirmName(e.target.value)}
+            maxLength={100}
+            className={INPUT_CLS}
+          />
+        </div>
+
+        {/* Tagline */}
+        <div>
+          <label htmlFor="brand-tagline" className="block text-sm font-medium text-slate-700 mb-1.5">
+            Tagline
+          </label>
+          <input
+            id="brand-tagline"
+            type="text"
+            value={tagline}
+            onChange={(e) => setTagline(e.target.value)}
+            maxLength={200}
+            placeholder="e.g. Trusted legal counsel."
+            className={INPUT_CLS}
+          />
+        </div>
+
+        {/* Color pickers */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <ColorPickerInput
+            label="Primary colour"
+            value={primaryColor}
+            onChange={setPrimaryColor}
+          />
+          <ColorPickerInput
+            label="Secondary colour"
+            value={secondaryColor}
+            onChange={setSecondaryColor}
+          />
+        </div>
+
+        {status && (
+          status.type === 'success'
+            ? <SuccessBanner message={status.msg} />
+            : <ErrorBanner message={status.msg} />
+        )}
+
+        <div className="flex items-center gap-3 pt-1">
+          <button
+            type="submit"
+            disabled={patching || !firmName.trim()}
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+          >
+            {patching ? 'Saving…' : 'Save branding'}
+          </button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
+
 export function SettingsPage() {
   usePageTitle('Settings');
   const user = useAuthStore((s) => s.user);
-
-  // ── Password form state ────────────────────────────────────────────────────
+  const isAdmin = user?.role === 'admin'; ────────────────────────────────────────────────────
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNew, setShowNew] = useState(false);
@@ -257,6 +493,9 @@ export function SettingsPage() {
           )}
         </div>
       </section>
+
+      {/* ── Branding section (admin only) ── */}
+      {isAdmin && <BrandingSection />}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useRequestOtp, useLoginWithPassword } from '../hooks/useAuth';
 import { usePageTitle } from '../../../shared/hooks/usePageTitle';
 import { useBrand } from '../../../app/brand.context';
+import { BrandLogo } from '../../../shared/components/BrandLogo';
 
 type Method = 'password' | 'email-otp' | 'phone-otp';
 
@@ -14,11 +15,7 @@ function BrandPanel() {
   return (
     <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950">
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
-          </svg>
-        </div>
+        <BrandLogo size="lg" />
         <span className="text-white font-semibold">{firmName}</span>
       </div>
       <div>
@@ -119,11 +116,7 @@ export function LoginPage() {
         <div className="w-full max-w-sm">
           {/* Mobile logo */}
           <div className="flex items-center gap-2 mb-8 lg:hidden">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
-              </svg>
-            </div>
+            <BrandLogo size="md" />
             <span className="font-semibold text-slate-800">{firmName}</span>
           </div>
 
