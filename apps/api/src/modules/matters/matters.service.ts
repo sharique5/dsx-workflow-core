@@ -125,7 +125,7 @@ export class MattersService {
     const previous = await this.findOne(id, user);
 
     const updated = await this.prisma.matter.update({
-      where: { id },
+      where: { id, tenantId: user.tenantId },
       data: {
         ...(dto.title !== undefined && { title: dto.title }),
         ...(dto.externalRef !== undefined && { externalRef: dto.externalRef }),
@@ -178,7 +178,7 @@ export class MattersService {
     }
 
     const closed = await this.prisma.matter.update({
-      where: { id },
+      where: { id, tenantId: user.tenantId },
       data: { statusKey: 'closed' },
       include: {
         participant: {
@@ -213,7 +213,7 @@ export class MattersService {
     }
 
     return this.prisma.matter.update({
-      where: { id },
+      where: { id, tenantId: user.tenantId },
       data: { deletedAt: new Date() },
     });
   }

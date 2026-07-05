@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePortalCases, usePortalNextHearing } from '../hooks/usePortalCases';
 import { usePortalAuthStore } from '../../../store/auth.store';
+import { useBrand } from '../../../app/brand.context';
 
 function formatStatusKey(key: string) {
   return key
@@ -37,6 +38,7 @@ function formatHearingDate(iso: string) {
 }
 
 export function PortalCasesPage() {
+  const { firmName } = useBrand();
   const { data: cases, isLoading, isError } = usePortalCases();
   const { data: nextHearing } = usePortalNextHearing();
   const navigate = useNavigate();
@@ -113,7 +115,7 @@ export function PortalCasesPage() {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
-            Contact Nair &amp; Associates
+            Contact {firmName}
           </div>
           <p className="mt-1 text-xs text-slate-400 pl-[22px]">
             Reach out to your lawyer if you believe your cases should be visible here.

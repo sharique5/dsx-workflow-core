@@ -13,6 +13,9 @@ model Tenant {
   name           String
   industry       String   @default("legal")
   industryConfig Json     @default("{}") @map("industry_config")
+  brandingConfig Json     @default("{}") @map("branding_config")
+  webDomain      String?  @map("web_domain")
+  portalDomain   String?  @map("portal_domain")
   createdAt      DateTime @default(now()) @map("created_at")
 
   users                 User[]

@@ -5,6 +5,8 @@ import { useLogout } from '../modules/auth/hooks/useAuth';
 import { useVocabulary } from '../shared/hooks/useVocabulary';
 import { Breadcrumbs } from '../shared/components/Breadcrumbs';
 import { AiLawyerChatPanel } from '../modules/ai/components/AiLawyerChatPanel';
+import { useBrand } from './brand.context';
+import { BrandLogo } from '../shared/components/BrandLogo';
 
 // ─── Icons (inline SVG to avoid deps) ────────────────────────────────────────
 
@@ -127,6 +129,7 @@ function SidebarContent({
 }) {
   const navigate = useNavigate();
   const { mutate: logout } = useLogout();
+  const { firmName } = useBrand();
 
   const initials = user?.name
     ? user.name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase()
@@ -136,13 +139,9 @@ function SidebarContent({
     <div className="flex flex-col h-full">
       {/* Logo / wordmark */}
       <div className="flex items-center gap-3 px-4 py-5 border-b border-slate-700/50">
-        <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
-          </svg>
-        </div>
+        <BrandLogo size="md" />
         <div>
-          <p className="text-sm font-semibold text-white leading-tight">Nair &amp; Associates</p>
+          <p className="text-sm font-semibold text-white leading-tight">{firmName}</p>
           <p className="text-xs text-slate-400 leading-tight">Legal Workflow</p>
         </div>
       </div>
@@ -191,6 +190,7 @@ function SidebarContent({
 export function AppShell() {
   const user = useAuthStore((s) => s.user);
   const vocab = useVocabulary();
+  const { firmName } = useBrand();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
 
@@ -230,7 +230,7 @@ export function AppShell() {
           >
             {mobileOpen ? <IconClose /> : <IconMenu />}
           </button>
-          <span className="text-sm font-semibold text-slate-800">Nair &amp; Associates</span>
+          <span className="text-sm font-semibold text-slate-800">{firmName}</span>
         </header>
 
         {/* Desktop breadcrumb bar */}

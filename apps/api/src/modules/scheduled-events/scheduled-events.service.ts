@@ -94,7 +94,7 @@ export class ScheduledEventsService {
     if (!event) throw new NotFoundException('Hearing not found');
 
     return this.prisma.scheduledEvent.update({
-      where: { id },
+      where: { id, tenantId: user.tenantId },
       data: {
         ...(dto.scheduledAt !== undefined && {
           scheduledAt: new Date(dto.scheduledAt),
@@ -122,6 +122,6 @@ export class ScheduledEventsService {
       throw new ForbiddenException('Only admins can delete hearings');
     }
 
-    return this.prisma.scheduledEvent.delete({ where: { id } });
+    return this.prisma.scheduledEvent.delete({ where: { id, tenantId: user.tenantId } });
   }
 }

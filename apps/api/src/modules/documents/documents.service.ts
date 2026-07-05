@@ -138,7 +138,7 @@ export class DocumentsService {
     if (!doc) throw new NotFoundException('Document not found');
 
     const updated = await this.prisma.document.update({
-      where: { id: docId },
+      where: { id: docId, tenantId: user.tenantId },
       data: {
         ...(data.description !== undefined && { description: data.description }),
         ...(data.tags !== undefined && { tags: data.tags }),
@@ -184,7 +184,7 @@ export class DocumentsService {
     if (!doc) throw new NotFoundException('Document not found');
 
     await this.storage.delete(doc.storageKey);
-    await this.prisma.document.delete({ where: { id: docId } });
+    await this.prisma.document.delete({ where: { id: docId, tenantId: user.tenantId } });
     return { success: true };
   }
 }
