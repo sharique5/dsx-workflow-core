@@ -285,7 +285,7 @@ function BrandingSection() {
 export function SettingsPage() {
   usePageTitle('Settings');
   const user = useAuthStore((s) => s.user);
-  const isAdmin = user?.role === 'admin'; ────────────────────────────────────────────────────
+  const isAdmin = user?.role === 'admin'; 
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNew, setShowNew] = useState(false);
