@@ -5,6 +5,7 @@ import {
   Get,
   Body,
   Res,
+  Headers,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -29,8 +30,11 @@ export class AuthController {
   /** POST /api/v1/auth/request-otp */
   @Post('request-otp')
   @HttpCode(HttpStatus.OK)
-  requestOtp(@Body() dto: RequestOtpDto) {
-    return this.authService.requestOtp(dto);
+  requestOtp(
+    @Body() dto: RequestOtpDto,
+    @Headers('x-tenant-domain') domain: string,
+  ) {
+    return this.authService.requestOtp(dto, domain);
   }
 
   /** POST /api/v1/auth/verify-otp */
@@ -38,9 +42,10 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async verifyOtp(
     @Body() dto: VerifyOtpDto,
+    @Headers('x-tenant-domain') domain: string,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const result = await this.authService.verifyOtp(dto);
+    const result = await this.authService.verifyOtp(dto, domain);
 
     // Set JWT as httpOnly cookie (primary) — also return in body for API clients
     res.cookie('access_token', result.accessToken, {

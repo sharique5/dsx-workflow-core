@@ -32,14 +32,33 @@ export class AuthService {
     private jwt: JwtService,
   ) {}
 
-  async requestOtp(dto: RequestOtpDto): Promise<{ message: string }> {
-    const identifier = dto.identifier.trim().toLowerCase();
+  /** Resolve a tenantId from a calling domain (web or portal). Returns null if unknown domain. */
+  private async resolveTenantId(domain: string | undefined): Promise<string | null> {
+    if (!domain) return null;
+    const tenant = await this.prisma.tenant.findFirst({
+      where: { OR: [{ webDomain: domain }, { portalDomain: domain }] },
+      select: { id: true },
+    });
+    return tenant?.id ?? null;
+  }
 
-    // Resolve user by email or phone
+  /** Build a Redis OTP key — tenant-scoped when tenantId is known. */
+  private otpKey(identifier: string, tenantId: string | null): string {
+    return tenantId
+      ? `${OTP_PREFIX}${tenantId}:${identifier}`
+      : `${OTP_PREFIX}${identifier}`;
+  }
+
+  async requestOtp(dto: RequestOtpDto, domain?: string): Promise<{ message: string }> {
+    const identifier = dto.identifier.trim().toLowerCase();
+    const tenantId = await this.resolveTenantId(domain);
+
+    // Resolve user — scoped to calling tenant when domain is known
     const user = await this.prisma.user.findFirst({
       where: {
         isActive: true,
         deletedAt: null,
+        ...(tenantId ? { tenantId } : {}),
         OR: [{ email: identifier }, { phone: identifier }],
       },
     });
@@ -53,7 +72,7 @@ export class AuthService {
     const expirySeconds =
       parseInt(process.env.OTP_EXPIRY_MINUTES ?? '10', 10) * 60;
 
-    await this.redis.set(`${OTP_PREFIX}${identifier}`, otp, expirySeconds);
+    await this.redis.set(this.otpKey(identifier, tenantId), otp, expirySeconds);
 
     // Send via email or SMS/WhatsApp depending on identifier format
     if (identifier.includes('@')) {
@@ -75,12 +94,13 @@ export class AuthService {
     return { message: 'If your account exists, a code has been sent.' };
   }
 
-  async verifyOtp(dto: VerifyOtpDto): Promise<{
+  async verifyOtp(dto: VerifyOtpDto, domain?: string): Promise<{
     accessToken: string;
     user: Omit<AuthenticatedUser, 'role'> & { role: string };
   }> {
     const identifier = dto.identifier.trim().toLowerCase();
-    const storedOtp = await this.redis.get(`${OTP_PREFIX}${identifier}`);
+    const tenantId = await this.resolveTenantId(domain);
+    const storedOtp = await this.redis.get(this.otpKey(identifier, tenantId));
 
     if (!storedOtp) {
       throw new UnauthorizedException('OTP expired or not found');
@@ -98,12 +118,13 @@ export class AuthService {
     }
 
     // Consume OTP — single use
-    await this.redis.del(`${OTP_PREFIX}${identifier}`);
+    await this.redis.del(this.otpKey(identifier, tenantId));
 
     const user = await this.prisma.user.findFirst({
       where: {
         isActive: true,
         deletedAt: null,
+        ...(tenantId ? { tenantId } : {}),
         OR: [{ email: identifier }, { phone: identifier }],
       },
       include: { tenant: true },
