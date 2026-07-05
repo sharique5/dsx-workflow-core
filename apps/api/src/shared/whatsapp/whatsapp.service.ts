@@ -11,8 +11,8 @@ import { Injectable, Logger } from '@nestjs/common';
  *   BIRD_TEMPLATE_VERSION        — OTP template version ID (Messaging → Templates)
  *   BIRD_TEMPLATE_LOCALE         — Template locale, e.g. "en" (default: "en")
  *
- * Template must have a single variable named "otp".
- * Example: "Your login code is {otp}. Valid for 2 minutes. Do not share it."
+ * Template must have a single parameter with key "otp" (type: string).
+ * Example body: "Your login code is {{otp}}. Valid for 2 minutes. Do not share it."
  */
 @Injectable()
 export class WhatsAppService {
@@ -79,7 +79,7 @@ export class WhatsAppService {
           projectId: this.templateProjectId,
           version: this.templateVersion,
           locale: this.templateLocale,
-          variables: { otp },
+          parameters: [{ type: 'string', key: 'otp', value: otp }],
         },
       }),
     });
