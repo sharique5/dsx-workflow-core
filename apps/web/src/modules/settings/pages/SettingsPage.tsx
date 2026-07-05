@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAuthStore } from '../../../store/auth.store';
 import { useSetPassword, useClearPassword } from '../../auth/hooks/useAuth';
 import { usePageTitle } from '../../../shared/hooks/usePageTitle';
@@ -62,9 +62,6 @@ function ColorPickerInput({
 }) {
   const [text, setText] = useState(value);
   const HEX_RE = /^#[0-9a-fA-F]{6}$/;
-
-  // Keep text in sync when value changes externally
-  useEffect(() => { setText(value); }, [value]);
 
   const handleTextChange = (raw: string) => {
     setText(raw);
@@ -173,14 +170,6 @@ function BrandingSection() {
   const [primaryColor, setPrimaryColor] = useState(brand.primaryColor);
   const [secondaryColor, setSecondaryColor] = useState(brand.secondaryColor);
   const [status, setStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
-
-  // Keep form in sync if brand loads after initial render
-  useEffect(() => {
-    setFirmName(brand.firmName);
-    setTagline(brand.tagline);
-    setPrimaryColor(brand.primaryColor);
-    setSecondaryColor(brand.secondaryColor);
-  }, [brand.firmName, brand.tagline, brand.primaryColor, brand.secondaryColor]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();

@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Inject } from '@nes
 import { PrismaService } from '../../shared/database/prisma.service';
 import { UpdateBrandingDto } from './dto/update-branding.dto';
 import { AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
-import { IStorageService } from '../../shared/storage/storage.interface';
+import type { IStorageService } from '../../shared/storage/storage.interface';
 
 const LOGO_FOLDER = 'tenant-logos';
 const LOGO_MAX_BYTES = 2 * 1024 * 1024; // 2 MB
