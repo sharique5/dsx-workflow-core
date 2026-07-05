@@ -5,9 +5,11 @@ import { Sparkles } from 'lucide-react';
 import { usePortalAuthStore } from '../../store/auth.store';
 import { authApi } from '../../modules/auth/api/auth.api';
 import { AiChatPanel } from '../../modules/ai/components/AiChatPanel';
+import { useBrand } from '../../app/brand.context';
 
 export function PortalShell() {
   const { user, clearAuth } = usePortalAuthStore();
+  const { firmName } = useBrand();
   const [menuOpen, setMenuOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -44,7 +46,7 @@ export function PortalShell() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
               </svg>
             </div>
-            <span className="text-sm font-semibold text-slate-900 tracking-tight">Nair &amp; Associates</span>
+            <span className="text-sm font-semibold text-slate-900 tracking-tight">{firmName}</span>
           </div>
 
           {/* Avatar button + dropdown */}
@@ -85,7 +87,7 @@ export function PortalShell() {
 
       {/* Footer */}
       <footer className="py-6 text-center">
-        <p className="text-xs text-slate-400">Nair &amp; Associates &middot; Client Portal</p>
+        <p className="text-xs text-slate-400">{firmName} &middot; Client Portal</p>
       </footer>
 
       {/* AI chat floating button */}

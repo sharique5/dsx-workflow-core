@@ -22,6 +22,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { CourtsModule } from './modules/courts/courts.module';
 import { MessagesModule } from './modules/messages/messages.module';
 import { AiModule } from './modules/ai/ai.module';
+import { TenantModule } from './modules/tenant/tenant.module';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { AiModule } from './modules/ai/ai.module';
     CourtsModule,
     MessagesModule,
     AiModule,
+    TenantModule,
     // Phase 3+ modules will be added here:
     // DocumentsModule,
     // FeesModule (already added),

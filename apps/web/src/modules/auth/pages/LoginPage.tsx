@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRequestOtp, useLoginWithPassword } from '../hooks/useAuth';
 import { usePageTitle } from '../../../shared/hooks/usePageTitle';
+import { useBrand } from '../../../app/brand.context';
 
 type Method = 'password' | 'email-otp' | 'phone-otp';
 
@@ -9,6 +10,7 @@ const INPUT_CLS =
   'block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20';
 
 function BrandPanel() {
+  const { firmName, tagline } = useBrand();
   return (
     <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950">
       <div className="flex items-center gap-3">
@@ -17,7 +19,7 @@ function BrandPanel() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
           </svg>
         </div>
-        <span className="text-white font-semibold">Nair &amp; Associates</span>
+        <span className="text-white font-semibold">{firmName}</span>
       </div>
       <div>
         <h1 className="text-4xl font-bold text-white leading-tight">
@@ -25,10 +27,10 @@ function BrandPanel() {
           <span className="text-indigo-400">with precision.</span>
         </h1>
         <p className="mt-4 text-slate-400 text-base leading-relaxed">
-          Purpose-built legal workflow for modern law firms.
+          {tagline}
         </p>
       </div>
-      <p className="text-xs text-slate-600">&copy; {new Date().getFullYear()} Nair &amp; Associates. All rights reserved.</p>
+      <p className="text-xs text-slate-600">&copy; {new Date().getFullYear()} {firmName}. All rights reserved.</p>
     </div>
   );
 }
@@ -59,6 +61,7 @@ function MethodTab({
 
 export function LoginPage() {
   usePageTitle('Sign In');
+  const { firmName } = useBrand();
   const [method, setMethod] = useState<Method>('password');
   const navigate = useNavigate();
 
@@ -121,7 +124,7 @@ export function LoginPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
               </svg>
             </div>
-            <span className="font-semibold text-slate-800">Nair &amp; Associates</span>
+            <span className="font-semibold text-slate-800">{firmName}</span>
           </div>
 
           <div className="mb-6">

@@ -5,6 +5,7 @@ import { useLogout } from '../modules/auth/hooks/useAuth';
 import { useVocabulary } from '../shared/hooks/useVocabulary';
 import { Breadcrumbs } from '../shared/components/Breadcrumbs';
 import { AiLawyerChatPanel } from '../modules/ai/components/AiLawyerChatPanel';
+import { useBrand } from './brand.context';
 
 // ─── Icons (inline SVG to avoid deps) ────────────────────────────────────────
 
@@ -127,6 +128,7 @@ function SidebarContent({
 }) {
   const navigate = useNavigate();
   const { mutate: logout } = useLogout();
+  const { firmName } = useBrand();
 
   const initials = user?.name
     ? user.name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase()
@@ -142,7 +144,7 @@ function SidebarContent({
           </svg>
         </div>
         <div>
-          <p className="text-sm font-semibold text-white leading-tight">Nair &amp; Associates</p>
+          <p className="text-sm font-semibold text-white leading-tight">{firmName}</p>
           <p className="text-xs text-slate-400 leading-tight">Legal Workflow</p>
         </div>
       </div>
@@ -230,7 +232,7 @@ export function AppShell() {
           >
             {mobileOpen ? <IconClose /> : <IconMenu />}
           </button>
-          <span className="text-sm font-semibold text-slate-800">Nair &amp; Associates</span>
+          <span className="text-sm font-semibold text-slate-800">{firmName}</span>
         </header>
 
         {/* Desktop breadcrumb bar */}

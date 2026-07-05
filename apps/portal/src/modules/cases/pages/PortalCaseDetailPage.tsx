@@ -16,6 +16,7 @@ import {
   usePortalMessagesUnreadCount,
 } from '../hooks/usePortalCases';
 import type { MessageDto, NoteDto } from '@dsx/shared';
+import { useBrand } from '../../../app/brand.context';
 
 function formatStatusKey(key: string) {
   return key
@@ -183,6 +184,7 @@ function SidebarNav({ title, internalRef, statusKey, isClosed, activeTab, tabs, 
 }
 
 export function PortalCaseDetailPage() {
+  const { firmName } = useBrand();
   const { id } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [navOpen, setNavOpen] = useState(false);
@@ -314,7 +316,7 @@ export function PortalCaseDetailPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
               </svg>
             </div>
-            <span className="text-sm font-semibold text-slate-900">Nair &amp; Associates</span>
+            <span className="text-sm font-semibold text-slate-900">{firmName}</span>
           </div>
           <button
             onClick={() => setNavOpen(false)}
