@@ -133,7 +133,7 @@ export class DocumentRequestsService {
     );
 
     return this.prisma.documentRequest.update({
-      where: { id },
+      where: { id, tenantId: user.tenantId },
       data: {
         status: DocumentRequestStatus.received,
         uploadedFileName: file.originalname,
@@ -167,7 +167,7 @@ export class DocumentRequestsService {
     }
 
     return this.prisma.documentRequest.update({
-      where: { id },
+      where: { id, tenantId: user.tenantId },
       data: {
         status: DocumentRequestStatus.pending,
         uploadedFileName: null,
@@ -204,7 +204,7 @@ export class DocumentRequestsService {
     if (!dr) throw new NotFoundException('Document request not found');
 
     return this.prisma.documentRequest.update({
-      where: { id },
+      where: { id, tenantId: user.tenantId },
       data: { status: DocumentRequestStatus.received },
       select: DR_SELECT,
     });

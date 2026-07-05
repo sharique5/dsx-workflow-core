@@ -86,7 +86,7 @@ export class NotesService {
     }
 
     const updated = await this.prisma.note.update({
-      where: { id },
+      where: { id, tenantId: user.tenantId },
       data: {
         ...(dto.content !== undefined && { content: dto.content }),
         ...(dto.isPublished !== undefined && { isPublished: dto.isPublished }),
@@ -118,6 +118,6 @@ export class NotesService {
       throw new ForbiddenException('You can only delete your own notes');
     }
 
-    return this.prisma.note.delete({ where: { id } });
+    return this.prisma.note.delete({ where: { id, tenantId: user.tenantId } });
   }
 }

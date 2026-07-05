@@ -158,7 +158,7 @@ export class ClientsService {
     }
 
     return this.prisma.user.update({
-      where: { id },
+      where: { id, tenantId: user.tenantId },
       data: {
         ...(dto.name && { name: dto.name }),
         ...(dto.email !== undefined && {

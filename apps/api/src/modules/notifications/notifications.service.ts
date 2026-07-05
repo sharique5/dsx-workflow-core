@@ -171,7 +171,7 @@ export class NotificationsService {
       where: { id: reminderId, tenantId: user.tenantId },
     });
     if (!reminder) throw new NotFoundException('Reminder not found');
-    await this.prisma.reminder.delete({ where: { id: reminderId } });
+    await this.prisma.reminder.delete({ where: { id: reminderId, tenantId: user.tenantId } });
   }
 
   // ─── Cron: process due reminders ─────────────────────────────────────────
@@ -237,7 +237,7 @@ export class NotificationsService {
 
         // Mark sent regardless (avoid retry spam if no email)
         await this.prisma.reminder.update({
-          where: { id: reminder.id },
+          where: { id: reminder.id, tenantId: reminder.tenantId },
           data: { isSent: true },
         });
       } catch (err) {

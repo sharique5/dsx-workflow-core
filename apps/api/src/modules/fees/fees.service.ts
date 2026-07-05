@@ -144,7 +144,7 @@ export class FeesService {
     };
 
     const updated = await this.prisma.fee.update({
-      where: { id: feeId },
+      where: { id: feeId, tenantId: user.tenantId },
       data: {
         paidAmount: newPaid,
         paymentHistory: [...history, newRecord] as object[],
