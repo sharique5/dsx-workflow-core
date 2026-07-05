@@ -190,6 +190,7 @@ function SidebarContent({
 export function AppShell() {
   const user = useAuthStore((s) => s.user);
   const vocab = useVocabulary();
+  const { firmName } = useBrand();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
 
