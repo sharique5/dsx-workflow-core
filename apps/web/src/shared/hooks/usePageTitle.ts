@@ -1,13 +1,13 @@
 import { useEffect } from 'react';
-
-const APP_NAME = 'Nair & Associates';
+import { useBrand } from '../../app/brand.context';
 
 export function usePageTitle(title: string): void {
+  const { firmName } = useBrand();
   useEffect(() => {
     const prev = document.title;
-    document.title = title ? `${title} – ${APP_NAME}` : APP_NAME;
+    document.title = title ? `${title} – ${firmName}` : firmName;
     return () => {
       document.title = prev;
     };
-  }, [title]);
+  }, [title, firmName]);
 }
