@@ -10,7 +10,7 @@ WORKDIR /workspace
 COPY package*.json ./
 COPY packages/shared/package.json ./packages/shared/
 COPY apps/api/package.json ./apps/api/
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 COPY packages/ ./packages/
 COPY apps/api/ ./apps/api/
@@ -28,7 +28,7 @@ WORKDIR /workspace
 COPY package*.json ./
 COPY packages/shared/package.json ./packages/shared/
 COPY apps/api/package.json ./apps/api/
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 COPY packages/ ./packages/
 COPY apps/api/ ./apps/api/
@@ -47,7 +47,7 @@ WORKDIR /workspace
 COPY package*.json ./
 COPY packages/shared/package.json ./packages/shared/
 COPY apps/api/package.json ./apps/api/
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --legacy-peer-deps
 
 # ─── Production stage ─────────────────────────────────────────────────────────
 FROM node:20-alpine AS production
