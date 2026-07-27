@@ -10,8 +10,9 @@ interface PortalUser {
 
 interface PortalAuthState {
   user: PortalUser | null;
+  accessToken: string | null;
   isAuthenticated: boolean;
-  setUser: (user: PortalUser) => void;
+  setUser: (user: PortalUser, accessToken: string) => void;
   clearAuth: () => void;
 }
 
@@ -19,9 +20,10 @@ export const usePortalAuthStore = create<PortalAuthState>()(
   persist(
     (set) => ({
       user: null,
+      accessToken: null,
       isAuthenticated: false,
-      setUser: (user) => set({ user, isAuthenticated: true }),
-      clearAuth: () => set({ user: null, isAuthenticated: false }),
+      setUser: (user, accessToken) => set({ user, accessToken, isAuthenticated: true }),
+      clearAuth: () => set({ user: null, accessToken: null, isAuthenticated: false }),
     }),
     { name: 'dsx-portal-auth' },
   ),

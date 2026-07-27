@@ -29,7 +29,7 @@ export function AcceptInvitePage() {
     const run = async () => {
       try {
         const { data } = await authApi.acceptInvite(token);
-        setUser(data.user);
+        setUser(data.user, data.accessToken);
         navigate('/cases', { replace: true });
       } catch {
         setError(

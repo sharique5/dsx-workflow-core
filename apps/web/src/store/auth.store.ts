@@ -5,9 +5,10 @@ import { DEFAULT_LEGAL_VOCABULARY } from '@dsx/shared';
 
 interface AuthState {
   user: UserDto | null;
+  accessToken: string | null;
   vocabulary: IndustryConfig;
   isAuthenticated: boolean;
-  setUser: (user: UserDto, vocabulary?: IndustryConfig) => void;
+  setUser: (user: UserDto, accessToken: string, vocabulary?: IndustryConfig) => void;
   clearAuth: () => void;
 }
 
@@ -15,12 +16,14 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user: null,
+      accessToken: null,
       vocabulary: DEFAULT_LEGAL_VOCABULARY,
       isAuthenticated: false,
 
-      setUser: (user, vocabulary) =>
+      setUser: (user, accessToken, vocabulary) =>
         set({
           user,
+          accessToken,
           isAuthenticated: true,
           vocabulary: vocabulary ?? DEFAULT_LEGAL_VOCABULARY,
         }),
@@ -28,6 +31,7 @@ export const useAuthStore = create<AuthState>()(
       clearAuth: () =>
         set({
           user: null,
+          accessToken: null,
           isAuthenticated: false,
           vocabulary: DEFAULT_LEGAL_VOCABULARY,
         }),

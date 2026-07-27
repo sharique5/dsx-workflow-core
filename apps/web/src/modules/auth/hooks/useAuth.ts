@@ -16,7 +16,7 @@ export function useVerifyOtp() {
   return useMutation({
     mutationFn: authApi.verifyOtp,
     onSuccess: ({ data }) => {
-      setUser(data.user);
+      setUser(data.user, data.accessToken);
       navigate('/dashboard');
     },
   });
@@ -29,7 +29,7 @@ export function useLoginWithPassword() {
   return useMutation({
     mutationFn: authApi.loginWithPassword,
     onSuccess: ({ data }) => {
-      setUser(data.user);
+      setUser(data.user, data.accessToken);
       navigate('/dashboard');
     },
   });
