@@ -22,7 +22,7 @@ jobs:
       - name: Install dependencies
         # Delete lock file so npm resolves rolldown's linux native binding fresh.
         # The lock was generated on Windows and omits @rolldown/binding-linux-x64-gnu.
-        run: rm -f package-lock.json && npm install --no-audit
+        run: rm -f package-lock.json && npm install --no-audit --legacy-peer-deps
 
       - name: Cache Turborepo
         uses: actions/cache@v4
