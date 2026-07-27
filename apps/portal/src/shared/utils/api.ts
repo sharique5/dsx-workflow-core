@@ -12,6 +12,18 @@ export const api = axios.create({
   },
 });
 
+// Request interceptor — add Authorization Bearer token if available
+api.interceptors.request.use(
+  (config) => {
+    const token = usePortalAuthStore.getState().accessToken;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
+
 api.interceptors.response.use(
   (response) => response,
   (error: unknown) => {

@@ -12,6 +12,18 @@ export const api = axios.create({
   },
 });
 
+// Request interceptor — add Authorization Bearer token if available
+api.interceptors.request.use(
+  (config) => {
+    const token = useAuthStore.getState().accessToken;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
+
 // Response interceptor — clear auth state and redirect to login on 401
 api.interceptors.response.use(
   (response) => response,

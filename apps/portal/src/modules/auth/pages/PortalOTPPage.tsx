@@ -33,7 +33,7 @@ export function PortalOTPPage() {
     setError('');
     try {
       const { data } = await authApi.verifyOtp(identifier, code);
-      setUser(data.user);
+      setUser(data.user, data.accessToken);
       navigate('/cases');
     } catch {
       setError('Invalid or expired code. Please try again.');
