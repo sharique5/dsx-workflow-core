@@ -28,6 +28,8 @@ jobs:
 
       - name: Build portal app
         run: npx turbo run build --filter=@dsx/portal...
+        env:
+          VITE_RAZORPAY_KEY_ID: ${{ secrets.VITE_RAZORPAY_KEY_ID }}
 
       - name: Copy SWA config to dist
         run: cp apps/portal/staticwebapp.config.json apps/portal/dist/staticwebapp.config.json
