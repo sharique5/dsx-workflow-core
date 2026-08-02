@@ -7,6 +7,29 @@ import { portalDocumentsApi } from '../api/portal-documents.api';
 import { portalMessagesApi } from '../api/portal-messages.api';
 import type { CreateMessageDto } from '@dsx/shared';
 
+// Razorpay types
+interface RazorpayOptions {
+  key: string;
+  amount: number;
+  currency: string;
+  order_id: string;
+  name: string;
+  description: string;
+  handler: (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => void;
+  modal: { ondismiss: () => void };
+  theme: { color: string };
+}
+
+interface RazorpayInstance {
+  open: () => void;
+}
+
+declare global {
+  interface Window {
+    Razorpay: new (options: RazorpayOptions) => RazorpayInstance;
+  }
+}
+
 export const PORTAL_MATTERS_KEY = ['portal', 'matters'] as const;
 export const portalMatterKey = (id: string) => ['portal', 'matters', id] as const;
 export const portalMatterEventsKey = (id: string) =>
@@ -201,7 +224,7 @@ export function useRazorpayPayment(matterId: string) {
           },
         };
 
-        const rzp = new (window as unknown as { Razorpay: new (options: typeof options) => { open: () => void } }).Razorpay(options);
+        const rzp = new window.Razorpay(options);
         rzp.open();
       }).then(async (paymentResponse) => {
         // Step 3: Verify payment on backend
