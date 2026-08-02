@@ -28,10 +28,14 @@ const testAmount = 100; // ₹1 in paise
 
 console.log('🚀 Attempting to create test order...\n');
 
+// Razorpay receipt max length: 40 characters
+const receipt = `test_${Date.now()}`;
+console.log(`Receipt: ${receipt} (${receipt.length} chars)\n`);
+
 razorpay.orders.create({
   amount: testAmount,
   currency: 'INR',
-  receipt: `test_${Date.now()}`,
+  receipt,
   notes: {
     test: true,
   },

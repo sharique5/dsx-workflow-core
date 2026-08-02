@@ -232,12 +232,17 @@ export class FeesService {
     }
 
     try {
+      // Razorpay receipt max length is 40 characters
+      // Using short format: fee_<first8chars>_<timestamp>
+      const shortFeeId = feeId.substring(0, 8);
+      const receipt = `fee_${shortFeeId}_${Date.now()}`;
+      
       const order = await this.razorpay.orders.create({
         amount: amountInPaise,
         currency: 'INR',
-        receipt: `fee_${feeId}_${Date.now()}`,
+        receipt, // Max 40 chars: fee_<8>_<13> = 26 chars
         notes: {
-          feeId,
+          feeId, // Full UUID stored here for reference
           matterId,
           tenantId: user.tenantId,
           userId: user.id,
