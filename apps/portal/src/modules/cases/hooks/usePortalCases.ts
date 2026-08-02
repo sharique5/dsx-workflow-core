@@ -218,7 +218,18 @@ export function useRazorpayPayment(matterId: string) {
       void queryClient.invalidateQueries({ queryKey: portalMatterFeesKey(matterId) });
       toast.success('Payment successful!', { description: data.message });
     },
-    onError: (error: Error) => {
+    onError: (error: Error, variables) => {
+      // Notify backend about the failure (unless user cancelled)
+      if (error.message !== 'Payment cancelled by user') {
+        void portalFeesApi.notifyPaymentFailure(matterId, variables.feeId, {
+          amount: variables.amount,
+          reason: error.message || 'Payment failed',
+        }).catch(() => {
+          // Silent fail - notification is best effort
+        });
+      }
+
+      // Show user-facing error
       if (error.message === 'Payment cancelled by user') {
         toast.info('Payment cancelled');
       } else {

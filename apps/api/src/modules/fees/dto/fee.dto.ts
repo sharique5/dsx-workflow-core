@@ -60,3 +60,13 @@ export class VerifyRazorpayPaymentDto {
   @Min(0.01)
   amount!: number;
 }
+
+export class NotifyPaymentFailureDto {
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01)
+  amount!: number;
+
+  @IsString()
+  @IsNotEmpty()
+  reason!: string;
+}

@@ -25,6 +25,11 @@ interface VerifyRazorpayPaymentResponse {
   message: string;
 }
 
+interface NotifyPaymentFailureRequest {
+  amount: number;
+  reason: string;
+}
+
 export const portalFeesApi = {
   list: (matterId: string) => api.get<FeeDto[]>(`/matters/${matterId}/fees`),
   
@@ -33,4 +38,7 @@ export const portalFeesApi = {
   
   verifyRazorpayPayment: (matterId: string, feeId: string, data: VerifyRazorpayPaymentRequest) =>
     api.post<VerifyRazorpayPaymentResponse>(`/matters/${matterId}/fees/${feeId}/razorpay/verify-payment`, data),
+  
+  notifyPaymentFailure: (matterId: string, feeId: string, data: NotifyPaymentFailureRequest) =>
+    api.post<void>(`/matters/${matterId}/fees/${feeId}/razorpay/notify-failure`, data),
 };

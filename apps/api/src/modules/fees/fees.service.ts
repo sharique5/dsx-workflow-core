@@ -340,7 +340,7 @@ export class FeesService {
       select: { 
         title: true, 
         participant: { 
-          select: { name: true, email: true } 
+          select: { name: true, email: true, phone: true } 
         } 
       },
     });
@@ -359,12 +359,233 @@ export class FeesService {
       });
     }
 
-    // TODO: Send WhatsApp notification (requires approved template)
+    // Send WhatsApp notification
+    if (matter?.participant?.phone) {
+      void this.sendWhatsAppPaymentSuccess(
+        matter.participant.phone,
+        matter.participant.name,
+        dto.amount,
+        dto.razorpay_payment_id,
+        matter.title,
+        remaining,
+      ).catch(err => {
+        // Log but don't fail the payment if WhatsApp fails
+        this.logger.error('Failed to send WhatsApp payment confirmation:', err);
+      });
+    }
 
     return {
       success: true,
       payment: toFeeDto(updated),
       message: msg,
     };
+  }
+
+  /**
+   * Send WhatsApp payment success notification
+   */
+  private async sendWhatsAppPaymentSuccess(
+    phone: string,
+    name: string,
+    amount: number,
+    paymentId: string,
+    caseTitle: string,
+    remainingBalance: number,
+  ): Promise<void> {
+    const templateId = this.config.get<string>('BIRD_PAYMENT_SUCCESS_TEMPLATE_PROJECT_ID');
+    const templateVersion = this.config.get<string>('BIRD_PAYMENT_SUCCESS_TEMPLATE_VERSION');
+    const channelId = this.config.get<string>('BIRD_WHATSAPP_CHANNEL_ID');
+    const accessKey = this.config.get<string>('BIRD_ACCESS_KEY');
+    const workspaceId = this.config.get<string>('BIRD_WORKSPACE_ID');
+
+    if (!templateId || !templateVersion || !channelId || !accessKey || !workspaceId) {
+      this.logger.warn('WhatsApp payment notification skipped: Bird.com credentials not configured');
+      return;
+    }
+
+    const dynamicMessage = remainingBalance === 0
+      ? '✓ Your balance is now fully cleared. Thank you!'
+      : 'Partial payment received.';
+
+    const message = {
+      receiver: {
+        contacts: [{
+          identifierValue: phone,
+        }],
+      },
+      body: {
+        type: 'template',
+        template: {
+          projectId: templateId,
+          version: templateVersion,
+          locale: 'en',
+          parameters: [
+            { type: 'text', text: name },
+            { type: 'text', text: amount.toLocaleString('en-IN') },
+            { type: 'text', text: paymentId },
+            { type: 'text', text: caseTitle },
+            { type: 'text', text: remainingBalance.toLocaleString('en-IN') },
+            { type: 'text', text: dynamicMessage },
+          ],
+        },
+      },
+    };
+
+    try {
+      const response = await fetch(
+        `https://api.bird.com/workspaces/${workspaceId}/channels/${channelId}/messages`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `AccessKey ${accessKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(message),
+        },
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Bird.com API error (${response.status}): ${errorText}`);
+      }
+
+      this.logger.log(`WhatsApp payment success notification sent to ${phone}`);
+    } catch (error) {
+      this.logger.error(`Failed to send WhatsApp notification: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Send WhatsApp payment failure notification
+   */
+  private async sendWhatsAppPaymentFailure(
+    phone: string,
+    name: string,
+    amount: number,
+    caseTitle: string,
+    outstandingBalance: number,
+    reason: string,
+  ): Promise<void> {
+    const templateId = this.config.get<string>('BIRD_PAYMENT_FAILED_TEMPLATE_PROJECT_ID');
+    const templateVersion = this.config.get<string>('BIRD_PAYMENT_FAILED_TEMPLATE_VERSION');
+    const channelId = this.config.get<string>('BIRD_WHATSAPP_CHANNEL_ID');
+    const accessKey = this.config.get<string>('BIRD_ACCESS_KEY');
+    const workspaceId = this.config.get<string>('BIRD_WORKSPACE_ID');
+
+    if (!templateId || !templateVersion || !channelId || !accessKey || !workspaceId) {
+      this.logger.warn('WhatsApp payment failure notification skipped: Bird.com credentials not configured');
+      return;
+    }
+
+    const message = {
+      receiver: {
+        contacts: [{
+          identifierValue: phone,
+        }],
+      },
+      body: {
+        type: 'template',
+        template: {
+          projectId: templateId,
+          version: templateVersion,
+          locale: 'en',
+          parameters: [
+            { type: 'text', text: name },
+            { type: 'text', text: caseTitle },
+            { type: 'text', text: amount.toLocaleString('en-IN') },
+            { type: 'text', text: outstandingBalance.toLocaleString('en-IN') },
+            { type: 'text', text: reason },
+          ],
+        },
+      },
+    };
+
+    try {
+      const response = await fetch(
+        `https://api.bird.com/workspaces/${workspaceId}/channels/${channelId}/messages`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `AccessKey ${accessKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(message),
+        },
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Bird.com API error (${response.status}): ${errorText}`);
+      }
+
+      this.logger.log(`WhatsApp payment failure notification sent to ${phone}`);
+    } catch (error) {
+      this.logger.error(`Failed to send WhatsApp failure notification: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Notify client about payment failure
+   */
+  async notifyPaymentFailure(
+    matterId: string,
+    feeId: string,
+    amount: number,
+    reason: string,
+    user: AuthenticatedUser,
+  ): Promise<void> {
+    await this.assertMatterAccess(matterId, user);
+
+    const fee = await this.prisma.fee.findFirst({
+      where: { id: feeId, matterId, tenantId: user.tenantId },
+      select: { totalAmount: true, paidAmount: true },
+    });
+
+    const matter = await this.prisma.matter.findUnique({
+      where: { id: matterId },
+      select: { 
+        title: true, 
+        participant: { 
+          select: { name: true, email: true, phone: true } 
+        } 
+      },
+    });
+
+    if (!matter?.participant) {
+      this.logger.warn(`Payment failure notification skipped: No participant found for matter ${matterId}`);
+      return;
+    }
+
+    const currentTotal = Number(fee?.totalAmount || 0);
+    const currentPaid = Number(fee?.paidAmount || 0);
+    const dueAmount = currentTotal - currentPaid;
+
+    // Send email notification
+    if (matter.participant.email) {
+      void this.email.sendCaseNotification(
+        matter.participant.email,
+        matter.participant.name,
+        `Your payment of ₹${amount.toLocaleString('en-IN')} could not be processed. ${reason} Please try again or contact us for assistance.`,
+        matter.title,
+      ).catch(err => {
+        this.logger.error('Failed to send payment failure email:', err);
+      });
+    }
+
+    // Send WhatsApp notification
+    if (matter.participant.phone) {
+      void this.sendWhatsAppPaymentFailure(
+        matter.participant.phone,
+        matter.participant.name,
+        amount,
+        matter.title,
+        dueAmount,
+        reason,
+      ).catch(err => {
+        this.logger.error('Failed to send WhatsApp payment failure notification:', err);
+      });
+    }
   }
 }

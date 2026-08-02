@@ -7,7 +7,8 @@ import {
   CreateFeeDto, 
   LogPaymentDto, 
   CreateRazorpayOrderDto, 
-  VerifyRazorpayPaymentDto 
+  VerifyRazorpayPaymentDto,
+  NotifyPaymentFailureDto,
 } from './dto/fee.dto';
 
 @UseGuards(JwtAuthGuard)
@@ -60,5 +61,21 @@ export class FeesController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.feesService.verifyRazorpayPayment(matterId, feeId, dto, user);
+  }
+
+  @Post(':feeId/razorpay/notify-failure')
+  notifyPaymentFailure(
+    @Param('matterId') matterId: string,
+    @Param('feeId') feeId: string,
+    @Body() dto: NotifyPaymentFailureDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.feesService.notifyPaymentFailure(
+      matterId,
+      feeId,
+      dto.amount,
+      dto.reason,
+      user,
+    );
   }
 }
