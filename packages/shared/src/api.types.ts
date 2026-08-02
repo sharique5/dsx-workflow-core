@@ -270,6 +270,8 @@ export interface PaymentRecord {
   amount: number;
   paidAt: string;
   note?: string;
+  razorpay_order_id?: string;
+  razorpay_payment_id?: string;
 }
 
 export interface FeeDto {

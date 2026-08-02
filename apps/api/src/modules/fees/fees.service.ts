@@ -4,10 +4,19 @@ import {
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import * as crypto from 'crypto';
+import Razorpay from 'razorpay';
 import { PrismaService } from '../../shared/database/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EmailService } from '../../shared/email/email.service';
 import type { AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
-import { CreateFeeDto, LogPaymentDto } from './dto/fee.dto';
+import { 
+  CreateFeeDto, 
+  LogPaymentDto, 
+  CreateRazorpayOrderDto, 
+  VerifyRazorpayPaymentDto 
+} from './dto/fee.dto';
 import type { PaymentRecord } from '@dsx/shared';
 
 const FEE_SELECT = {
@@ -60,10 +69,19 @@ function toFeeDto(fee: {
 
 @Injectable()
 export class FeesService {
+  private razorpay: Razorpay;
+
   constructor(
     private prisma: PrismaService,
     private notifications: NotificationsService,
-  ) {}
+    private config: ConfigService,
+    private email: EmailService,
+  ) {
+    this.razorpay = new Razorpay({
+      key_id: this.config.get<string>('RAZORPAY_KEY_ID') || '',
+      key_secret: this.config.get<string>('RAZORPAY_KEY_SECRET') || '',
+    });
+  }
 
   private async assertMatterAccess(matterId: string, user: AuthenticatedUser) {
     const matter = await this.prisma.matter.findFirst({
@@ -159,5 +177,156 @@ export class FeesService {
     void this.notifications.notifyParticipant(matterId, user.tenantId, msg);
 
     return toFeeDto(updated);
+  }
+
+  async createRazorpayOrder(
+    matterId: string,
+    feeId: string,
+    dto: CreateRazorpayOrderDto,
+    user: AuthenticatedUser,
+  ) {
+    await this.assertMatterAccess(matterId, user);
+
+    const fee = await this.prisma.fee.findFirst({
+      where: { id: feeId, matterId, tenantId: user.tenantId },
+      select: FEE_SELECT,
+    });
+    if (!fee) throw new NotFoundException('Fee not found');
+
+    const currentPaid = Number(fee.paidAmount);
+    const currentTotal = Number(fee.totalAmount);
+    const dueAmount = currentTotal - currentPaid;
+
+    // Validate payment amount
+    if (dto.amount > dueAmount) {
+      throw new BadRequestException(
+        `Payment amount ₹${dto.amount} exceeds outstanding balance ₹${dueAmount}`,
+      );
+    }
+
+    // Razorpay requires amount in paise (smallest currency unit)
+    const amountInPaise = Math.round(dto.amount * 100);
+    if (amountInPaise < 100) {
+      throw new BadRequestException('Minimum payment amount is ₹1');
+    }
+
+    try {
+      const order = await this.razorpay.orders.create({
+        amount: amountInPaise,
+        currency: 'INR',
+        receipt: `fee_${feeId}_${Date.now()}`,
+        notes: {
+          feeId,
+          matterId,
+          tenantId: user.tenantId,
+          userId: user.id,
+        },
+      });
+
+      return {
+        order_id: order.id,
+        amount: dto.amount,
+        currency: 'INR',
+        key_id: this.config.get<string>('RAZORPAY_KEY_ID'),
+      };
+    } catch (error) {
+      throw new BadRequestException(
+        `Failed to create Razorpay order: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+    }
+  }
+
+  async verifyRazorpayPayment(
+    matterId: string,
+    feeId: string,
+    dto: VerifyRazorpayPaymentDto,
+    user: AuthenticatedUser,
+  ) {
+    await this.assertMatterAccess(matterId, user);
+
+    const fee = await this.prisma.fee.findFirst({
+      where: { id: feeId, matterId, tenantId: user.tenantId },
+      select: FEE_SELECT,
+    });
+    if (!fee) throw new NotFoundException('Fee not found');
+
+    // Verify signature
+    const keySecret = this.config.get<string>('RAZORPAY_KEY_SECRET') || '';
+    const generatedSignature = crypto
+      .createHmac('sha256', keySecret)
+      .update(`${dto.razorpay_order_id}|${dto.razorpay_payment_id}`)
+      .digest('hex');
+
+    if (generatedSignature !== dto.razorpay_signature) {
+      throw new BadRequestException('Invalid payment signature');
+    }
+
+    // Payment verified! Now record it
+    const currentPaid = Number(fee.paidAmount);
+    const currentTotal = Number(fee.totalAmount);
+    const newPaid = currentPaid + dto.amount;
+
+    if (newPaid > currentTotal) {
+      throw new BadRequestException('Payment exceeds outstanding balance');
+    }
+
+    const history = (fee.paymentHistory as unknown as PaymentRecord[]) ?? [];
+    const newRecord: PaymentRecord = {
+      amount: dto.amount,
+      paidAt: new Date().toISOString(),
+      note: `Online payment via Razorpay (Payment ID: ${dto.razorpay_payment_id})`,
+      razorpay_order_id: dto.razorpay_order_id,
+      razorpay_payment_id: dto.razorpay_payment_id,
+    };
+
+    const updated = await this.prisma.fee.update({
+      where: { id: feeId, tenantId: user.tenantId },
+      data: {
+        paidAmount: newPaid,
+        paymentHistory: [...history, newRecord] as object[],
+      },
+      select: FEE_SELECT,
+    });
+
+    // Send notifications
+    const remaining = currentTotal - newPaid;
+    const msg = remaining > 0
+      ? `Payment of ₹${dto.amount.toLocaleString('en-IN')} received successfully. Outstanding balance: ₹${remaining.toLocaleString('en-IN')}.`
+      : `Payment of ₹${dto.amount.toLocaleString('en-IN')} received successfully. Your balance is now cleared. Thank you!`;
+    
+    void this.notifications.notifyParticipant(matterId, user.tenantId, msg);
+
+    // Send email confirmation to client
+    const matter = await this.prisma.matter.findUnique({
+      where: { id: matterId },
+      select: { 
+        title: true, 
+        participant: { 
+          select: { name: true, email: true } 
+        } 
+      },
+    });
+
+    if (matter?.participant?.email) {
+      void this.email.sendPaymentConfirmation(
+        matter.participant.email,
+        matter.participant.name,
+        dto.amount,
+        remaining,
+        matter.title,
+        dto.razorpay_payment_id,
+      ).catch(err => {
+        // Log but don't fail the payment if email fails
+        console.error('Failed to send payment confirmation email:', err);
+      });
+    }
+
+    // TODO: Send WhatsApp notification (requires approved template)
+
+    return {
+      success: true,
+      payment: toFeeDto(updated),
+      message: msg,
+    };
   }
 }

@@ -3,7 +3,12 @@ import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { CurrentUser } from '../../shared/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
 import { FeesService } from './fees.service';
-import { CreateFeeDto, LogPaymentDto } from './dto/fee.dto';
+import { 
+  CreateFeeDto, 
+  LogPaymentDto, 
+  CreateRazorpayOrderDto, 
+  VerifyRazorpayPaymentDto 
+} from './dto/fee.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('matters/:matterId/fees')
@@ -35,5 +40,25 @@ export class FeesController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.feesService.logPayment(matterId, feeId, dto, user);
+  }
+
+  @Post(':feeId/razorpay/create-order')
+  createRazorpayOrder(
+    @Param('matterId') matterId: string,
+    @Param('feeId') feeId: string,
+    @Body() dto: CreateRazorpayOrderDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.feesService.createRazorpayOrder(matterId, feeId, dto, user);
+  }
+
+  @Post(':feeId/razorpay/verify-payment')
+  verifyRazorpayPayment(
+    @Param('matterId') matterId: string,
+    @Param('feeId') feeId: string,
+    @Body() dto: VerifyRazorpayPaymentDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.feesService.verifyRazorpayPayment(matterId, feeId, dto, user);
   }
 }

@@ -36,3 +36,27 @@ export class LogPaymentDto {
   @IsISO8601()
   paidAt?: string;
 }
+
+export class CreateRazorpayOrderDto {
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(1)
+  amount!: number;
+}
+
+export class VerifyRazorpayPaymentDto {
+  @IsString()
+  @IsNotEmpty()
+  razorpay_order_id!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  razorpay_payment_id!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  razorpay_signature!: string;
+
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01)
+  amount!: number;
+}
