@@ -413,21 +413,18 @@ export class FeesService {
           identifierValue: phone,
         }],
       },
-      body: {
-        type: 'template',
-        template: {
-          projectId: templateId,
-          version: templateVersion,
-          locale: 'en',
-          parameters: [
-            { type: 'text', text: name },
-            { type: 'text', text: amount.toLocaleString('en-IN') },
-            { type: 'text', text: paymentId },
-            { type: 'text', text: caseTitle },
-            { type: 'text', text: remainingBalance.toLocaleString('en-IN') },
-            { type: 'text', text: dynamicMessage },
-          ],
-        },
+      template: {
+        projectId: templateId,
+        version: templateVersion,
+        locale: 'en',
+        parameters: [
+          { type: 'text', text: name },
+          { type: 'text', text: amount.toLocaleString('en-IN') },
+          { type: 'text', text: paymentId },
+          { type: 'text', text: caseTitle },
+          { type: 'text', text: remainingBalance.toLocaleString('en-IN') },
+          { type: 'text', text: dynamicMessage },
+        ],
       },
     };
 
@@ -484,20 +481,17 @@ export class FeesService {
           identifierValue: phone,
         }],
       },
-      body: {
-        type: 'template',
-        template: {
-          projectId: templateId,
-          version: templateVersion,
-          locale: 'en',
-          parameters: [
-            { type: 'text', text: name },
-            { type: 'text', text: caseTitle },
-            { type: 'text', text: amount.toLocaleString('en-IN') },
-            { type: 'text', text: outstandingBalance.toLocaleString('en-IN') },
-            { type: 'text', text: reason },
-          ],
-        },
+      template: {
+        projectId: templateId,
+        version: templateVersion,
+        locale: 'en',
+        parameters: [
+          { type: 'text', text: name },
+          { type: 'text', text: caseTitle },
+          { type: 'text', text: amount.toLocaleString('en-IN') },
+          { type: 'text', text: outstandingBalance.toLocaleString('en-IN') },
+          { type: 'text', text: reason },
+        ],
       },
     };
 
