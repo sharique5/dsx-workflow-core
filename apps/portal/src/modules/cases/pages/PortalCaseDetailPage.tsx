@@ -14,6 +14,7 @@ import {
   usePortalSendMessage,
   usePortalMarkMessagesRead,
   usePortalMessagesUnreadCount,
+  useRazorpayPayment,
 } from '../hooks/usePortalCases';
 import type { MessageDto, NoteDto } from '@dsx/shared';
 import { useBrand } from '../../../app/brand.context';
@@ -190,6 +191,8 @@ export function PortalCaseDetailPage() {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [navOpen, setNavOpen] = useState(false);
   const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
+  const [paymentModal, setPaymentModal] = useState<{ feeId: string; dueAmount: number } | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState<string>('');
 
   const { data: matter, isLoading } = usePortalCase(id!);
   const { data: events = [] } = usePortalCaseEvents(id!);
@@ -199,6 +202,7 @@ export function PortalCaseDetailPage() {
   const { data: documents = [] } = usePortalCaseDocuments(id!);
   const { mutate: downloadDocument } = usePortalDocumentDownloadUrl(id!);
   const { mutate: uploadDocumentRequest, isPending: isUploading } = usePortalUploadDocumentRequest(id!);
+  const { mutate: makePayment, isPending: isProcessingPayment } = useRazorpayPayment(id!);
 
   const { data: messages = [] } = usePortalMessages(id!);
   const { mutate: sendMessage, isPending: isSending } = usePortalSendMessage(id!);
@@ -214,6 +218,28 @@ export function PortalCaseDetailPage() {
       markRead();
     }
   }, [activeTab, messages.length]);
+
+  const handlePayNow = (feeId: string, dueAmount: number) => {
+    setPaymentModal({ feeId, dueAmount });
+    setPaymentAmount(dueAmount.toString());
+  };
+
+  const handlePaymentSubmit = () => {
+    if (!paymentModal) return;
+    const amount = parseFloat(paymentAmount);
+    if (isNaN(amount) || amount <= 0 || amount > paymentModal.dueAmount) {
+      return;
+    }
+    makePayment(
+      { feeId: paymentModal.feeId, amount },
+      {
+        onSuccess: () => {
+          setPaymentModal(null);
+          setPaymentAmount('');
+        },
+      }
+    );
+  };
 
   const allTabs: TabDef[] = [
     ...TABS,
@@ -618,6 +644,14 @@ export function PortalCaseDetailPage() {
                             </div>
                           ))}
                         </div>
+                        {fee.dueAmount > 0 && (
+                          <button
+                            onClick={() => handlePayNow(fee.id, fee.dueAmount)}
+                            className="w-full mb-4 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-semibold shadow-md hover:shadow-lg transition-all"
+                          >
+                            Pay Now
+                          </button>
+                        )}
                         {fee.paymentHistory.length > 0 && (
                           <>
                             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Payment History</p>
@@ -714,6 +748,80 @@ export function PortalCaseDetailPage() {
 
         </main>
       </div>
+
+      {/* Payment Modal */}
+      {paymentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <h2 className="text-lg font-bold text-slate-900 mb-4">Make Payment</h2>
+            <p className="text-sm text-slate-600 mb-4">
+              Outstanding balance: <span className="font-semibold">{'\u20B9'}{paymentModal.dueAmount.toLocaleString('en-IN')}</span>
+            </p>
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Payment Amount
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">₹</span>
+                <input
+                  type="number"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  min="1"
+                  max={paymentModal.dueAmount}
+                  step="0.01"
+                  className="w-full pl-8 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter amount"
+                  disabled={isProcessingPayment}
+                />
+              </div>
+              {parseFloat(paymentAmount) > paymentModal.dueAmount && (
+                <p className="text-xs text-red-600 mt-1">Amount cannot exceed due balance</p>
+              )}
+              <div className="mt-2 flex gap-2">
+                <button
+                  onClick={() => setPaymentAmount((paymentModal.dueAmount / 2).toFixed(2))}
+                  className="text-xs px-3 py-1 rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  disabled={isProcessingPayment}
+                >
+                  50%
+                </button>
+                <button
+                  onClick={() => setPaymentAmount(paymentModal.dueAmount.toFixed(2))}
+                  className="text-xs px-3 py-1 rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  disabled={isProcessingPayment}
+                >
+                  Full Amount
+                </button>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setPaymentModal(null);
+                  setPaymentAmount('');
+                }}
+                className="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50"
+                disabled={isProcessingPayment}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePaymentSubmit}
+                disabled={
+                  isProcessingPayment ||
+                  !paymentAmount ||
+                  parseFloat(paymentAmount) <= 0 ||
+                  parseFloat(paymentAmount) > paymentModal.dueAmount
+                }
+                className="flex-1 px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isProcessingPayment ? 'Processing...' : 'Proceed to Pay'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
