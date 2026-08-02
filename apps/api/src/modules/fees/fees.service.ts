@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
@@ -70,6 +71,7 @@ function toFeeDto(fee: {
 @Injectable()
 export class FeesService {
   private razorpay: Razorpay;
+  private readonly logger = new Logger(FeesService.name);
 
   constructor(
     private prisma: PrismaService,
@@ -77,9 +79,18 @@ export class FeesService {
     private config: ConfigService,
     private email: EmailService,
   ) {
+    const keyId = this.config.get<string>('RAZORPAY_KEY_ID');
+    const keySecret = this.config.get<string>('RAZORPAY_KEY_SECRET');
+
+    if (!keyId || !keySecret) {
+      this.logger.warn('Razorpay credentials not configured. Payment features will not work.');
+    } else {
+      this.logger.log(`Razorpay initialized with Key ID: ${keyId.substring(0, 10)}...`);
+    }
+
     this.razorpay = new Razorpay({
-      key_id: this.config.get<string>('RAZORPAY_KEY_ID') || '',
-      key_secret: this.config.get<string>('RAZORPAY_KEY_SECRET') || '',
+      key_id: keyId || '',
+      key_secret: keySecret || '',
     });
   }
 
@@ -187,6 +198,16 @@ export class FeesService {
   ) {
     await this.assertMatterAccess(matterId, user);
 
+    // Validate Razorpay configuration
+    const keyId = this.config.get<string>('RAZORPAY_KEY_ID');
+    const keySecret = this.config.get<string>('RAZORPAY_KEY_SECRET');
+    
+    if (!keyId || !keySecret) {
+      throw new BadRequestException(
+        'Razorpay payment gateway is not configured. Please contact support.',
+      );
+    }
+
     const fee = await this.prisma.fee.findFirst({
       where: { id: feeId, matterId, tenantId: user.tenantId },
       select: FEE_SELECT,
@@ -230,8 +251,20 @@ export class FeesService {
         key_id: this.config.get<string>('RAZORPAY_KEY_ID'),
       };
     } catch (error) {
+      // Log full error for debugging
+      console.error('Razorpay order creation error:', error);
+      
+      // Extract meaningful error message
+      let errorMessage = 'Unknown error';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        // Razorpay errors might have nested structure
+        errorMessage = JSON.stringify(error);
+      }
+      
       throw new BadRequestException(
-        `Failed to create Razorpay order: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Failed to create Razorpay order: ${errorMessage}`,
       );
     }
   }
