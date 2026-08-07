@@ -15,7 +15,7 @@ export class EmailService {
   }
 
   async sendOtp(to: string, otp: string): Promise<void> {
-    const { error } = await this.resend.emails.send({
+    const { data, error } = await this.resend.emails.send({
       from: process.env.EMAIL_FROM ?? 'onboarding@resend.dev',
       to,
       subject: 'Your DSX Workflow login code',
@@ -33,6 +33,9 @@ export class EmailService {
       );
       throw new InternalServerErrorException('Failed to send login code');
     }
+
+    // Log the Resend email ID so delivery status can be traced at resend.com/emails/{id}
+    this.logger.log(`OTP email queued for ${to} (resend id: ${data?.id})`);
   }
 
   async sendPortalInvite(
