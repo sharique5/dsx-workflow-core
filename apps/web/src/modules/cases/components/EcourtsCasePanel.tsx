@@ -48,7 +48,14 @@ export function EcourtsCasePanel({ matterId }: EcourtsCasePanelProps) {
         </div>
         <button
           type="button"
-          onClick={() => refresh(courtCase.id)}
+          onClick={() =>
+            refresh(courtCase.id, {
+              onSuccess: () =>
+                toast.success(
+                  'Refreshed. If the court updated recently, new data can take ~10 min to appear.',
+                ),
+            })
+          }
           disabled={refreshing}
           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
         >
