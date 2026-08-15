@@ -191,12 +191,13 @@ export class EcourtsService {
 
     await this.syncOrders(courtCase.id, detail);
 
-    // Materialize the next hearing onto the calendar right away (idempotent).
-    if (courtCase.matterId && base.nextHearingDate) {
-      await this.ensureNextHearingEvent(
+    // Materialize eCourts hearings (past history + upcoming) into the Hearings tab.
+    if (courtCase.matterId) {
+      await this.syncHearings(
         tenantId,
         courtCase.matterId,
         courtCase.createdBy,
+        detail,
         base.nextHearingDate,
       );
     }
@@ -207,26 +208,44 @@ export class EcourtsService {
     });
   }
 
-  /** Create a forward-looking ScheduledEvent for the next hearing (idempotent). */
-  async ensureNextHearingEvent(
+  /** Materialize eCourts hearings (history + next) into ScheduledEvents (idempotent). */
+  private async syncHearings(
     tenantId: string,
     matterId: string,
     createdBy: string,
-    scheduledAt: Date,
+    detail: EcourtsCaseDetail,
+    nextHearing: Date | null,
   ): Promise<void> {
-    // Only upcoming hearings belong on the calendar.
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-    if (scheduledAt < startOfToday) return;
+    const existing = await this.prisma.scheduledEvent.findMany({
+      where: { matterId },
+      select: { scheduledAt: true },
+    });
+    const seen = new Set(existing.map((e) => e.scheduledAt.toISOString()));
 
-    const existing = await this.prisma.scheduledEvent.findFirst({
-      where: { tenantId, matterId, scheduledAt },
-      select: { id: true },
-    });
-    if (existing) return;
-    await this.prisma.scheduledEvent.create({
-      data: { tenantId, matterId, scheduledAt, createdBy },
-    });
+    const rows: Prisma.ScheduledEventCreateManyInput[] = [];
+    const add = (d: Date | null, outcome?: string | null, judge?: string | null) => {
+      if (!d) return;
+      const key = d.toISOString();
+      if (seen.has(key)) return;
+      seen.add(key);
+      rows.push({
+        tenantId,
+        matterId,
+        createdBy,
+        scheduledAt: d,
+        outcomeNotes: outcome?.trim() || null,
+        judgeNotes: judge?.trim() || null,
+      });
+    };
+
+    for (const h of detail.courtCaseData.historyOfCaseHearings ?? []) {
+      add(parseDate(h.businessOnDate ?? h.hearingDate), h.purposeOfListing, h.judge);
+    }
+    add(nextHearing); // upcoming hearing, if not already covered by history
+
+    if (rows.length > 0) {
+      await this.prisma.scheduledEvent.createMany({ data: rows });
+    }
   }
 
   private async syncOrders(courtCaseId: string, detail: EcourtsCaseDetail) {

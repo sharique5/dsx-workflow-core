@@ -42,9 +42,16 @@ export function useEcourtsSearch(params: EcourtsSearchParams, enabled = false) {
 
 /** Persist an eCourts case (optionally linked to a matter). */
 export function useLinkEcourtsCase() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ cnr, matterId }: { cnr: string; matterId?: string }) =>
       ecourtsApi.linkCase(cnr, matterId).then((r) => r.data),
+    onSuccess: (_data, variables) => {
+      if (variables.matterId) {
+        queryClient.invalidateQueries({ queryKey: ecourtsCaseKey(variables.matterId) });
+        queryClient.invalidateQueries({ queryKey: ['matters', variables.matterId, 'events'] });
+      }
+    },
   });
 }
 
@@ -67,6 +74,7 @@ export function useRefreshEcourtsCase(matterId: string) {
     mutationFn: (id: string) => ecourtsApi.refresh(id).then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ecourtsCaseKey(matterId) });
+      queryClient.invalidateQueries({ queryKey: ['matters', matterId, 'events'] });
     },
   });
 }

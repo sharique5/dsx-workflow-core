@@ -257,7 +257,10 @@ export function CreateCasePage() {
         }));
         const next = detail.entityInfo?.nextDateOfHearing || c.nextHearingDate;
         const nextLabel = next ? ` · next hearing ${new Date(next).toLocaleDateString()}` : '';
-        const statusKey = mapStatusKey(c.caseStatus, Boolean(next), vocab.statuses);
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+        const hasFutureHearing = next ? new Date(next) >= startOfToday : false;
+        const statusKey = mapStatusKey(c.caseStatus, hasFutureHearing, vocab.statuses);
         if (statusKey) setValue('statusKey', statusKey, { shouldValidate: true });
         setEcourtsInfo(
           Object.fromEntries(
