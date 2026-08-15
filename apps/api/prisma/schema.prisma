@@ -30,6 +30,7 @@ model Tenant {
   notificationLogs      NotificationLog[]
   reminders             Reminder[]
   auditLogs             AuditLog[]
+  courtCases            CourtCase[]
 
   @@map("tenants")
 }
@@ -74,6 +75,7 @@ model User {
   messages         Message[]
   auditLogs        AuditLog[]
   notificationLogs NotificationLog[]
+  courtCases       CourtCase[]
 
   @@unique([tenantId, email])
   @@unique([tenantId, phone])
@@ -111,6 +113,7 @@ model Matter {
   reminders       Reminder[]
   notificationLogs NotificationLog[]
   auditLogs       AuditLog[]
+  courtCases      CourtCase[]
 
   @@unique([tenantId, internalRef])
   @@index([tenantId])
@@ -380,4 +383,64 @@ model Message {
   @@index([matterId])
   @@index([matterId, createdAt])
   @@map("messages")
+}
+
+// ─── eCourts Integration (legal tenants) ──────────────────────────────────────
+
+model CourtCase {
+  id                  String    @id @default(uuid())
+  tenantId            String    @map("tenant_id")
+  matterId            String?   @map("matter_id")
+  cnr                 String
+  caseType            String?   @map("case_type")
+  caseTypeRaw         String?   @map("case_type_raw")
+  caseStatus          String?   @map("case_status")
+  courtCode           String?   @map("court_code")
+  courtComplexCode    String?   @map("court_complex_code")
+  filingNumber        String?   @map("filing_number")
+  filingDate          DateTime? @map("filing_date")
+  registrationNumber  String?   @map("registration_number")
+  registrationDate    DateTime? @map("registration_date")
+  firstHearingDate    DateTime? @map("first_hearing_date")
+  nextHearingDate     DateTime? @map("next_hearing_date")
+  decisionDate        DateTime? @map("decision_date")
+  petitioners         String[]  @default([])
+  respondents         String[]  @default([])
+  petitionerAdvocates String[]  @default([]) @map("petitioner_advocates")
+  respondentAdvocates String[]  @default([]) @map("respondent_advocates")
+  judges              String[]  @default([])
+  orderCount          Int       @default(0) @map("order_count")
+  hearingCount        Int       @default(0) @map("hearing_count")
+  judgmentCount       Int       @default(0) @map("judgment_count")
+  rawSnapshot         Json      @default("{}") @map("raw_snapshot")
+  lastSyncedAt        DateTime? @map("last_synced_at")
+  createdBy           String    @map("created_by")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  tenant  Tenant      @relation(fields: [tenantId], references: [id])
+  matter  Matter?     @relation(fields: [matterId], references: [id])
+  creator User        @relation(fields: [createdBy], references: [id])
+  orders  CaseOrder[]
+
+  @@unique([tenantId, cnr])
+  @@index([tenantId])
+  @@index([matterId])
+  @@index([tenantId, nextHearingDate])
+  @@map("court_cases")
+}
+
+model CaseOrder {
+  id          String    @id @default(uuid())
+  courtCaseId String    @map("court_case_id")
+  orderDate   DateTime? @map("order_date")
+  orderType   String?   @map("order_type")
+  filename    String
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  courtCase CourtCase @relation(fields: [courtCaseId], references: [id], onDelete: Cascade)
+
+  @@unique([courtCaseId, filename])
+  @@index([courtCaseId])
+  @@map("case_orders")
 }

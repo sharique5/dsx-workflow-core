@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { DatabaseModule } from './shared/database/database.module';
 import { RedisModule } from './shared/redis/redis.module';
 import { EmailModule } from './shared/email/email.module';
@@ -23,11 +24,15 @@ import { CourtsModule } from './modules/courts/courts.module';
 import { MessagesModule } from './modules/messages/messages.module';
 import { AiModule } from './modules/ai/ai.module';
 import { TenantModule } from './modules/tenant/tenant.module';
+import { EcourtsModule } from './modules/ecourts/ecourts.module';
 
 @Module({
   imports: [
     // Configuration — loads .env automatically
     ConfigModule.forRoot({ isGlobal: true }),
+
+    // Cron scheduling (eCourts daily sync, etc.)
+    ScheduleModule.forRoot(),
 
     // Shared infrastructure (all global)
     DatabaseModule,
@@ -53,6 +58,7 @@ import { TenantModule } from './modules/tenant/tenant.module';
     MessagesModule,
     AiModule,
     TenantModule,
+    EcourtsModule,
     // Phase 3+ modules will be added here:
     // DocumentsModule,
     // FeesModule (already added),
