@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useForm, useWatch } from 'react-hook-form';
 import { usePageTitle } from '../../../shared/hooks/usePageTitle';
@@ -70,6 +70,18 @@ function buildCaseTitle(c: EcourtsCaseData): string {
   return bits || `${pet || 'Petitioner'} vs ${resp || 'Respondent'}`;
 }
 
+/** Map an eCourts case-type string onto the form's fixed Case Type options. */
+function mapCaseType(raw?: string): string {
+  const s = (raw ?? '').toLowerCase();
+  if (!s) return '';
+  if (/writ|w\.?p\b/.test(s)) return 'Writ';
+  if (/exec/.test(s)) return 'Execution';
+  if (/f\.?i\.?r/.test(s)) return 'FIR';
+  if (/crim|cr\.?p\.?c|bail|ct\s*cases|\bcc\b|\bcr\b/.test(s)) return 'Criminal';
+  if (/civil|c\.?p\.?c|suit|\bcs\b/.test(s)) return 'Civil';
+  return 'Misc';
+}
+
 const INPUT_CLS =
   'block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20';
 const LABEL_CLS = 'block text-sm font-medium text-slate-700 mb-1.5';
@@ -97,6 +109,7 @@ export function CreateCasePage() {
   const [showEcourtsSearch, setShowEcourtsSearch] = useState(false);
   const [notFoundCnr, setNotFoundCnr] = useState<string | null>(null);
   const [ecourtsInfo, setEcourtsInfo] = useState<Record<string, string> | null>(null);
+  const [pendingMap, setPendingMap] = useState<{ districtCode?: string; complexName?: string } | null>(null);
   const [courtDetails, setCourtDetails] = useState<CourtDetails>(EMPTY_COURT);
   const [selectedStateId, setSelectedStateId] = useState('');
   const [selectedDistrictId, setSelectedDistrictId] = useState('');
@@ -133,6 +146,35 @@ export function CreateCasePage() {
   } = useForm<CreateClientForm>({
     resolver: zodResolver(createClientSchema),
   });
+
+  // Resolve eCourts district code into the district dropdown once options load.
+  useEffect(() => {
+    if (!pendingMap?.districtCode || districts.length === 0) return;
+    const d = districts.find((x) => x.id === pendingMap.districtCode);
+    if (d) {
+      setSelectedDistrictId(d.id);
+      setCourtDetails((p) => ({ ...p, district: d.name }));
+    }
+    setPendingMap((m) => (m ? { complexName: m.complexName } : null));
+  }, [districts, pendingMap]);
+
+  // Best-effort match of the eCourts court name to a complex once options load.
+  useEffect(() => {
+    if (!pendingMap || pendingMap.districtCode || !pendingMap.complexName || complexes.length === 0) {
+      return;
+    }
+    const target = pendingMap.complexName.toLowerCase();
+    const byName = complexes.find((x) => {
+      const n = x.name.toLowerCase().replace(/court complex/g, '').trim();
+      return n.length > 3 && target.includes(n);
+    });
+    const chosen = byName ?? (complexes.length === 1 ? complexes[0] : undefined);
+    if (chosen) {
+      setSelectedComplexId(chosen.id);
+      setCourtDetails((p) => ({ ...p, courtComplex: chosen.name }));
+    }
+    setPendingMap(null);
+  }, [complexes, pendingMap]);
 
   const applyParsedCnr = (raw: string) => {
     const info = parseCnr(raw);
@@ -172,19 +214,18 @@ export function CreateCasePage() {
         setValue('title', buildCaseTitle(c), { shouldValidate: true });
         const extRef = c.registrationNumber || c.filingNumber || c.caseNumber || '';
         if (extRef) setValue('externalRef', extRef, { shouldValidate: true });
-        const matchedState = states.find(
-          (s) => s.name.toLowerCase() === (c.state ?? '').toLowerCase(),
-        );
-        if (matchedState) {
-          setSelectedStateId(matchedState.id);
+        const stateOpt = states.find((s) => s.id === (c.stateCode ?? ''));
+        if (stateOpt) {
+          setSelectedStateId(stateOpt.id);
           setSelectedDistrictId('');
           setSelectedComplexId('');
+          setPendingMap({ districtCode: c.districtCode, complexName: c.courtName });
         }
         setCourtDetails((prev) => ({
           ...prev,
           cnr: c.cnr || raw,
-          caseType: c.caseTypeRaw || c.caseType || prev.caseType,
-          state: c.state || prev.state,
+          caseType: mapCaseType(c.caseTypeRaw || c.caseType) || prev.caseType,
+          state: stateOpt?.name || c.state || prev.state,
           district: c.district || prev.district,
           courtComplex: c.courtName || prev.courtComplex,
           judge: c.judges?.[0] || prev.judge,
@@ -210,6 +251,7 @@ export function CreateCasePage() {
       },
       onError: (err) => {
         setEcourtsInfo(null);
+        setPendingMap(null);
         if (isAxiosError(err) && err.response?.status === 404) {
           setNotFoundCnr(raw);
           setCnrHint({ ok: false, text: "This case isn't on eCourts yet." });
@@ -322,6 +364,7 @@ export function CreateCasePage() {
                   setCnrHint(null);
                   setNotFoundCnr(null);
                   setEcourtsInfo(null);
+                  setPendingMap(null);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {

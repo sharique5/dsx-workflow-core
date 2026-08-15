@@ -11,7 +11,9 @@ export interface EcourtsCaseData {
   registrationNumber?: string;
   nextHearingDate?: string;
   state?: string;
+  stateCode?: string;
   district?: string;
+  districtCode?: string;
   courtName?: string;
   purpose?: string;
   judges?: string[];
