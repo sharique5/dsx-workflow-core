@@ -77,7 +77,10 @@ export class EcourtsSyncScheduler {
         );
         synced++;
         // Active case with no upcoming hearing => provider cache is likely stale.
-        if (!updated.nextHearingDate || updated.nextHearingDate < startOfToday) {
+        if (
+          !updated.nextHearingDate ||
+          updated.nextHearingDate < startOfToday
+        ) {
           staleCnrs.push(c.cnr);
         }
       } catch (err) {
@@ -88,7 +91,9 @@ export class EcourtsSyncScheduler {
 
     // Queue re-scrapes for stale cases so the next run pulls fresh data.
     if (staleCnrs.length > 0) {
-      this.logger.log(`Queuing re-scrape for ${staleCnrs.length} stale case(s).`);
+      this.logger.log(
+        `Queuing re-scrape for ${staleCnrs.length} stale case(s).`,
+      );
       await this.ecourts.queueBulkRefresh(staleCnrs);
     }
     this.logger.log(

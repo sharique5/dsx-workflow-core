@@ -84,7 +84,9 @@ export class EcourtsIndiaProvider implements EcourtsProvider, OnModuleInit {
   }
 
   async bulkRefresh(cnrs: string[]): Promise<unknown> {
-    return this.request<unknown>('POST', '/partner/case/bulk-refresh', { cnrs });
+    return this.request<unknown>('POST', '/partner/case/bulk-refresh', {
+      cnrs,
+    });
   }
 
   async getOrderPdf(
