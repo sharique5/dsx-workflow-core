@@ -12,8 +12,13 @@ import {
   ECOURTS_PROVIDER,
   type EcourtsProvider,
 } from './providers/ecourts-provider.interface';
-import type { EcourtsCaseDetail } from './ecourts.types';
+import type { EcourtsCaseData, EcourtsCaseDetail } from './ecourts.types';
 import { LinkCaseDto, SearchCasesDto } from './dto/ecourts.dto';
+
+interface StatusEntry {
+  key: string;
+  isTerminal?: boolean;
+}
 
 @Injectable()
 export class EcourtsService {
@@ -200,6 +205,7 @@ export class EcourtsService {
         detail,
         base.nextHearingDate,
       );
+      await this.maybeCloseDisposedMatter(tenantId, courtCase.matterId, c);
     }
 
     return this.prisma.courtCase.findUniqueOrThrow({
@@ -260,6 +266,46 @@ export class EcourtsService {
     if (rows.length > 0) {
       await this.prisma.scheduledEvent.createMany({ data: rows });
     }
+  }
+
+  /**
+   * Auto-close a linked matter when eCourts reports the case as disposed.
+   * Only transitions into a terminal status — never overrides a manual workflow status.
+   */
+  private async maybeCloseDisposedMatter(
+    tenantId: string,
+    matterId: string,
+    c: EcourtsCaseData,
+  ): Promise<void> {
+    const disposed =
+      (c.caseStatus ?? '').toUpperCase() === 'DISPOSED' ||
+      Boolean(parseDate(c.decisionDate)) ||
+      Boolean((c.disposalType ?? '').trim());
+    if (!disposed) return;
+
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { industryConfig: true },
+    });
+    const statuses = ((tenant?.industryConfig as { statuses?: StatusEntry[] })
+      ?.statuses ?? []) as StatusEntry[];
+    const closedKey =
+      statuses.find((s) => s.key === 'closed')?.key ??
+      statuses.find((s) => s.isTerminal)?.key;
+    if (!closedKey) return;
+
+    const matter = await this.prisma.matter.findFirst({
+      where: { id: matterId, tenantId },
+      select: { statusKey: true },
+    });
+    if (!matter) return;
+    const current = statuses.find((s) => s.key === matter.statusKey);
+    if (current?.isTerminal) return; // already terminal — respect it
+
+    await this.prisma.matter.update({
+      where: { id: matterId },
+      data: { statusKey: closedKey },
+    });
   }
 
   private async syncOrders(courtCaseId: string, detail: EcourtsCaseDetail) {

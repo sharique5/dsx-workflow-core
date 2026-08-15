@@ -83,11 +83,12 @@ function mapStatusKey(
   caseStatus: string | undefined,
   hasNextHearing: boolean,
   statuses: { key: string }[],
+  isDisposed = false,
 ): string | undefined {
   const s = (caseStatus ?? '').toUpperCase();
   const has = (k: string) => statuses.some((x) => x.key === k);
+  if (isDisposed || s === 'DISPOSED') return has('closed') ? 'closed' : undefined;
   if (!s) return undefined;
-  if (s === 'DISPOSED') return has('closed') ? 'closed' : undefined;
   if (['PENDING', 'LISTED', 'HEARING', 'FIRST_HEARING', 'PART_HEARD'].includes(s)) {
     if (hasNextHearing && has('hearing_scheduled')) return 'hearing_scheduled';
     if (has('in_progress')) return 'in_progress';
@@ -238,7 +239,8 @@ export function CreateCasePage() {
         const startOfToday = new Date();
         startOfToday.setHours(0, 0, 0, 0);
         const hasFutureHearing = next ? new Date(next) >= startOfToday : false;
-        const statusKey = mapStatusKey(c.caseStatus, hasFutureHearing, vocab.statuses);
+        const isDisposed = Boolean(c.decisionDate) || Boolean(c.disposalType?.trim());
+        const statusKey = mapStatusKey(c.caseStatus, hasFutureHearing, vocab.statuses, isDisposed);
         if (statusKey) setValue('statusKey', statusKey, { shouldValidate: true });
         setEcourtsInfo(
           Object.fromEntries(

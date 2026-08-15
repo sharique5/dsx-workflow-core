@@ -48,6 +48,8 @@ export interface EcourtsCaseData {
   firstHearingDate?: string;
   nextHearingDate?: string;
   decisionDate?: string;
+  disposalType?: string;
+  disposalTypeRaw?: string;
   caseDurationDays?: number;
   filingToFirstHearingDays?: number;
   judges?: string[];

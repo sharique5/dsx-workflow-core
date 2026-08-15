@@ -9,6 +9,8 @@ export interface EcourtsCaseData {
   caseStatus?: string;
   filingNumber?: string;
   registrationNumber?: string;
+  decisionDate?: string;
+  disposalType?: string;
   nextHearingDate?: string;
   state?: string;
   stateCode?: string;
