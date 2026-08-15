@@ -27,6 +27,9 @@ export interface EcourtsProvider {
   /** Queue a re-scrape of a case from the official eCourts servers. */
   refreshCase(cnr: string): Promise<unknown>;
 
+  /** Queue re-scrapes for many CNRs at once (max 50 per call). */
+  bulkRefresh(cnrs: string[]): Promise<unknown>;
+
   /** Fetch a single order/judgment PDF for a case (raw bytes, no persistence). */
   getOrderPdf(
     cnr: string,

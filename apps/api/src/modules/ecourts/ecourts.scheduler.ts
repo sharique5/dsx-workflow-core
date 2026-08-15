@@ -62,21 +62,39 @@ export class EcourtsSyncScheduler {
     );
 
     let synced = 0;
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const staleCnrs: string[] = [];
     for (const c of cases) {
       try {
         const detail = await this.ecourts.lookupCase(c.cnr);
         // upsertFromDetail also materializes the next hearing onto the calendar.
-        await this.ecourts.upsertFromDetail(
+        const updated = await this.ecourts.upsertFromDetail(
           c.tenantId,
           c.createdBy,
           detail,
           c.matterId ?? undefined,
         );
         synced++;
+        // Active case with no upcoming hearing => provider cache is likely stale.
+        if (
+          !updated.nextHearingDate ||
+          updated.nextHearingDate < startOfToday
+        ) {
+          staleCnrs.push(c.cnr);
+        }
       } catch (err) {
         this.logger.warn(`Sync failed for CNR ${c.cnr}: ${err}`);
       }
       await this.delay(this.requestDelayMs);
+    }
+
+    // Queue re-scrapes for stale cases so the next run pulls fresh data.
+    if (staleCnrs.length > 0) {
+      this.logger.log(
+        `Queuing re-scrape for ${staleCnrs.length} stale case(s).`,
+      );
+      await this.ecourts.queueBulkRefresh(staleCnrs);
     }
     this.logger.log(
       `eCourts sync complete: ${synced}/${cases.length} updated.`,

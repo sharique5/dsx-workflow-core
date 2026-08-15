@@ -37,6 +37,8 @@ export function useEcourtsSearch(params: EcourtsSearchParams, enabled = false) {
     queryKey: ['ecourts', 'search', params],
     queryFn: () => ecourtsApi.search(params).then((r) => r.data),
     enabled,
+    // Keep showing prior results while the next page loads (no flicker/resize).
+    placeholderData: (prev) => prev,
   });
 }
 

@@ -26,6 +26,7 @@ import {
 import type { ScheduledEventDto, NoteDto, AuditLogDto, FeeType, BillingCycle, NotificationLogDto, MessageDto } from '@dsx/shared';
 import { useMessages, useSendMessage, useMarkMessagesRead, useMessagesUnreadCount } from '../hooks/useMessages';
 import { EcourtsCasePanel } from '../components/EcourtsCasePanel';
+import { ConfirmDialog } from '../../../shared/components/ConfirmDialog';
 
 /**
  * Convert a datetime-local string ("YYYY-MM-DDTHH:mm") or date string ("YYYY-MM-DD")
@@ -510,6 +511,7 @@ export function CaseDetailPage() {
   const { data: staffList = [] } = useStaff();
   const [assignClientId, setAssignClientId] = useState('');
   const [assignStaffId, setAssignStaffId] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Hearings
   const { data: events } = useScheduledEvents(id!);
@@ -1875,11 +1877,7 @@ export function CaseDetailPage() {
                 Deleting a {vocab.matter_label.toLowerCase()} is irreversible.
               </p>
               <button
-                onClick={() => {
-                  if (confirm(`Delete "${matter.title}"? This cannot be undone.`)) {
-                    deleteMatter(matter.id);
-                  }
-                }}
+                onClick={() => setShowDeleteConfirm(true)}
                 disabled={isDeleting}
                 className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
               >
@@ -2016,6 +2014,20 @@ export function CaseDetailPage() {
         </div>
       </div>
     )}
+
+    <ConfirmDialog
+      open={showDeleteConfirm}
+      title={`Delete ${vocab.matter_label.toLowerCase()}?`}
+      message={`"${matter.title}" and its data will be permanently removed. This cannot be undone.`}
+      confirmLabel={`Delete ${vocab.matter_label}`}
+      danger
+      loading={isDeleting}
+      onConfirm={() => {
+        deleteMatter(matter.id);
+        setShowDeleteConfirm(false);
+      }}
+      onCancel={() => setShowDeleteConfirm(false)}
+    />
     </>
   );
 }

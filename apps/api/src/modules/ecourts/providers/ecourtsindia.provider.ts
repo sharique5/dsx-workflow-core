@@ -83,6 +83,12 @@ export class EcourtsIndiaProvider implements EcourtsProvider, OnModuleInit {
     );
   }
 
+  async bulkRefresh(cnrs: string[]): Promise<unknown> {
+    return this.request<unknown>('POST', '/partner/case/bulk-refresh', {
+      cnrs,
+    });
+  }
+
   async getOrderPdf(
     cnr: string,
     filename: string,
@@ -112,8 +118,8 @@ export class EcourtsIndiaProvider implements EcourtsProvider, OnModuleInit {
   private buildSearchQuery(params: EcourtsSearchParams): URLSearchParams {
     const qs = new URLSearchParams();
     if (params.query) qs.set('query', params.query);
-    if (params.stateCode) qs.set('stateCode', params.stateCode);
-    if (params.districtCode) qs.set('districtCode', params.districtCode);
+    if (params.stateCode) qs.append('stateCodes', params.stateCode);
+    if (params.districtCode) qs.append('districtCodes', params.districtCode);
     if (params.filingDateFrom) qs.set('filingDateFrom', params.filingDateFrom);
     if (params.filingDateTo) qs.set('filingDateTo', params.filingDateTo);
     if (params.page) qs.set('page', String(params.page));

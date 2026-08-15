@@ -54,6 +54,7 @@ export interface EcourtsSearchResult {
   pageSize: number;
   totalPages: number;
   hasNextPage: boolean;
+  hasPreviousPage: boolean;
 }
 
 export interface EcourtsSearchParams {

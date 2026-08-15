@@ -72,6 +72,18 @@ export class EcourtsService {
     return this.provider.refreshCase(cnr);
   }
 
+  /** Queue re-scrapes for many CNRs (chunked to the provider's 50-per-call limit). */
+  async queueBulkRefresh(cnrs: string[]): Promise<void> {
+    const unique = [
+      ...new Set(cnrs.filter((c) => /^[A-Za-z0-9]{16}$/.test(c))),
+    ];
+    for (let i = 0; i < unique.length; i += 50) {
+      await this.provider
+        .bulkRefresh(unique.slice(i, i + 50))
+        .catch((err) => this.logger.warn(`bulkRefresh failed: ${err}`));
+    }
+  }
+
   /** Fetch from eCourts and persist (or update) a tenant-scoped CourtCase. */
   async linkCase(user: AuthenticatedUser, dto: LinkCaseDto) {
     if (dto.matterId) {
@@ -85,7 +97,19 @@ export class EcourtsService {
     }
 
     const detail = await this.provider.getCaseByCnr(dto.cnr);
-    return this.upsertFromDetail(user.tenantId, user.id, detail, dto.matterId);
+    const linked = await this.upsertFromDetail(
+      user.tenantId,
+      user.id,
+      detail,
+      dto.matterId,
+    );
+    // Kick off a background re-scrape so a stale first snapshot self-freshens (~10 min).
+    void this.provider
+      .refreshCase(dto.cnr)
+      .catch((err) =>
+        this.logger.warn(`link re-scrape queue failed for ${dto.cnr}: ${err}`),
+      );
+    return linked;
   }
 
   async listLinkedCases(user: AuthenticatedUser) {
