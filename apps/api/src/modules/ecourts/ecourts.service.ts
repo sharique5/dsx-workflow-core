@@ -229,7 +229,11 @@ export class EcourtsService {
     const seen = new Set(existing.map((e) => e.scheduledAt.toISOString()));
 
     const rows: Prisma.ScheduledEventCreateManyInput[] = [];
-    const add = (d: Date | null, outcome?: string | null, judge?: string | null) => {
+    const add = (
+      d: Date | null,
+      outcome?: string | null,
+      judge?: string | null,
+    ) => {
       if (!d) return;
       const key = d.toISOString();
       if (seen.has(key)) return;
@@ -258,7 +262,11 @@ export class EcourtsService {
       }
     } else {
       for (const h of detail.courtCaseData.historyOfCaseHearings ?? []) {
-        add(parseDate(h.businessOnDate ?? h.hearingDate), h.purposeOfListing, h.judge);
+        add(
+          parseDate(h.businessOnDate ?? h.hearingDate),
+          h.purposeOfListing,
+          h.judge,
+        );
       }
     }
     add(nextHearing); // upcoming hearing, if not already covered by history
@@ -287,8 +295,8 @@ export class EcourtsService {
       where: { id: tenantId },
       select: { industryConfig: true },
     });
-    const statuses = ((tenant?.industryConfig as { statuses?: StatusEntry[] })
-      ?.statuses ?? []) as StatusEntry[];
+    const statuses =
+      (tenant?.industryConfig as { statuses?: StatusEntry[] })?.statuses ?? [];
     const closedKey =
       statuses.find((s) => s.key === 'closed')?.key ??
       statuses.find((s) => s.isTerminal)?.key;

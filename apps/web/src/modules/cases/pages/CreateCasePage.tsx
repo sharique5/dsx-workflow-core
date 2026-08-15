@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useForm, useWatch } from 'react-hook-form';
 import { usePageTitle } from '../../../shared/hooks/usePageTitle';
@@ -127,7 +127,6 @@ export function CreateCasePage() {
   const [showEcourtsSearch, setShowEcourtsSearch] = useState(false);
   const [notFoundCnr, setNotFoundCnr] = useState<string | null>(null);
   const [ecourtsInfo, setEcourtsInfo] = useState<Record<string, string> | null>(null);
-  const [pendingMap, setPendingMap] = useState<{ districtCode?: string } | null>(null);
   const [courtDetails, setCourtDetails] = useState<CourtDetails>(EMPTY_COURT);
   const [selectedStateId, setSelectedStateId] = useState('');
   const [selectedDistrictId, setSelectedDistrictId] = useState('');
@@ -166,17 +165,6 @@ export function CreateCasePage() {
   } = useForm<CreateClientForm>({
     resolver: zodResolver(createClientSchema),
   });
-
-  // Resolve eCourts district code into the district dropdown once options load.
-  useEffect(() => {
-    if (!pendingMap?.districtCode || districts.length === 0) return;
-    const d = districts.find((x) => x.id === pendingMap.districtCode);
-    if (d) {
-      setSelectedDistrictId(d.id);
-      setCourtDetails((p) => ({ ...p, district: d.name }));
-    }
-    setPendingMap(null);
-  }, [districts, pendingMap]);
 
   const applyParsedCnr = (raw: string) => {
     const info = parseCnr(raw);
@@ -218,8 +206,7 @@ export function CreateCasePage() {
         const stateOpt = states.find((s) => s.id === (c.stateCode ?? ''));
         if (stateOpt) {
           setSelectedStateId(stateOpt.id);
-          setSelectedDistrictId('');
-          setPendingMap({ districtCode: c.districtCode });
+          setSelectedDistrictId(c.districtCode ?? '');
         }
         const histJudge = [...(c.historyOfCaseHearings ?? [])]
           .reverse()
@@ -260,7 +247,6 @@ export function CreateCasePage() {
       },
       onError: (err) => {
         setEcourtsInfo(null);
-        setPendingMap(null);
         if (isAxiosError(err) && err.response?.status === 404) {
           setNotFoundCnr(raw);
           setCnrHint({ ok: false, text: "This case isn't on eCourts yet." });
@@ -373,7 +359,6 @@ export function CreateCasePage() {
                   setCnrHint(null);
                   setNotFoundCnr(null);
                   setEcourtsInfo(null);
-                  setPendingMap(null);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
