@@ -12,6 +12,7 @@ import { useVocabulary } from '../../../shared/hooks/useVocabulary';
 import type { CreateMatterDto, CreateClientDto } from '@dsx/shared';
 import { parseCnr } from '../utils/cnr';
 import { useStates, useDistricts, useComplexes } from '../hooks/useCourts';
+import { useEcourtsLookup } from '../hooks/useEcourts';
 import { SearchableSelect } from '../../../shared/components/SearchableSelect';
 
 const createMatterSchema = z.object({
@@ -61,6 +62,8 @@ export function CreateCasePage() {
   const { data: clients = [], isLoading: clientsLoading } = useAllClients();
   const { data: staffList = [] } = useStaff();
   const { mutate: createClient, isPending: creatingClient } = useCreateClient();
+  const { mutate: lookupCnr, isPending: lookingUp } = useEcourtsLookup();
+  const ecourtsEnabled = vocab.features?.ecourts === true;
 
   const [showNewClient, setShowNewClient] = useState(false);
   const [newClientError, setNewClientError] = useState<string | null>(null);
@@ -104,7 +107,7 @@ export function CreateCasePage() {
     resolver: zodResolver(createClientSchema),
   });
 
-  const handleCnrAutofill = () => {
+  const applyParsedCnr = () => {
     const info = parseCnr(cnrInput);
     if (!info) {
       setCnrHint({ ok: false, text: 'Could not recognise this CNR — please fill court details manually.' });
@@ -127,6 +130,53 @@ export function CreateCasePage() {
       ? `${info.state} — ${info.bench} Bench (${info.year})`
       : `${info.state} (${info.year})`;
     setCnrHint({ ok: true, text: `Auto-filled: ${label}. Select district and court complex below.` });
+  };
+
+  const handleCnrAutofill = () => {
+    const raw = cnrInput.trim();
+    if (!raw) return;
+    if (!ecourtsEnabled) {
+      applyParsedCnr();
+      return;
+    }
+    lookupCnr(raw, {
+      onSuccess: (detail) => {
+        const c = detail.courtCaseData;
+        if (c.petitioners?.[0] && c.respondents?.[0]) {
+          setValue('title', `${c.petitioners[0]} vs ${c.respondents[0]}`, { shouldValidate: true });
+        }
+        const extRef = c.registrationNumber || c.filingNumber || c.caseNumber || '';
+        if (extRef) setValue('externalRef', extRef, { shouldValidate: true });
+        const matchedState = states.find(
+          (s) => s.name.toLowerCase() === (c.state ?? '').toLowerCase(),
+        );
+        if (matchedState) {
+          setSelectedStateId(matchedState.id);
+          setSelectedDistrictId('');
+          setSelectedComplexId('');
+        }
+        setCourtDetails((prev) => ({
+          ...prev,
+          cnr: c.cnr || raw,
+          caseType: c.caseTypeRaw || c.caseType || prev.caseType,
+          state: c.state || prev.state,
+          district: c.district || prev.district,
+          courtComplex: c.courtName || prev.courtComplex,
+          judge: c.judges?.[0] || prev.judge,
+          stage: c.caseStatus || c.purpose || prev.stage,
+        }));
+        const next = detail.entityInfo?.nextDateOfHearing || c.nextHearingDate;
+        const nextLabel = next ? ` · next hearing ${new Date(next).toLocaleDateString()}` : '';
+        setCnrHint({
+          ok: true,
+          text: `Found on eCourts: ${c.caseTypeRaw ?? c.caseType ?? 'case'}${nextLabel}. Review the details below.`,
+        });
+      },
+      onError: () => {
+        // Fall back to offline CNR parsing if the case isn't on eCourts yet.
+        applyParsedCnr();
+      },
+    });
   };
 
   const onSubmit = (data: CreateMatterForm) => {
@@ -191,8 +241,16 @@ export function CreateCasePage() {
               </a>
             </p>
             <p className="mt-1 text-xs text-indigo-700">
-              Search by CNR, case number, or party name. Then copy the CNR and paste it below to
-              auto-fill court details.
+              Paste the CNR and we&apos;ll pull the case straight from eCourts to auto-fill these
+              details. No CNR yet?{' '}
+              <a
+                href="https://services.ecourts.gov.in/ecourtindia_v6/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 hover:text-indigo-700"
+              >
+                Search eCourts →
+              </a>
             </p>
             <div className="mt-3 flex gap-2">
               <input
@@ -214,10 +272,10 @@ export function CreateCasePage() {
               <button
                 type="button"
                 onClick={handleCnrAutofill}
-                disabled={!cnrInput.trim()}
+                disabled={!cnrInput.trim() || lookingUp}
                 className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-40 transition-colors whitespace-nowrap"
               >
-                Auto-fill
+                {lookingUp ? 'Looking up…' : 'Auto-fill'}
               </button>
             </div>
             {cnrHint && (
