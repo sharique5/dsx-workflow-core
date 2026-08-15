@@ -83,6 +83,32 @@ export class EcourtsIndiaProvider implements EcourtsProvider, OnModuleInit {
     );
   }
 
+  async getOrderPdf(
+    cnr: string,
+    filename: string,
+  ): Promise<{ data: Buffer; contentType: string }> {
+    const path = `/partner/case/${encodeURIComponent(cnr)}/order/${encodeURIComponent(filename)}`;
+    let res: Response;
+    try {
+      res = await fetch(`${this.baseUrl}${path}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${this.token}`,
+          Accept: 'application/pdf',
+        },
+      });
+    } catch (err) {
+      this.logger.error(`eCourts order fetch failed: ${path}`, err as Error);
+      throw new ServiceUnavailableException('eCourts service is unreachable');
+    }
+    if (!res.ok) {
+      throw this.mapError(res.status, 'GET', path);
+    }
+    const data = Buffer.from(await res.arrayBuffer());
+    const contentType = res.headers.get('content-type') ?? 'application/pdf';
+    return { data, contentType };
+  }
+
   private buildSearchQuery(params: EcourtsSearchParams): URLSearchParams {
     const qs = new URLSearchParams();
     if (params.query) qs.set('query', params.query);

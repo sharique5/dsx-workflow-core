@@ -2,11 +2,15 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   Param,
   Post,
   Query,
+  Res,
+  StreamableFile,
   UseGuards,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { EcourtsFeatureGuard } from './guards/ecourts-feature.guard';
 import { CurrentUser } from '../../shared/decorators/current-user.decorator';
@@ -63,6 +67,20 @@ export class EcourtsController {
   @Post('cases/:id/refresh')
   refresh(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.ecourts.refreshCase(user, id);
+  }
+
+  /** GET /api/v1/ecourts/cases/:id/orders/:filename — stream an order PDF */
+  @Get('cases/:id/orders/:filename')
+  @Header('Content-Type', 'application/pdf')
+  async orderPdf(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Param('filename') filename: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    const { data } = await this.ecourts.getOrderPdf(user, id, filename);
+    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+    return new StreamableFile(data);
   }
 
   /** POST /api/v1/ecourts/cases/link — persist a case (optionally to a matter) */

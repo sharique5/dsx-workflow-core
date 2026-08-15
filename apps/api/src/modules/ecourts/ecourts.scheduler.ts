@@ -65,20 +65,13 @@ export class EcourtsSyncScheduler {
     for (const c of cases) {
       try {
         const detail = await this.ecourts.lookupCase(c.cnr);
-        const updated = await this.ecourts.upsertFromDetail(
+        // upsertFromDetail also materializes the next hearing onto the calendar.
+        await this.ecourts.upsertFromDetail(
           c.tenantId,
           c.createdBy,
           detail,
           c.matterId ?? undefined,
         );
-        if (c.matterId && updated.nextHearingDate) {
-          await this.ensureHearingEvent(
-            c.tenantId,
-            c.matterId,
-            c.createdBy,
-            updated.nextHearingDate,
-          );
-        }
         synced++;
       } catch (err) {
         this.logger.warn(`Sync failed for CNR ${c.cnr}: ${err}`);
@@ -100,23 +93,6 @@ export class EcourtsSyncScheduler {
         (t) => (t.industryConfig as IndustryConfig)?.features?.ecourts === true,
       )
       .map((t) => t.id);
-  }
-
-  /** Create a ScheduledEvent for the next hearing if one doesn't already exist. */
-  private async ensureHearingEvent(
-    tenantId: string,
-    matterId: string,
-    createdBy: string,
-    scheduledAt: Date,
-  ): Promise<void> {
-    const existing = await this.prisma.scheduledEvent.findFirst({
-      where: { tenantId, matterId, scheduledAt },
-      select: { id: true },
-    });
-    if (existing) return;
-    await this.prisma.scheduledEvent.create({
-      data: { tenantId, matterId, scheduledAt, createdBy },
-    });
   }
 
   private delay(ms: number): Promise<void> {

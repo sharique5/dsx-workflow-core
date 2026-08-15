@@ -67,6 +67,17 @@ export interface CaseOrderDto {
   filename: string;
 }
 
+export interface HearingHistoryEntry {
+  businessOnDate?: string;
+  hearingDate?: string;
+  purposeOfListing?: string;
+  judge?: string;
+}
+
+interface RawSnapshot {
+  courtCaseData?: { historyOfCaseHearings?: HearingHistoryEntry[] };
+}
+
 export interface LinkedCourtCase {
   id: string;
   cnr: string;
@@ -86,6 +97,7 @@ export interface LinkedCourtCase {
   judgmentCount: number;
   lastSyncedAt: string | null;
   orders: CaseOrderDto[];
+  rawSnapshot?: RawSnapshot;
 }
 
 export const ecourtsApi = {
@@ -104,4 +116,9 @@ export const ecourtsApi = {
     api.get<LinkedCourtCase | null>(`/ecourts/matters/${matterId}/case`),
 
   refresh: (id: string) => api.post<LinkedCourtCase>(`/ecourts/cases/${id}/refresh`),
+
+  orderPdf: (id: string, filename: string) =>
+    api.get<Blob>(`/ecourts/cases/${id}/orders/${encodeURIComponent(filename)}`, {
+      responseType: 'blob',
+    }),
 };

@@ -78,6 +78,22 @@ export class EcourtsService {
     });
   }
 
+  /** Stream an order PDF for a persisted case — only known order filenames allowed. */
+  async getOrderPdf(user: AuthenticatedUser, id: string, filename: string) {
+    const courtCase = await this.prisma.courtCase.findFirst({
+      where: { id, tenantId: user.tenantId },
+      include: { orders: { select: { filename: true } } },
+    });
+    if (!courtCase) {
+      throw new NotFoundException('Linked case not found');
+    }
+    const allowed = courtCase.orders.some((o) => o.filename === filename);
+    if (!allowed) {
+      throw new NotFoundException('Order not found for this case');
+    }
+    return this.provider.getOrderPdf(courtCase.cnr, filename);
+  }
+
   /** Re-fetch a persisted case from eCourts and update the stored snapshot. */
   async refreshCase(user: AuthenticatedUser, id: string) {
     const existing = await this.getLinkedCase(user, id);
@@ -143,9 +159,41 @@ export class EcourtsService {
 
     await this.syncOrders(courtCase.id, detail);
 
+    // Materialize the next hearing onto the calendar right away (idempotent).
+    if (courtCase.matterId && base.nextHearingDate) {
+      await this.ensureNextHearingEvent(
+        tenantId,
+        courtCase.matterId,
+        courtCase.createdBy,
+        base.nextHearingDate,
+      );
+    }
+
     return this.prisma.courtCase.findUniqueOrThrow({
       where: { id: courtCase.id },
       include: { orders: true, matter: { select: { id: true, title: true } } },
+    });
+  }
+
+  /** Create a forward-looking ScheduledEvent for the next hearing (idempotent). */
+  async ensureNextHearingEvent(
+    tenantId: string,
+    matterId: string,
+    createdBy: string,
+    scheduledAt: Date,
+  ): Promise<void> {
+    // Only upcoming hearings belong on the calendar.
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    if (scheduledAt < startOfToday) return;
+
+    const existing = await this.prisma.scheduledEvent.findFirst({
+      where: { tenantId, matterId, scheduledAt },
+      select: { id: true },
+    });
+    if (existing) return;
+    await this.prisma.scheduledEvent.create({
+      data: { tenantId, matterId, scheduledAt, createdBy },
     });
   }
 

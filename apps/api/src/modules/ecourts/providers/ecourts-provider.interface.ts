@@ -26,4 +26,10 @@ export interface EcourtsProvider {
 
   /** Queue a re-scrape of a case from the official eCourts servers. */
   refreshCase(cnr: string): Promise<unknown>;
+
+  /** Fetch a single order/judgment PDF for a case (raw bytes, no persistence). */
+  getOrderPdf(
+    cnr: string,
+    filename: string,
+  ): Promise<{ data: Buffer; contentType: string }>;
 }
