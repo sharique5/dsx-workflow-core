@@ -21,7 +21,7 @@ export function EcourtsSearchModal({ open, onClose, onSelect }: EcourtsSearchMod
   const [courtCode, setCourtCode] = useState('');
   const [stateId, setStateId] = useState('');
   const [districtId, setDistrictId] = useState('');
-  const [page, setPage] = useState(1);
+  const [includeDisposed, setIncludeDisposed] = useState(false);
   const [submitted, setSubmitted] = useState<EcourtsSearchParams | null>(null);
 
   const { data: states = [] } = useStates();
@@ -37,12 +37,12 @@ export function EcourtsSearchModal({ open, onClose, onSelect }: EcourtsSearchMod
   const runSearch = (nextPage = 1) => {
     const value = text.trim();
     if (!value) return;
-    setPage(nextPage);
     setSubmitted({
       ...(mode === 'party' ? { query: value } : { advocates: [value] }),
       ...(stateId ? { stateCode: stateId } : {}),
       ...(districtId ? { districtCode: districtId } : {}),
       ...(courtCode.trim() ? { courtCodes: [courtCode.trim()] } : {}),
+      ...(includeDisposed ? {} : { caseStatuses: ['PENDING'] }),
       page: nextPage,
       pageSize: 20,
     });
@@ -127,11 +127,21 @@ export function EcourtsSearchModal({ open, onClose, onSelect }: EcourtsSearchMod
             </button>
           </div>
 
+          <label className="flex items-center gap-2 text-xs text-slate-600">
+            <input
+              type="checkbox"
+              checked={includeDisposed}
+              onChange={(e) => setIncludeDisposed(e.target.checked)}
+              className="rounded border-slate-300"
+            />
+            Include disposed cases
+          </label>
+
           {error != null && (
             <p className="text-xs text-red-600">Search failed. Try a different term.</p>
           )}
 
-          <div className="max-h-80 divide-y divide-slate-100 overflow-y-auto rounded-lg border border-slate-100">
+          <div className="h-72 divide-y divide-slate-100 overflow-y-auto rounded-lg border border-slate-100">
             {submitted && !isFetching && results.length === 0 && (
               <p className="px-4 py-6 text-center text-sm text-slate-400">No cases found.</p>
             )}
@@ -167,17 +177,17 @@ export function EcourtsSearchModal({ open, onClose, onSelect }: EcourtsSearchMod
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => runSearch(page - 1)}
-                  disabled={page <= 1 || isFetching}
-                  className="rounded-md border border-slate-200 px-2.5 py-1 disabled:opacity-40"
+                  onClick={() => runSearch(data.page - 1)}
+                  disabled={!data.hasPreviousPage || isFetching}
+                  className="rounded-md border border-slate-300 px-2.5 py-1 font-medium text-slate-600 enabled:hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Prev
                 </button>
                 <button
                   type="button"
-                  onClick={() => runSearch(page + 1)}
+                  onClick={() => runSearch(data.page + 1)}
                   disabled={!data.hasNextPage || isFetching}
-                  className="rounded-md border border-slate-200 px-2.5 py-1 disabled:opacity-40"
+                  className="rounded-md border border-slate-300 px-2.5 py-1 font-medium text-slate-600 enabled:hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Next
                 </button>
