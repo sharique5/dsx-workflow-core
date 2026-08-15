@@ -50,6 +50,15 @@ export class EcourtsController {
     return this.ecourts.getLinkedCase(user, id);
   }
 
+  /** GET /api/v1/ecourts/matters/:matterId/case — linked case for a matter (or null) */
+  @Get('matters/:matterId/case')
+  getByMatter(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('matterId') matterId: string,
+  ) {
+    return this.ecourts.getCaseByMatter(user, matterId);
+  }
+
   /** POST /api/v1/ecourts/cases/:id/refresh — re-pull from eCourts */
   @Post('cases/:id/refresh')
   refresh(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {

@@ -70,6 +70,14 @@ export class EcourtsService {
     return courtCase;
   }
 
+  /** The persisted eCourts case linked to a matter, or null if none. */
+  getCaseByMatter(user: AuthenticatedUser, matterId: string) {
+    return this.prisma.courtCase.findFirst({
+      where: { tenantId: user.tenantId, matterId },
+      include: { orders: { orderBy: { orderDate: 'desc' } } },
+    });
+  }
+
   /** Re-fetch a persisted case from eCourts and update the stored snapshot. */
   async refreshCase(user: AuthenticatedUser, id: string) {
     const existing = await this.getLinkedCase(user, id);

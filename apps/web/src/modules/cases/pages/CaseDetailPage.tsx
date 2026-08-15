@@ -25,6 +25,7 @@ import {
 } from '../hooks/useNotifications';
 import type { ScheduledEventDto, NoteDto, AuditLogDto, FeeType, BillingCycle, NotificationLogDto, MessageDto } from '@dsx/shared';
 import { useMessages, useSendMessage, useMarkMessagesRead, useMessagesUnreadCount } from '../hooks/useMessages';
+import { EcourtsCasePanel } from '../components/EcourtsCasePanel';
 
 /**
  * Convert a datetime-local string ("YYYY-MM-DDTHH:mm") or date string ("YYYY-MM-DD")
@@ -700,6 +701,9 @@ export function CaseDetailPage() {
       <div className="px-6 py-5 space-y-5">
         {/* Core details */}
         <div className={activeTab !== 'overview' ? 'hidden' : undefined}>
+        <div className="mb-5 empty:hidden">
+          <EcourtsCasePanel matterId={id ?? ''} />
+        </div>
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-6 py-5 border-b border-slate-100">
             <h2 className="text-base font-semibold text-slate-900">Case Details</h2>

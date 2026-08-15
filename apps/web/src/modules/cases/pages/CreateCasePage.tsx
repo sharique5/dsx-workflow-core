@@ -12,7 +12,9 @@ import { useVocabulary } from '../../../shared/hooks/useVocabulary';
 import type { CreateMatterDto, CreateClientDto } from '@dsx/shared';
 import { parseCnr } from '../utils/cnr';
 import { useStates, useDistricts, useComplexes } from '../hooks/useCourts';
-import { useEcourtsLookup } from '../hooks/useEcourts';
+import { useEcourtsLookup, useLinkEcourtsCase } from '../hooks/useEcourts';
+import { EcourtsSearchModal } from '../components/EcourtsSearchModal';
+import type { EcourtsSearchItem } from '../api/ecourts.api';
 import { SearchableSelect } from '../../../shared/components/SearchableSelect';
 
 const createMatterSchema = z.object({
@@ -63,6 +65,7 @@ export function CreateCasePage() {
   const { data: staffList = [] } = useStaff();
   const { mutate: createClient, isPending: creatingClient } = useCreateClient();
   const { mutate: lookupCnr, isPending: lookingUp } = useEcourtsLookup();
+  const { mutate: linkEcourtsCase } = useLinkEcourtsCase();
   const ecourtsEnabled = vocab.features?.ecourts === true;
 
   const [showNewClient, setShowNewClient] = useState(false);
@@ -70,6 +73,7 @@ export function CreateCasePage() {
   const [assignedToId, setAssignedToId] = useState('');
   const [cnrInput, setCnrInput] = useState('');
   const [cnrHint, setCnrHint] = useState<{ ok: boolean; text: string } | null>(null);
+  const [showEcourtsSearch, setShowEcourtsSearch] = useState(false);
   const [courtDetails, setCourtDetails] = useState<CourtDetails>(EMPTY_COURT);
   const [selectedStateId, setSelectedStateId] = useState('');
   const [selectedDistrictId, setSelectedDistrictId] = useState('');
@@ -107,8 +111,8 @@ export function CreateCasePage() {
     resolver: zodResolver(createClientSchema),
   });
 
-  const applyParsedCnr = () => {
-    const info = parseCnr(cnrInput);
+  const applyParsedCnr = (raw: string) => {
+    const info = parseCnr(raw);
     if (!info) {
       setCnrHint({ ok: false, text: 'Could not recognise this CNR — please fill court details manually.' });
       return;
@@ -132,11 +136,10 @@ export function CreateCasePage() {
     setCnrHint({ ok: true, text: `Auto-filled: ${label}. Select district and court complex below.` });
   };
 
-  const handleCnrAutofill = () => {
-    const raw = cnrInput.trim();
+  const lookupAndFill = (raw: string) => {
     if (!raw) return;
     if (!ecourtsEnabled) {
-      applyParsedCnr();
+      applyParsedCnr(raw);
       return;
     }
     lookupCnr(raw, {
@@ -174,9 +177,17 @@ export function CreateCasePage() {
       },
       onError: () => {
         // Fall back to offline CNR parsing if the case isn't on eCourts yet.
-        applyParsedCnr();
+        applyParsedCnr(raw);
       },
     });
+  };
+
+  const handleCnrAutofill = () => lookupAndFill(cnrInput.trim());
+
+  const handleEcourtsSelect = (item: EcourtsSearchItem) => {
+    setShowEcourtsSearch(false);
+    setCnrInput(item.cnr);
+    lookupAndFill(item.cnr);
   };
 
   const onSubmit = (data: CreateMatterForm) => {
@@ -184,11 +195,22 @@ export function CreateCasePage() {
     for (const [k, v] of Object.entries(courtDetails)) {
       if (v.trim()) metadata[k] = v.trim();
     }
-    createMatter({
-      ...data,
-      ...(assignedToId ? { assignedToId } : {}),
-      ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
-    } as CreateMatterDto);
+    const cnr = courtDetails.cnr.trim();
+    createMatter(
+      {
+        ...data,
+        ...(assignedToId ? { assignedToId } : {}),
+        ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
+      } as CreateMatterDto,
+      {
+        onSuccess: (matter) => {
+          // Persist + link the eCourts case so the daily sync tracks its hearings.
+          if (ecourtsEnabled && cnr) {
+            linkEcourtsCase({ cnr, matterId: matter.id });
+          }
+        },
+      },
+    );
   };
 
   const onCreateClient = (data: CreateClientForm) => {
@@ -278,6 +300,15 @@ export function CreateCasePage() {
                 {lookingUp ? 'Looking up…' : 'Auto-fill'}
               </button>
             </div>
+            {ecourtsEnabled && (
+              <button
+                type="button"
+                onClick={() => setShowEcourtsSearch(true)}
+                className="mt-2 text-xs font-medium text-indigo-700 underline underline-offset-2 hover:text-indigo-900"
+              >
+                Don&apos;t have the CNR? Search by party or advocate →
+              </button>
+            )}
             {cnrHint && (
               <p className={`mt-1.5 text-xs ${cnrHint.ok ? 'text-indigo-700' : 'text-red-600'}`}>
                 {cnrHint.ok ? '✓ ' : ''}{cnrHint.text}
@@ -630,6 +661,12 @@ export function CreateCasePage() {
           </div>
         </form>
       </div>
+
+      <EcourtsSearchModal
+        open={showEcourtsSearch}
+        onClose={() => setShowEcourtsSearch(false)}
+        onSelect={handleEcourtsSelect}
+      />
     </div>
   );
 }

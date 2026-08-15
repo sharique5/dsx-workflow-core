@@ -59,6 +59,35 @@ export interface EcourtsSearchParams {
   pageSize?: number;
 }
 
+/** A persisted (linked) eCourts case as stored on our side. */
+export interface CaseOrderDto {
+  id: string;
+  orderDate: string | null;
+  orderType: string | null;
+  filename: string;
+}
+
+export interface LinkedCourtCase {
+  id: string;
+  cnr: string;
+  caseType: string | null;
+  caseStatus: string | null;
+  courtCode: string | null;
+  filingNumber: string | null;
+  registrationNumber: string | null;
+  firstHearingDate: string | null;
+  nextHearingDate: string | null;
+  decisionDate: string | null;
+  petitioners: string[];
+  respondents: string[];
+  judges: string[];
+  orderCount: number;
+  hearingCount: number;
+  judgmentCount: number;
+  lastSyncedAt: string | null;
+  orders: CaseOrderDto[];
+}
+
 export const ecourtsApi = {
   lookupCnr: (cnr: string) =>
     api.get<EcourtsCaseDetail>(`/ecourts/cnr/${encodeURIComponent(cnr)}`),
@@ -70,4 +99,9 @@ export const ecourtsApi = {
 
   linkCase: (cnr: string, matterId?: string) =>
     api.post('/ecourts/cases/link', { cnr, matterId }),
+
+  getByMatter: (matterId: string) =>
+    api.get<LinkedCourtCase | null>(`/ecourts/matters/${matterId}/case`),
+
+  refresh: (id: string) => api.post<LinkedCourtCase>(`/ecourts/cases/${id}/refresh`),
 };
