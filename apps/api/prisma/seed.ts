@@ -24,6 +24,7 @@ const LEGAL_INDUSTRY_CONFIG = {
   scheduled_event_label: 'Hearing',
   participant_label: 'Client',
   metadata_fields: { judge: 'Judge', court: 'Court' },
+  features: { ecourts: true },
   statuses: [
     { key: 'filed', label: 'Filed', isTerminal: false },
     { key: 'in_progress', label: 'In Progress', isTerminal: false },
