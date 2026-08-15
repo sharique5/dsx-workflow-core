@@ -1,4 +1,10 @@
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../shared/database/prisma.service';
 import type { AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
@@ -33,6 +39,14 @@ export class EcourtsService {
   /** Live lookup by CNR — does not persist. */
   lookupCase(cnr: string) {
     return this.provider.getCaseByCnr(cnr);
+  }
+
+  /** Queue a scrape for a CNR that isn't in eCourts yet (returns 202 QUEUED). */
+  queueRefreshByCnr(cnr: string) {
+    if (!/^[A-Za-z0-9]{16}$/.test(cnr)) {
+      throw new BadRequestException('Invalid CNR');
+    }
+    return this.provider.refreshCase(cnr);
   }
 
   /** Fetch from eCourts and persist (or update) a tenant-scoped CourtCase. */

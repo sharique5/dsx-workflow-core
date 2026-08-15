@@ -94,4 +94,10 @@ export class EcourtsController {
   lookup(@Param('cnr') cnr: string) {
     return this.ecourts.lookupCase(cnr);
   }
+
+  /** POST /api/v1/ecourts/cnr/:cnr/refresh — queue a scrape for an uncached CNR */
+  @Post('cnr/:cnr/refresh')
+  queueRefresh(@Param('cnr') cnr: string) {
+    return this.ecourts.queueRefreshByCnr(cnr);
+  }
 }

@@ -12,7 +12,8 @@ import { useVocabulary } from '../../../shared/hooks/useVocabulary';
 import type { CreateMatterDto, CreateClientDto } from '@dsx/shared';
 import { parseCnr } from '../utils/cnr';
 import { useStates, useDistricts, useComplexes } from '../hooks/useCourts';
-import { useEcourtsLookup, useLinkEcourtsCase } from '../hooks/useEcourts';
+import { isAxiosError } from 'axios';
+import { useEcourtsLookup, useLinkEcourtsCase, useQueueEcourtsRefresh } from '../hooks/useEcourts';
 import { EcourtsSearchModal } from '../components/EcourtsSearchModal';
 import type { EcourtsSearchItem } from '../api/ecourts.api';
 import { SearchableSelect } from '../../../shared/components/SearchableSelect';
@@ -66,6 +67,7 @@ export function CreateCasePage() {
   const { mutate: createClient, isPending: creatingClient } = useCreateClient();
   const { mutate: lookupCnr, isPending: lookingUp } = useEcourtsLookup();
   const { mutate: linkEcourtsCase } = useLinkEcourtsCase();
+  const { mutate: queueRefresh, isPending: queuing } = useQueueEcourtsRefresh();
   const ecourtsEnabled = vocab.features?.ecourts === true;
 
   const [showNewClient, setShowNewClient] = useState(false);
@@ -74,6 +76,7 @@ export function CreateCasePage() {
   const [cnrInput, setCnrInput] = useState('');
   const [cnrHint, setCnrHint] = useState<{ ok: boolean; text: string } | null>(null);
   const [showEcourtsSearch, setShowEcourtsSearch] = useState(false);
+  const [notFoundCnr, setNotFoundCnr] = useState<string | null>(null);
   const [courtDetails, setCourtDetails] = useState<CourtDetails>(EMPTY_COURT);
   const [selectedStateId, setSelectedStateId] = useState('');
   const [selectedDistrictId, setSelectedDistrictId] = useState('');
@@ -145,6 +148,7 @@ export function CreateCasePage() {
     lookupCnr(raw, {
       onSuccess: (detail) => {
         const c = detail.courtCaseData;
+        setNotFoundCnr(null);
         if (c.petitioners?.[0] && c.respondents?.[0]) {
           setValue('title', `${c.petitioners[0]} vs ${c.respondents[0]}`, { shouldValidate: true });
         }
@@ -175,9 +179,14 @@ export function CreateCasePage() {
           text: `Found on eCourts: ${c.caseTypeRaw ?? c.caseType ?? 'case'}${nextLabel}. Review the details below.`,
         });
       },
-      onError: () => {
-        // Fall back to offline CNR parsing if the case isn't on eCourts yet.
-        applyParsedCnr(raw);
+      onError: (err) => {
+        if (isAxiosError(err) && err.response?.status === 404) {
+          setNotFoundCnr(raw);
+          setCnrHint({ ok: false, text: "This case isn't on eCourts yet." });
+        } else {
+          // Fall back to offline CNR parsing on other errors.
+          applyParsedCnr(raw);
+        }
       },
     });
   };
@@ -281,6 +290,7 @@ export function CreateCasePage() {
                 onChange={(e) => {
                   setCnrInput(e.target.value);
                   setCnrHint(null);
+                  setNotFoundCnr(null);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
@@ -288,7 +298,7 @@ export function CreateCasePage() {
                     handleCnrAutofill();
                   }
                 }}
-                placeholder="Paste CNR number (e.g. MPHC020312152025)"
+                placeholder="Paste 16-digit CNR (e.g. DLND020047882015)"
                 className="block flex-1 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               />
               <button
@@ -313,6 +323,28 @@ export function CreateCasePage() {
               <p className={`mt-1.5 text-xs ${cnrHint.ok ? 'text-indigo-700' : 'text-red-600'}`}>
                 {cnrHint.ok ? '✓ ' : ''}{cnrHint.text}
               </p>
+            )}
+            {notFoundCnr && (
+              <button
+                type="button"
+                onClick={() =>
+                  queueRefresh(notFoundCnr, {
+                    onSuccess: (res) => {
+                      setNotFoundCnr(null);
+                      setCnrHint({
+                        ok: true,
+                        text: `Queued — fetching from court (~${res.data.estimatedTime ?? '5–10 minutes'}). Try Auto-fill again shortly.`,
+                      });
+                    },
+                    onError: () =>
+                      setCnrHint({ ok: false, text: 'Could not queue the fetch. Please try again.' }),
+                  })
+                }
+                disabled={queuing}
+                className="mt-2 rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 disabled:opacity-50"
+              >
+                {queuing ? 'Queuing…' : 'Fetch from court'}
+              </button>
             )}
           </div>
         </div>
@@ -452,7 +484,7 @@ export function CreateCasePage() {
                   type="text"
                   value={courtDetails.cnr}
                   onChange={(e) => setCourtDetails((p) => ({ ...p, cnr: e.target.value }))}
-                  placeholder="e.g. MPHC020312152025"
+                  placeholder="e.g. DLND020047882015"
                   className={INPUT_CLS}
                 />
               </div>

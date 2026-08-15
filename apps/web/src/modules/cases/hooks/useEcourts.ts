@@ -14,6 +14,13 @@ export function useEcourtsLookup() {
   });
 }
 
+/** Queue a scrape for a CNR that isn't in eCourts yet. */
+export function useQueueEcourtsRefresh() {
+  return useMutation({
+    mutationFn: (cnr: string) => ecourtsApi.queueRefreshCnr(cnr).then((r) => r.data),
+  });
+}
+
 /** Search cases by party/advocate/court/date filters. */
 export function useEcourtsSearch(params: EcourtsSearchParams, enabled = false) {
   return useQuery<EcourtsSearchResult>({

@@ -117,6 +117,11 @@ export const ecourtsApi = {
 
   refresh: (id: string) => api.post<LinkedCourtCase>(`/ecourts/cases/${id}/refresh`),
 
+  queueRefreshCnr: (cnr: string) =>
+    api.post<{ data: { status: string; message: string; estimatedTime?: string } }>(
+      `/ecourts/cnr/${encodeURIComponent(cnr)}/refresh`,
+    ),
+
   orderPdf: (id: string, filename: string) =>
     api.get<Blob>(`/ecourts/cases/${id}/orders/${encodeURIComponent(filename)}`, {
       responseType: 'blob',
