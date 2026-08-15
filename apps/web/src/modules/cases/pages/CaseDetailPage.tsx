@@ -25,6 +25,7 @@ import {
 } from '../hooks/useNotifications';
 import type { ScheduledEventDto, NoteDto, AuditLogDto, FeeType, BillingCycle, NotificationLogDto, MessageDto } from '@dsx/shared';
 import { useMessages, useSendMessage, useMarkMessagesRead, useMessagesUnreadCount } from '../hooks/useMessages';
+import { EcourtsCasePanel } from '../components/EcourtsCasePanel';
 
 /**
  * Convert a datetime-local string ("YYYY-MM-DDTHH:mm") or date string ("YYYY-MM-DD")
@@ -646,8 +647,8 @@ export function CaseDetailPage() {
     <>
     <div className="max-w-4xl mx-auto">
       {/* Page header */}
-      <div className="px-6 pt-8 pb-4 flex items-start justify-between">
-        <div>
+      <div className="px-6 pt-8 pb-4 flex items-start justify-between gap-4">
+        <div className="min-w-0">
           <Link
             to="/cases"
             className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600 mb-3 transition-colors"
@@ -655,20 +656,20 @@ export function CaseDetailPage() {
             <ChevronLeft size={14} />
             Back to Cases
           </Link>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-slate-900">{matter.title}</h1>
-            <StatusBadge statusKey={matter.statusKey} statuses={vocab.statuses} />
-          </div>
+          <h1 className="text-2xl font-bold text-slate-900">{matter.title}</h1>
         </div>
-        {isAdmin && !isClosed && (
-          <button
-            onClick={() => closeMatter(matter.id)}
-            disabled={isClosing}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-colors"
-          >
-            {isClosing ? 'Closing…' : 'Mark as Closed'}
-          </button>
-        )}
+        <div className="flex items-center gap-3 shrink-0">
+          <StatusBadge statusKey={matter.statusKey} statuses={vocab.statuses} />
+          {isAdmin && !isClosed && (
+            <button
+              onClick={() => closeMatter(matter.id)}
+              disabled={isClosing}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+            >
+              {isClosing ? 'Closing…' : 'Mark as Closed'}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Sticky tab bar */}
@@ -700,6 +701,9 @@ export function CaseDetailPage() {
       <div className="px-6 py-5 space-y-5">
         {/* Core details */}
         <div className={activeTab !== 'overview' ? 'hidden' : undefined}>
+        <div className="mb-5 empty:hidden">
+          <EcourtsCasePanel matterId={id ?? ''} />
+        </div>
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-6 py-5 border-b border-slate-100">
             <h2 className="text-base font-semibold text-slate-900">Case Details</h2>

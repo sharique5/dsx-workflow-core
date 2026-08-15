@@ -11,7 +11,11 @@ import { useAuthStore } from '../../../store/auth.store';
 import { useVocabulary } from '../../../shared/hooks/useVocabulary';
 import type { CreateMatterDto, CreateClientDto } from '@dsx/shared';
 import { parseCnr } from '../utils/cnr';
-import { useStates, useDistricts, useComplexes } from '../hooks/useCourts';
+import { useStates, useDistricts } from '../hooks/useCourts';
+import { isAxiosError } from 'axios';
+import { useEcourtsLookup, useLinkEcourtsCase, useQueueEcourtsRefresh, useEcourtsCaseTypes } from '../hooks/useEcourts';
+import { EcourtsSearchModal } from '../components/EcourtsSearchModal';
+import type { EcourtsCaseData, EcourtsSearchItem } from '../api/ecourts.api';
 import { SearchableSelect } from '../../../shared/components/SearchableSelect';
 
 const createMatterSchema = z.object({
@@ -47,6 +51,55 @@ interface CourtDetails {
 
 const EMPTY_COURT: CourtDetails = { cnr: '', caseType: '', state: '', district: '', courtComplex: '', judge: '', stage: '' };
 
+/** Fallback case types when the eCourts enum isn't available (non-legal tenants / offline). */
+const FALLBACK_CASE_TYPES = ['Civil', 'Criminal', 'FIR', 'Writ', 'Execution', 'Misc'].map(
+  (x) => ({ id: x, name: x }),
+);
+
+/** Build a meaningful case title, handling masked/protected party names. */
+function buildCaseTitle(c: EcourtsCaseData): string {
+  const clean = (s?: string) => (s ?? '').trim();
+  const isPlaceholder = (s: string) =>
+    !s || /^[-–—.\s]*$/.test(s) || /^(n\.?\/?a\.?|nil|none)$/i.test(s);
+  const isMasked = (s: string) => !s || /^x+$/i.test(s.replace(/[\s.]/g, ''));
+  const pet = clean(c.petitioners?.[0]);
+  const resp = clean(c.respondents?.[0]);
+  const advRaw = clean(c.petitionerAdvocates?.[0]) || clean(c.respondentAdvocates?.[0]);
+  const adv = isPlaceholder(advRaw) ? '' : advRaw;
+  const caseNo = clean(c.caseNumber) || clean(c.registrationNumber) || clean(c.filingNumber);
+
+  if (pet && resp && !isMasked(pet) && !isMasked(resp)) {
+    return adv ? `${pet} vs ${resp} (Adv. ${adv})` : `${pet} vs ${resp}`;
+  }
+  // Protected/masked parties — build a distinguishable label instead of "XXXX vs XXXX".
+  const label = clean(c.caseTypeRaw) || clean(c.caseType) || 'Case';
+  const bits = [label, caseNo].filter(Boolean).join(' ');
+  if (adv) return bits ? `${bits} — Adv. ${adv}` : `Adv. ${adv}`;
+  return bits || `${pet || 'Petitioner'} vs ${resp || 'Respondent'}`;
+}
+
+/** Map an eCourts case status onto the tenant's internal status keys (when present). */
+function mapStatusKey(
+  caseStatus: string | undefined,
+  hasNextHearing: boolean,
+  statuses: { key: string }[],
+  isDisposed = false,
+): string | undefined {
+  const s = (caseStatus ?? '').toUpperCase();
+  const has = (k: string) => statuses.some((x) => x.key === k);
+  if (isDisposed || s === 'DISPOSED') return has('closed') ? 'closed' : undefined;
+  if (!s) return undefined;
+  if (['PENDING', 'LISTED', 'HEARING', 'FIRST_HEARING', 'PART_HEARD'].includes(s)) {
+    if (hasNextHearing && has('hearing_scheduled')) return 'hearing_scheduled';
+    if (has('in_progress')) return 'in_progress';
+    return undefined;
+  }
+  if (['FILED', 'REGISTERED', 'READY_FOR_REGISTRATION', 'DEFECTIVE', 'UNKNOWN'].includes(s)) {
+    return has('filed') ? 'filed' : undefined;
+  }
+  return undefined;
+}
+
 const INPUT_CLS =
   'block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20';
 const LABEL_CLS = 'block text-sm font-medium text-slate-700 mb-1.5';
@@ -61,19 +114,28 @@ export function CreateCasePage() {
   const { data: clients = [], isLoading: clientsLoading } = useAllClients();
   const { data: staffList = [] } = useStaff();
   const { mutate: createClient, isPending: creatingClient } = useCreateClient();
+  const { mutate: lookupCnr, isPending: lookingUp } = useEcourtsLookup();
+  const { mutate: linkEcourtsCase } = useLinkEcourtsCase();
+  const { mutate: queueRefresh, isPending: queuing } = useQueueEcourtsRefresh();
+  const ecourtsEnabled = vocab.features?.ecourts === true;
 
   const [showNewClient, setShowNewClient] = useState(false);
   const [newClientError, setNewClientError] = useState<string | null>(null);
   const [assignedToId, setAssignedToId] = useState('');
   const [cnrInput, setCnrInput] = useState('');
   const [cnrHint, setCnrHint] = useState<{ ok: boolean; text: string } | null>(null);
+  const [showEcourtsSearch, setShowEcourtsSearch] = useState(false);
+  const [notFoundCnr, setNotFoundCnr] = useState<string | null>(null);
+  const [ecourtsInfo, setEcourtsInfo] = useState<Record<string, string> | null>(null);
   const [courtDetails, setCourtDetails] = useState<CourtDetails>(EMPTY_COURT);
   const [selectedStateId, setSelectedStateId] = useState('');
   const [selectedDistrictId, setSelectedDistrictId] = useState('');
-  const [selectedComplexId, setSelectedComplexId] = useState('');
   const { data: states = [], isLoading: statesLoading } = useStates();
   const { data: districts = [], isLoading: districtsLoading } = useDistricts(selectedStateId);
-  const { data: complexes = [], isLoading: complexesLoading } = useComplexes(selectedStateId, selectedDistrictId);
+  const { data: caseTypes = [], isLoading: caseTypesLoading } = useEcourtsCaseTypes(ecourtsEnabled);
+  const caseTypeOptions = caseTypes.length
+    ? caseTypes.map((t) => ({ id: t.code, name: t.description }))
+    : FALLBACK_CASE_TYPES;
 
   const [defaultInternalRef] = useState(
     () => `NA-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,
@@ -104,8 +166,8 @@ export function CreateCasePage() {
     resolver: zodResolver(createClientSchema),
   });
 
-  const handleCnrAutofill = () => {
-    const info = parseCnr(cnrInput);
+  const applyParsedCnr = (raw: string) => {
+    const info = parseCnr(raw);
     if (!info) {
       setCnrHint({ ok: false, text: 'Could not recognise this CNR — please fill court details manually.' });
       return;
@@ -114,7 +176,6 @@ export function CreateCasePage() {
     if (matchedState) {
       setSelectedStateId(matchedState.id);
       setSelectedDistrictId('');
-      setSelectedComplexId('');
     }
     setCourtDetails((prev) => ({
       ...prev,
@@ -129,16 +190,103 @@ export function CreateCasePage() {
     setCnrHint({ ok: true, text: `Auto-filled: ${label}. Select district and court complex below.` });
   };
 
+  const lookupAndFill = (raw: string) => {
+    if (!raw) return;
+    if (!ecourtsEnabled) {
+      applyParsedCnr(raw);
+      return;
+    }
+    lookupCnr(raw, {
+      onSuccess: (detail) => {
+        const c = detail.courtCaseData;
+        setNotFoundCnr(null);
+        setValue('title', buildCaseTitle(c), { shouldValidate: true });
+        const extRef = c.registrationNumber || c.filingNumber || c.caseNumber || '';
+        if (extRef) setValue('externalRef', extRef, { shouldValidate: true });
+        const stateOpt = states.find((s) => s.id === (c.stateCode ?? ''));
+        if (stateOpt) {
+          setSelectedStateId(stateOpt.id);
+          setSelectedDistrictId(c.districtCode ?? '');
+        }
+        const histJudge = [...(c.historyOfCaseHearings ?? [])]
+          .reverse()
+          .find((x) => x.judge?.trim())?.judge?.trim();
+        setCourtDetails((prev) => ({
+          ...prev,
+          cnr: c.cnr || raw,
+          caseType: c.caseType || prev.caseType,
+          state: stateOpt?.name || c.state || prev.state,
+          district: c.district || prev.district,
+          courtComplex: c.courtName || prev.courtComplex,
+          judge: c.judges?.[0] || histJudge || prev.judge,
+          stage: c.caseStatus || c.purpose || prev.stage,
+        }));
+        const next = detail.entityInfo?.nextDateOfHearing || c.nextHearingDate;
+        const nextLabel = next ? ` · next hearing ${new Date(next).toLocaleDateString()}` : '';
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+        const hasFutureHearing = next ? new Date(next) >= startOfToday : false;
+        const isDisposed = Boolean(c.decisionDate) || Boolean(c.disposalType?.trim());
+        const statusKey = mapStatusKey(c.caseStatus, hasFutureHearing, vocab.statuses, isDisposed);
+        if (statusKey) setValue('statusKey', statusKey, { shouldValidate: true });
+        setEcourtsInfo(
+          Object.fromEntries(
+            Object.entries({
+              District: c.district,
+              Court: c.courtName,
+              'Case type': c.caseTypeRaw || c.caseType,
+              Judge: c.judges?.[0],
+              Stage: c.caseStatus,
+            }).filter(([, v]) => Boolean(v)) as [string, string][],
+          ),
+        );
+        setCnrHint({
+          ok: true,
+          text: `Found on eCourts: ${c.caseTypeRaw ?? c.caseType ?? 'case'}${nextLabel}. Review the details below.`,
+        });
+      },
+      onError: (err) => {
+        setEcourtsInfo(null);
+        if (isAxiosError(err) && err.response?.status === 404) {
+          setNotFoundCnr(raw);
+          setCnrHint({ ok: false, text: "This case isn't on eCourts yet." });
+        } else {
+          // Fall back to offline CNR parsing on other errors.
+          applyParsedCnr(raw);
+        }
+      },
+    });
+  };
+
+  const handleCnrAutofill = () => lookupAndFill(cnrInput.trim());
+
+  const handleEcourtsSelect = (item: EcourtsSearchItem) => {
+    setShowEcourtsSearch(false);
+    setCnrInput(item.cnr);
+    lookupAndFill(item.cnr);
+  };
+
   const onSubmit = (data: CreateMatterForm) => {
     const metadata: Record<string, string> = {};
     for (const [k, v] of Object.entries(courtDetails)) {
       if (v.trim()) metadata[k] = v.trim();
     }
-    createMatter({
-      ...data,
-      ...(assignedToId ? { assignedToId } : {}),
-      ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
-    } as CreateMatterDto);
+    const cnr = courtDetails.cnr.trim();
+    createMatter(
+      {
+        ...data,
+        ...(assignedToId ? { assignedToId } : {}),
+        ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
+      } as CreateMatterDto,
+      {
+        onSuccess: (matter) => {
+          // Persist + link the eCourts case so the daily sync tracks its hearings.
+          if (ecourtsEnabled && cnr) {
+            linkEcourtsCase({ cnr, matterId: matter.id });
+          }
+        },
+      },
+    );
   };
 
   const onCreateClient = (data: CreateClientForm) => {
@@ -191,8 +339,16 @@ export function CreateCasePage() {
               </a>
             </p>
             <p className="mt-1 text-xs text-indigo-700">
-              Search by CNR, case number, or party name. Then copy the CNR and paste it below to
-              auto-fill court details.
+              Paste the CNR and we&apos;ll pull the case straight from eCourts to auto-fill these
+              details. No CNR yet?{' '}
+              <a
+                href="https://services.ecourts.gov.in/ecourtindia_v6/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 hover:text-indigo-700"
+              >
+                Search eCourts →
+              </a>
             </p>
             <div className="mt-3 flex gap-2">
               <input
@@ -201,6 +357,8 @@ export function CreateCasePage() {
                 onChange={(e) => {
                   setCnrInput(e.target.value);
                   setCnrHint(null);
+                  setNotFoundCnr(null);
+                  setEcourtsInfo(null);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
@@ -208,22 +366,63 @@ export function CreateCasePage() {
                     handleCnrAutofill();
                   }
                 }}
-                placeholder="Paste CNR number (e.g. MPHC020312152025)"
+                placeholder="Paste 16-digit CNR (e.g. DLND020047882015)"
                 className="block flex-1 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               />
               <button
                 type="button"
                 onClick={handleCnrAutofill}
-                disabled={!cnrInput.trim()}
+                disabled={!cnrInput.trim() || lookingUp}
                 className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-40 transition-colors whitespace-nowrap"
               >
-                Auto-fill
+                {lookingUp ? 'Looking up…' : 'Auto-fill'}
               </button>
             </div>
+            {ecourtsEnabled && (
+              <button
+                type="button"
+                onClick={() => setShowEcourtsSearch(true)}
+                className="mt-2 text-xs font-medium text-indigo-700 underline underline-offset-2 hover:text-indigo-900"
+              >
+                Don&apos;t have the CNR? Search by party or advocate →
+              </button>
+            )}
             {cnrHint && (
               <p className={`mt-1.5 text-xs ${cnrHint.ok ? 'text-indigo-700' : 'text-red-600'}`}>
                 {cnrHint.ok ? '✓ ' : ''}{cnrHint.text}
               </p>
+            )}
+            {notFoundCnr && (
+              <button
+                type="button"
+                onClick={() =>
+                  queueRefresh(notFoundCnr, {
+                    onSuccess: (res) => {
+                      setNotFoundCnr(null);
+                      setCnrHint({
+                        ok: true,
+                        text: `Queued — fetching from court (~${res.data.estimatedTime ?? '5–10 minutes'}). Try Auto-fill again shortly.`,
+                      });
+                    },
+                    onError: () =>
+                      setCnrHint({ ok: false, text: 'Could not queue the fetch. Please try again.' }),
+                  })
+                }
+                disabled={queuing}
+                className="mt-2 rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 disabled:opacity-50"
+              >
+                {queuing ? 'Queuing…' : 'Fetch from court'}
+              </button>
+            )}
+            {ecourtsInfo && Object.keys(ecourtsInfo).length > 0 && (
+              <dl className="mt-2 grid grid-cols-1 gap-x-3 gap-y-1 text-xs text-indigo-800 sm:grid-cols-2">
+                {Object.entries(ecourtsInfo).map(([k, v]) => (
+                  <div key={k} className="flex gap-1">
+                    <dt className="shrink-0 text-indigo-500">{k}:</dt>
+                    <dd className="truncate font-medium" title={v}>{v}</dd>
+                  </div>
+                ))}
+              </dl>
             )}
           </div>
         </div>
@@ -300,7 +499,6 @@ export function CreateCasePage() {
                   onChange={(id, name) => {
                     setSelectedStateId(id);
                     setSelectedDistrictId('');
-                    setSelectedComplexId('');
                     setCourtDetails((p) => ({ ...p, state: name, district: '', courtComplex: '' }));
                   }}
                   placeholder="Select state"
@@ -315,8 +513,7 @@ export function CreateCasePage() {
                   value={selectedDistrictId}
                   onChange={(id, name) => {
                     setSelectedDistrictId(id);
-                    setSelectedComplexId('');
-                    setCourtDetails((p) => ({ ...p, district: name, courtComplex: '' }));
+                    setCourtDetails((p) => ({ ...p, district: name }));
                   }}
                   placeholder={!selectedStateId ? 'Select state first' : 'Select district'}
                   disabled={!selectedStateId || districtsLoading}
@@ -326,36 +523,27 @@ export function CreateCasePage() {
             </div>
             {/* Court Complex */}
             <div>
-              <label className={LABEL_CLS}>Court Complex</label>
-              <SearchableSelect
-                options={complexes}
-                value={selectedComplexId}
-                onChange={(id, name) => {
-                  setSelectedComplexId(id);
-                  setCourtDetails((p) => ({ ...p, courtComplex: name }));
-                }}
-                placeholder={!selectedDistrictId ? 'Select district first' : 'Select court complex'}
-                disabled={!selectedDistrictId || complexesLoading}
-                loading={complexesLoading}
+              <label className={LABEL_CLS}>Court / Complex</label>
+              <input
+                type="text"
+                value={courtDetails.courtComplex}
+                onChange={(e) => setCourtDetails((p) => ({ ...p, courtComplex: e.target.value }))}
+                placeholder="e.g. Civil Court, Dholka"
+                className={INPUT_CLS}
               />
             </div>
             {/* Case Type + CNR */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className={LABEL_CLS}>Case Type</label>
-                <select
+                <SearchableSelect
+                  options={caseTypeOptions}
                   value={courtDetails.caseType}
-                  onChange={(e) => setCourtDetails((p) => ({ ...p, caseType: e.target.value }))}
-                  className={INPUT_CLS}
-                >
-                  <option value="">Select case type</option>
-                  <option value="Civil">Civil</option>
-                  <option value="Criminal">Criminal</option>
-                  <option value="FIR">FIR</option>
-                  <option value="Writ">Writ</option>
-                  <option value="Execution">Execution</option>
-                  <option value="Misc">Misc</option>
-                </select>
+                  onChange={(id) => setCourtDetails((p) => ({ ...p, caseType: id }))}
+                  placeholder="Select case type"
+                  disabled={caseTypesLoading}
+                  loading={caseTypesLoading}
+                />
               </div>
               <div>
                 <label className={LABEL_CLS}>CNR Number</label>
@@ -363,7 +551,7 @@ export function CreateCasePage() {
                   type="text"
                   value={courtDetails.cnr}
                   onChange={(e) => setCourtDetails((p) => ({ ...p, cnr: e.target.value }))}
-                  placeholder="e.g. MPHC020312152025"
+                  placeholder="e.g. DLND020047882015"
                   className={INPUT_CLS}
                 />
               </div>
@@ -572,6 +760,12 @@ export function CreateCasePage() {
           </div>
         </form>
       </div>
+
+      <EcourtsSearchModal
+        open={showEcourtsSearch}
+        onClose={() => setShowEcourtsSearch(false)}
+        onSelect={handleEcourtsSelect}
+      />
     </div>
   );
 }

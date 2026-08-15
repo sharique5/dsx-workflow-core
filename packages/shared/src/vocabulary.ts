@@ -14,6 +14,7 @@ export const DEFAULT_LEGAL_VOCABULARY: IndustryConfig = {
     judge: 'Judge',
     stage: 'Stage',
   },
+  features: { ecourts: true },
   statuses: [
     { key: 'filed', label: 'Filed', isTerminal: false },
     { key: 'in_progress', label: 'In Progress', isTerminal: false },

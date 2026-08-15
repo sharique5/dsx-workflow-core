@@ -69,6 +69,7 @@ export interface IndustryConfig {
   scheduled_event_label: string;
   participant_label: string;
   metadata_fields: Record<string, string>;
+  features?: { ecourts?: boolean };
   statuses: StatusConfig[];
 }
 

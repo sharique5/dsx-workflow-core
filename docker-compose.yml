@@ -39,6 +39,9 @@ services:
       BIRD_PAYMENT_SUCCESS_TEMPLATE_VERSION: ${BIRD_PAYMENT_SUCCESS_TEMPLATE_VERSION}
       BIRD_PAYMENT_FAILED_TEMPLATE_PROJECT_ID: ${BIRD_PAYMENT_FAILED_TEMPLATE_PROJECT_ID}
       BIRD_PAYMENT_FAILED_TEMPLATE_VERSION: ${BIRD_PAYMENT_FAILED_TEMPLATE_VERSION}
+      # eCourts API (legal tenants)
+      ECOURTS_API_BASE_URL: ${ECOURTS_API_BASE_URL:-https://webapi.ecourtsindia.com/api}
+      ECOURTS_API_TOKEN: ${ECOURTS_API_TOKEN}
     volumes:
       - ./apps/api:/workspace/apps/api
       - ./packages:/workspace/packages
