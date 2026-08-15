@@ -54,10 +54,13 @@ const EMPTY_COURT: CourtDetails = { cnr: '', caseType: '', state: '', district: 
 /** Build a meaningful case title, handling masked/protected party names. */
 function buildCaseTitle(c: EcourtsCaseData): string {
   const clean = (s?: string) => (s ?? '').trim();
+  const isPlaceholder = (s: string) =>
+    !s || /^[-–—.\s]*$/.test(s) || /^(n\.?\/?a\.?|nil|none)$/i.test(s);
   const isMasked = (s: string) => !s || /^x+$/i.test(s.replace(/[\s.]/g, ''));
   const pet = clean(c.petitioners?.[0]);
   const resp = clean(c.respondents?.[0]);
-  const adv = clean(c.petitionerAdvocates?.[0]) || clean(c.respondentAdvocates?.[0]);
+  const advRaw = clean(c.petitionerAdvocates?.[0]) || clean(c.respondentAdvocates?.[0]);
+  const adv = isPlaceholder(advRaw) ? '' : advRaw;
   const caseNo = clean(c.caseNumber) || clean(c.registrationNumber) || clean(c.filingNumber);
 
   if (pet && resp && !isMasked(pet) && !isMasked(resp)) {
@@ -80,6 +83,27 @@ function mapCaseType(raw?: string): string {
   if (/crim|cr\.?p\.?c|bail|ct\s*cases|\bcc\b|\bcr\b/.test(s)) return 'Criminal';
   if (/civil|c\.?p\.?c|suit|\bcs\b/.test(s)) return 'Civil';
   return 'Misc';
+}
+
+/** Map an eCourts case status onto the tenant's internal status keys (when present). */
+function mapStatusKey(
+  caseStatus: string | undefined,
+  hasNextHearing: boolean,
+  statuses: { key: string }[],
+): string | undefined {
+  const s = (caseStatus ?? '').toUpperCase();
+  const has = (k: string) => statuses.some((x) => x.key === k);
+  if (!s) return undefined;
+  if (s === 'DISPOSED') return has('closed') ? 'closed' : undefined;
+  if (['PENDING', 'LISTED', 'HEARING', 'FIRST_HEARING', 'PART_HEARD'].includes(s)) {
+    if (hasNextHearing && has('hearing_scheduled')) return 'hearing_scheduled';
+    if (has('in_progress')) return 'in_progress';
+    return undefined;
+  }
+  if (['FILED', 'REGISTERED', 'READY_FOR_REGISTRATION', 'DEFECTIVE', 'UNKNOWN'].includes(s)) {
+    return has('filed') ? 'filed' : undefined;
+  }
+  return undefined;
 }
 
 const INPUT_CLS =
@@ -221,6 +245,9 @@ export function CreateCasePage() {
           setSelectedComplexId('');
           setPendingMap({ districtCode: c.districtCode, complexName: c.courtName });
         }
+        const histJudge = [...(c.historyOfCaseHearings ?? [])]
+          .reverse()
+          .find((x) => x.judge?.trim())?.judge?.trim();
         setCourtDetails((prev) => ({
           ...prev,
           cnr: c.cnr || raw,
@@ -228,11 +255,13 @@ export function CreateCasePage() {
           state: stateOpt?.name || c.state || prev.state,
           district: c.district || prev.district,
           courtComplex: c.courtName || prev.courtComplex,
-          judge: c.judges?.[0] || prev.judge,
+          judge: c.judges?.[0] || histJudge || prev.judge,
           stage: c.caseStatus || c.purpose || prev.stage,
         }));
         const next = detail.entityInfo?.nextDateOfHearing || c.nextHearingDate;
         const nextLabel = next ? ` · next hearing ${new Date(next).toLocaleDateString()}` : '';
+        const statusKey = mapStatusKey(c.caseStatus, Boolean(next), vocab.statuses);
+        if (statusKey) setValue('statusKey', statusKey, { shouldValidate: true });
         setEcourtsInfo(
           Object.fromEntries(
             Object.entries({

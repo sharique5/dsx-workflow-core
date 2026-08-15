@@ -21,6 +21,11 @@ export interface EcourtsCaseData {
   respondents?: string[];
   petitionerAdvocates?: string[];
   respondentAdvocates?: string[];
+  historyOfCaseHearings?: {
+    judge?: string;
+    hearingDate?: string;
+    businessOnDate?: string;
+  }[];
 }
 
 export interface EcourtsCaseDetail {
