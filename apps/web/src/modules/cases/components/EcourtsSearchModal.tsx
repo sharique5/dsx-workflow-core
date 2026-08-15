@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useEcourtsSearch } from '../hooks/useEcourts';
+import { useStates, useDistricts } from '../hooks/useCourts';
+import { SearchableSelect } from '../../../shared/components/SearchableSelect';
 import type { EcourtsSearchItem, EcourtsSearchParams } from '../api/ecourts.api';
 
 type SearchMode = 'party' | 'advocate';
@@ -17,8 +19,13 @@ export function EcourtsSearchModal({ open, onClose, onSelect }: EcourtsSearchMod
   const [mode, setMode] = useState<SearchMode>('party');
   const [text, setText] = useState('');
   const [courtCode, setCourtCode] = useState('');
+  const [stateId, setStateId] = useState('');
+  const [districtId, setDistrictId] = useState('');
   const [page, setPage] = useState(1);
   const [submitted, setSubmitted] = useState<EcourtsSearchParams | null>(null);
+
+  const { data: states = [] } = useStates();
+  const { data: districts = [] } = useDistricts(stateId);
 
   const { data, isFetching, error } = useEcourtsSearch(
     submitted ?? {},
@@ -33,6 +40,8 @@ export function EcourtsSearchModal({ open, onClose, onSelect }: EcourtsSearchMod
     setPage(nextPage);
     setSubmitted({
       ...(mode === 'party' ? { query: value } : { advocates: [value] }),
+      ...(stateId ? { stateCode: stateId } : {}),
+      ...(districtId ? { districtCode: districtId } : {}),
       ...(courtCode.trim() ? { courtCodes: [courtCode.trim()] } : {}),
       page: nextPage,
       pageSize: 20,
@@ -80,6 +89,24 @@ export function EcourtsSearchModal({ open, onClose, onSelect }: EcourtsSearchMod
               }}
               placeholder={mode === 'party' ? 'e.g. Arun Jaitley' : 'e.g. Sharma'}
               className={INPUT_CLS}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <SearchableSelect
+              options={states}
+              value={stateId}
+              onChange={(id) => {
+                setStateId(id);
+                setDistrictId('');
+              }}
+              placeholder="State (optional)"
+            />
+            <SearchableSelect
+              options={districts}
+              value={districtId}
+              onChange={(id) => setDistrictId(id)}
+              placeholder={stateId ? 'District (optional)' : 'Select state first'}
+              disabled={!stateId}
             />
           </div>
           <div className="flex gap-2">

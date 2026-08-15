@@ -50,6 +50,14 @@ export class SearchCasesDto {
 
   @IsOptional()
   @IsString()
+  stateCode?: string;
+
+  @IsOptional()
+  @IsString()
+  districtCode?: string;
+
+  @IsOptional()
+  @IsString()
   filingDateFrom?: string;
 
   @IsOptional()

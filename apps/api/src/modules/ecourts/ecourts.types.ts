@@ -130,6 +130,8 @@ export interface EcourtsSearchParams {
   caseTypes?: string[];
   caseStatuses?: string[];
   actsAndSections?: string[];
+  stateCode?: string;
+  districtCode?: string;
   filingDateFrom?: string;
   filingDateTo?: string;
   page?: number;
