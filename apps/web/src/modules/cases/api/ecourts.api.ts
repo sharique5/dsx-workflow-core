@@ -116,6 +116,9 @@ export const ecourtsApi = {
 
   enums: () => api.get('/ecourts/enums'),
 
+  caseTypes: () =>
+    api.get<{ code: string; description: string }[]>('/ecourts/case-types'),
+
   linkCase: (cnr: string, matterId?: string) =>
     api.post('/ecourts/cases/link', { cnr, matterId }),
 

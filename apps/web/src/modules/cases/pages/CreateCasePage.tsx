@@ -13,7 +13,7 @@ import type { CreateMatterDto, CreateClientDto } from '@dsx/shared';
 import { parseCnr } from '../utils/cnr';
 import { useStates, useDistricts, useComplexes } from '../hooks/useCourts';
 import { isAxiosError } from 'axios';
-import { useEcourtsLookup, useLinkEcourtsCase, useQueueEcourtsRefresh } from '../hooks/useEcourts';
+import { useEcourtsLookup, useLinkEcourtsCase, useQueueEcourtsRefresh, useEcourtsCaseTypes } from '../hooks/useEcourts';
 import { EcourtsSearchModal } from '../components/EcourtsSearchModal';
 import type { EcourtsCaseData, EcourtsSearchItem } from '../api/ecourts.api';
 import { SearchableSelect } from '../../../shared/components/SearchableSelect';
@@ -51,6 +51,11 @@ interface CourtDetails {
 
 const EMPTY_COURT: CourtDetails = { cnr: '', caseType: '', state: '', district: '', courtComplex: '', judge: '', stage: '' };
 
+/** Fallback case types when the eCourts enum isn't available (non-legal tenants / offline). */
+const FALLBACK_CASE_TYPES = ['Civil', 'Criminal', 'FIR', 'Writ', 'Execution', 'Misc'].map(
+  (x) => ({ id: x, name: x }),
+);
+
 /** Build a meaningful case title, handling masked/protected party names. */
 function buildCaseTitle(c: EcourtsCaseData): string {
   const clean = (s?: string) => (s ?? '').trim();
@@ -71,18 +76,6 @@ function buildCaseTitle(c: EcourtsCaseData): string {
   const bits = [label, caseNo].filter(Boolean).join(' ');
   if (adv) return bits ? `${bits} — Adv. ${adv}` : `Adv. ${adv}`;
   return bits || `${pet || 'Petitioner'} vs ${resp || 'Respondent'}`;
-}
-
-/** Map an eCourts case-type string onto the form's fixed Case Type options. */
-function mapCaseType(raw?: string): string {
-  const s = (raw ?? '').toLowerCase();
-  if (!s) return '';
-  if (/writ|w\.?p\b/.test(s)) return 'Writ';
-  if (/exec/.test(s)) return 'Execution';
-  if (/f\.?i\.?r/.test(s)) return 'FIR';
-  if (/crim|cr\.?p\.?c|bail|ct\s*cases|\bcc\b|\bcr\b/.test(s)) return 'Criminal';
-  if (/civil|c\.?p\.?c|suit|\bcs\b/.test(s)) return 'Civil';
-  return 'Misc';
 }
 
 /** Map an eCourts case status onto the tenant's internal status keys (when present). */
@@ -141,6 +134,10 @@ export function CreateCasePage() {
   const { data: states = [], isLoading: statesLoading } = useStates();
   const { data: districts = [], isLoading: districtsLoading } = useDistricts(selectedStateId);
   const { data: complexes = [], isLoading: complexesLoading } = useComplexes(selectedStateId, selectedDistrictId);
+  const { data: caseTypes = [], isLoading: caseTypesLoading } = useEcourtsCaseTypes(ecourtsEnabled);
+  const caseTypeOptions = caseTypes.length
+    ? caseTypes.map((t) => ({ id: t.code, name: t.description }))
+    : FALLBACK_CASE_TYPES;
 
   const [defaultInternalRef] = useState(
     () => `NA-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,
@@ -251,7 +248,7 @@ export function CreateCasePage() {
         setCourtDetails((prev) => ({
           ...prev,
           cnr: c.cnr || raw,
-          caseType: mapCaseType(c.caseTypeRaw || c.caseType) || prev.caseType,
+          caseType: c.caseType || prev.caseType,
           state: stateOpt?.name || c.state || prev.state,
           district: c.district || prev.district,
           courtComplex: c.courtName || prev.courtComplex,
@@ -577,19 +574,14 @@ export function CreateCasePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className={LABEL_CLS}>Case Type</label>
-                <select
+                <SearchableSelect
+                  options={caseTypeOptions}
                   value={courtDetails.caseType}
-                  onChange={(e) => setCourtDetails((p) => ({ ...p, caseType: e.target.value }))}
-                  className={INPUT_CLS}
-                >
-                  <option value="">Select case type</option>
-                  <option value="Civil">Civil</option>
-                  <option value="Criminal">Criminal</option>
-                  <option value="FIR">FIR</option>
-                  <option value="Writ">Writ</option>
-                  <option value="Execution">Execution</option>
-                  <option value="Misc">Misc</option>
-                </select>
+                  onChange={(id) => setCourtDetails((p) => ({ ...p, caseType: id }))}
+                  placeholder="Select case type"
+                  disabled={caseTypesLoading}
+                  loading={caseTypesLoading}
+                />
               </div>
               <div>
                 <label className={LABEL_CLS}>CNR Number</label>

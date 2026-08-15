@@ -21,6 +21,16 @@ export function useQueueEcourtsRefresh() {
   });
 }
 
+/** Canonical eCourts case types (code + description), cached long-term. */
+export function useEcourtsCaseTypes(enabled = true) {
+  return useQuery({
+    queryKey: ['ecourts', 'case-types'],
+    queryFn: () => ecourtsApi.caseTypes().then((r) => r.data),
+    enabled,
+    staleTime: Infinity,
+  });
+}
+
 /** Search cases by party/advocate/court/date filters. */
 export function useEcourtsSearch(params: EcourtsSearchParams, enabled = false) {
   return useQuery<EcourtsSearchResult>({

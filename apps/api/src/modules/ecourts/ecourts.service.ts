@@ -18,6 +18,10 @@ import { LinkCaseDto, SearchCasesDto } from './dto/ecourts.dto';
 @Injectable()
 export class EcourtsService {
   private readonly logger = new Logger(EcourtsService.name);
+  private caseTypesCache: {
+    at: number;
+    data: Array<{ code: string; description: string }>;
+  } | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -34,6 +38,20 @@ export class EcourtsService {
 
   getEnums() {
     return this.provider.getEnums();
+  }
+
+  /** The canonical eCourts case-type list (code → description), cached in-memory. */
+  async getCaseTypes(): Promise<Array<{ code: string; description: string }>> {
+    const ttl = 24 * 60 * 60 * 1000;
+    if (this.caseTypesCache && Date.now() - this.caseTypesCache.at < ttl) {
+      return this.caseTypesCache.data;
+    }
+    const enums = (await this.provider.getEnums()) as {
+      enums?: { caseType?: Array<{ code: string; description: string }> };
+    };
+    const data = enums?.enums?.caseType ?? [];
+    this.caseTypesCache = { at: Date.now(), data };
+    return data;
   }
 
   /** Live lookup by CNR — does not persist. */

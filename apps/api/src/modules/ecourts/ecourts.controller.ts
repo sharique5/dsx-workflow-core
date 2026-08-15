@@ -42,6 +42,12 @@ export class EcourtsController {
     return this.ecourts.getEnums();
   }
 
+  /** GET /api/v1/ecourts/case-types — canonical eCourts case types (cached) */
+  @Get('case-types')
+  caseTypes() {
+    return this.ecourts.getCaseTypes();
+  }
+
   /** GET /api/v1/ecourts/cases — tenant's persisted (linked) cases */
   @Get('cases')
   listLinked(@CurrentUser() user: AuthenticatedUser) {
