@@ -15,7 +15,7 @@ import { useStates, useDistricts, useComplexes } from '../hooks/useCourts';
 import { isAxiosError } from 'axios';
 import { useEcourtsLookup, useLinkEcourtsCase, useQueueEcourtsRefresh } from '../hooks/useEcourts';
 import { EcourtsSearchModal } from '../components/EcourtsSearchModal';
-import type { EcourtsSearchItem } from '../api/ecourts.api';
+import type { EcourtsCaseData, EcourtsSearchItem } from '../api/ecourts.api';
 import { SearchableSelect } from '../../../shared/components/SearchableSelect';
 
 const createMatterSchema = z.object({
@@ -51,6 +51,25 @@ interface CourtDetails {
 
 const EMPTY_COURT: CourtDetails = { cnr: '', caseType: '', state: '', district: '', courtComplex: '', judge: '', stage: '' };
 
+/** Build a meaningful case title, handling masked/protected party names. */
+function buildCaseTitle(c: EcourtsCaseData): string {
+  const clean = (s?: string) => (s ?? '').trim();
+  const isMasked = (s: string) => !s || /^x+$/i.test(s.replace(/[\s.]/g, ''));
+  const pet = clean(c.petitioners?.[0]);
+  const resp = clean(c.respondents?.[0]);
+  const adv = clean(c.petitionerAdvocates?.[0]) || clean(c.respondentAdvocates?.[0]);
+  const caseNo = clean(c.caseNumber) || clean(c.registrationNumber) || clean(c.filingNumber);
+
+  if (pet && resp && !isMasked(pet) && !isMasked(resp)) {
+    return adv ? `${pet} vs ${resp} (Adv. ${adv})` : `${pet} vs ${resp}`;
+  }
+  // Protected/masked parties — build a distinguishable label instead of "XXXX vs XXXX".
+  const label = clean(c.caseTypeRaw) || clean(c.caseType) || 'Case';
+  const bits = [label, caseNo].filter(Boolean).join(' ');
+  if (adv) return bits ? `${bits} — Adv. ${adv}` : `Adv. ${adv}`;
+  return bits || `${pet || 'Petitioner'} vs ${resp || 'Respondent'}`;
+}
+
 const INPUT_CLS =
   'block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20';
 const LABEL_CLS = 'block text-sm font-medium text-slate-700 mb-1.5';
@@ -77,6 +96,7 @@ export function CreateCasePage() {
   const [cnrHint, setCnrHint] = useState<{ ok: boolean; text: string } | null>(null);
   const [showEcourtsSearch, setShowEcourtsSearch] = useState(false);
   const [notFoundCnr, setNotFoundCnr] = useState<string | null>(null);
+  const [ecourtsInfo, setEcourtsInfo] = useState<Record<string, string> | null>(null);
   const [courtDetails, setCourtDetails] = useState<CourtDetails>(EMPTY_COURT);
   const [selectedStateId, setSelectedStateId] = useState('');
   const [selectedDistrictId, setSelectedDistrictId] = useState('');
@@ -149,9 +169,7 @@ export function CreateCasePage() {
       onSuccess: (detail) => {
         const c = detail.courtCaseData;
         setNotFoundCnr(null);
-        if (c.petitioners?.[0] && c.respondents?.[0]) {
-          setValue('title', `${c.petitioners[0]} vs ${c.respondents[0]}`, { shouldValidate: true });
-        }
+        setValue('title', buildCaseTitle(c), { shouldValidate: true });
         const extRef = c.registrationNumber || c.filingNumber || c.caseNumber || '';
         if (extRef) setValue('externalRef', extRef, { shouldValidate: true });
         const matchedState = states.find(
@@ -174,12 +192,24 @@ export function CreateCasePage() {
         }));
         const next = detail.entityInfo?.nextDateOfHearing || c.nextHearingDate;
         const nextLabel = next ? ` · next hearing ${new Date(next).toLocaleDateString()}` : '';
+        setEcourtsInfo(
+          Object.fromEntries(
+            Object.entries({
+              District: c.district,
+              Court: c.courtName,
+              'Case type': c.caseTypeRaw || c.caseType,
+              Judge: c.judges?.[0],
+              Stage: c.caseStatus,
+            }).filter(([, v]) => Boolean(v)) as [string, string][],
+          ),
+        );
         setCnrHint({
           ok: true,
           text: `Found on eCourts: ${c.caseTypeRaw ?? c.caseType ?? 'case'}${nextLabel}. Review the details below.`,
         });
       },
       onError: (err) => {
+        setEcourtsInfo(null);
         if (isAxiosError(err) && err.response?.status === 404) {
           setNotFoundCnr(raw);
           setCnrHint({ ok: false, text: "This case isn't on eCourts yet." });
@@ -291,6 +321,7 @@ export function CreateCasePage() {
                   setCnrInput(e.target.value);
                   setCnrHint(null);
                   setNotFoundCnr(null);
+                  setEcourtsInfo(null);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
@@ -345,6 +376,16 @@ export function CreateCasePage() {
               >
                 {queuing ? 'Queuing…' : 'Fetch from court'}
               </button>
+            )}
+            {ecourtsInfo && Object.keys(ecourtsInfo).length > 0 && (
+              <dl className="mt-2 grid grid-cols-1 gap-x-3 gap-y-1 text-xs text-indigo-800 sm:grid-cols-2">
+                {Object.entries(ecourtsInfo).map(([k, v]) => (
+                  <div key={k} className="flex gap-1">
+                    <dt className="shrink-0 text-indigo-500">{k}:</dt>
+                    <dd className="truncate font-medium" title={v}>{v}</dd>
+                  </div>
+                ))}
+              </dl>
             )}
           </div>
         </div>
