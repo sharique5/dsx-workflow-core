@@ -238,8 +238,22 @@ export class EcourtsService {
       });
     };
 
-    for (const h of detail.courtCaseData.historyOfCaseHearings ?? []) {
-      add(parseDate(h.businessOnDate ?? h.hearingDate), h.purposeOfListing, h.judge);
+    const meaningful = (s?: string | null) => {
+      const t = (s ?? '').trim();
+      return t && t !== '--' ? t : '';
+    };
+
+    // Prefer businessOnDateEntries (has the daily proceeding text); fall back to history.
+    const entries = detail.courtCaseData.businessOnDateEntries ?? [];
+    if (entries.length > 0) {
+      for (const e of entries) {
+        const outcome = meaningful(e.business) || meaningful(e.nextPurpose);
+        add(parseDate(e.date), outcome, e.courtOf);
+      }
+    } else {
+      for (const h of detail.courtCaseData.historyOfCaseHearings ?? []) {
+        add(parseDate(h.businessOnDate ?? h.hearingDate), h.purposeOfListing, h.judge);
+      }
     }
     add(nextHearing); // upcoming hearing, if not already covered by history
 

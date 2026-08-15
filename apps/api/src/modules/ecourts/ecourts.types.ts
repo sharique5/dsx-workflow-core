@@ -22,6 +22,16 @@ export interface EcourtsJudgmentOrder {
   orderUrl?: string;
 }
 
+export interface EcourtsBusinessEntry {
+  date?: string;
+  courtOf?: string;
+  petitioner?: string;
+  respondent?: string;
+  business?: string;
+  nextPurpose?: string;
+  nextHearingDate?: string;
+}
+
 export interface EcourtsCaseData {
   cnr: string;
   cnrCourtCode?: string;
@@ -54,6 +64,7 @@ export interface EcourtsCaseData {
   hearingCount?: number;
   iaCount?: number;
   historyOfCaseHearings?: EcourtsCaseHistoryEntry[];
+  businessOnDateEntries?: EcourtsBusinessEntry[];
   judgmentOrders?: EcourtsJudgmentOrder[];
 }
 

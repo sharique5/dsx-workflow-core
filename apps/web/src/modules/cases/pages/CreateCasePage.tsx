@@ -11,7 +11,7 @@ import { useAuthStore } from '../../../store/auth.store';
 import { useVocabulary } from '../../../shared/hooks/useVocabulary';
 import type { CreateMatterDto, CreateClientDto } from '@dsx/shared';
 import { parseCnr } from '../utils/cnr';
-import { useStates, useDistricts, useComplexes } from '../hooks/useCourts';
+import { useStates, useDistricts } from '../hooks/useCourts';
 import { isAxiosError } from 'axios';
 import { useEcourtsLookup, useLinkEcourtsCase, useQueueEcourtsRefresh, useEcourtsCaseTypes } from '../hooks/useEcourts';
 import { EcourtsSearchModal } from '../components/EcourtsSearchModal';
@@ -126,14 +126,12 @@ export function CreateCasePage() {
   const [showEcourtsSearch, setShowEcourtsSearch] = useState(false);
   const [notFoundCnr, setNotFoundCnr] = useState<string | null>(null);
   const [ecourtsInfo, setEcourtsInfo] = useState<Record<string, string> | null>(null);
-  const [pendingMap, setPendingMap] = useState<{ districtCode?: string; complexName?: string } | null>(null);
+  const [pendingMap, setPendingMap] = useState<{ districtCode?: string } | null>(null);
   const [courtDetails, setCourtDetails] = useState<CourtDetails>(EMPTY_COURT);
   const [selectedStateId, setSelectedStateId] = useState('');
   const [selectedDistrictId, setSelectedDistrictId] = useState('');
-  const [selectedComplexId, setSelectedComplexId] = useState('');
   const { data: states = [], isLoading: statesLoading } = useStates();
   const { data: districts = [], isLoading: districtsLoading } = useDistricts(selectedStateId);
-  const { data: complexes = [], isLoading: complexesLoading } = useComplexes(selectedStateId, selectedDistrictId);
   const { data: caseTypes = [], isLoading: caseTypesLoading } = useEcourtsCaseTypes(ecourtsEnabled);
   const caseTypeOptions = caseTypes.length
     ? caseTypes.map((t) => ({ id: t.code, name: t.description }))
@@ -176,26 +174,8 @@ export function CreateCasePage() {
       setSelectedDistrictId(d.id);
       setCourtDetails((p) => ({ ...p, district: d.name }));
     }
-    setPendingMap((m) => (m ? { complexName: m.complexName } : null));
-  }, [districts, pendingMap]);
-
-  // Best-effort match of the eCourts court name to a complex once options load.
-  useEffect(() => {
-    if (!pendingMap || pendingMap.districtCode || !pendingMap.complexName || complexes.length === 0) {
-      return;
-    }
-    const target = pendingMap.complexName.toLowerCase();
-    const byName = complexes.find((x) => {
-      const n = x.name.toLowerCase().replace(/court complex/g, '').trim();
-      return n.length > 3 && target.includes(n);
-    });
-    const chosen = byName ?? (complexes.length === 1 ? complexes[0] : undefined);
-    if (chosen) {
-      setSelectedComplexId(chosen.id);
-      setCourtDetails((p) => ({ ...p, courtComplex: chosen.name }));
-    }
     setPendingMap(null);
-  }, [complexes, pendingMap]);
+  }, [districts, pendingMap]);
 
   const applyParsedCnr = (raw: string) => {
     const info = parseCnr(raw);
@@ -207,7 +187,6 @@ export function CreateCasePage() {
     if (matchedState) {
       setSelectedStateId(matchedState.id);
       setSelectedDistrictId('');
-      setSelectedComplexId('');
     }
     setCourtDetails((prev) => ({
       ...prev,
@@ -239,8 +218,7 @@ export function CreateCasePage() {
         if (stateOpt) {
           setSelectedStateId(stateOpt.id);
           setSelectedDistrictId('');
-          setSelectedComplexId('');
-          setPendingMap({ districtCode: c.districtCode, complexName: c.courtName });
+          setPendingMap({ districtCode: c.districtCode });
         }
         const histJudge = [...(c.historyOfCaseHearings ?? [])]
           .reverse()
@@ -534,7 +512,6 @@ export function CreateCasePage() {
                   onChange={(id, name) => {
                     setSelectedStateId(id);
                     setSelectedDistrictId('');
-                    setSelectedComplexId('');
                     setCourtDetails((p) => ({ ...p, state: name, district: '', courtComplex: '' }));
                   }}
                   placeholder="Select state"
@@ -549,8 +526,7 @@ export function CreateCasePage() {
                   value={selectedDistrictId}
                   onChange={(id, name) => {
                     setSelectedDistrictId(id);
-                    setSelectedComplexId('');
-                    setCourtDetails((p) => ({ ...p, district: name, courtComplex: '' }));
+                    setCourtDetails((p) => ({ ...p, district: name }));
                   }}
                   placeholder={!selectedStateId ? 'Select state first' : 'Select district'}
                   disabled={!selectedStateId || districtsLoading}
@@ -560,17 +536,13 @@ export function CreateCasePage() {
             </div>
             {/* Court Complex */}
             <div>
-              <label className={LABEL_CLS}>Court Complex</label>
-              <SearchableSelect
-                options={complexes}
-                value={selectedComplexId}
-                onChange={(id, name) => {
-                  setSelectedComplexId(id);
-                  setCourtDetails((p) => ({ ...p, courtComplex: name }));
-                }}
-                placeholder={!selectedDistrictId ? 'Select district first' : 'Select court complex'}
-                disabled={!selectedDistrictId || complexesLoading}
-                loading={complexesLoading}
+              <label className={LABEL_CLS}>Court / Complex</label>
+              <input
+                type="text"
+                value={courtDetails.courtComplex}
+                onChange={(e) => setCourtDetails((p) => ({ ...p, courtComplex: e.target.value }))}
+                placeholder="e.g. Civil Court, Dholka"
+                className={INPUT_CLS}
               />
             </div>
             {/* Case Type + CNR */}
