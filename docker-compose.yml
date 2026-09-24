@@ -12,7 +12,8 @@ services:
     environment:
       NODE_ENV: development
       DATABASE_URL: ${DATABASE_URL}
-      REDIS_URL: ${REDIS_URL}
+      UPSTASH_REDIS_REST_URL: ${UPSTASH_REDIS_REST_URL}
+      UPSTASH_REDIS_REST_TOKEN: ${UPSTASH_REDIS_REST_TOKEN}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRY: ${JWT_EXPIRY:-7d}
       RESEND_API_KEY: ${RESEND_API_KEY}
@@ -46,17 +47,6 @@ services:
       - ./apps/api:/workspace/apps/api
       - ./packages:/workspace/packages
       - /workspace/node_modules
-    depends_on:
-      - redis
-    restart: unless-stopped
-
-  redis:
-    image: redis:7-alpine
-    container_name: dsx-workflow-redis
-    ports:
-      - '6379:6379'
-    volumes:
-      - redis_data:/data
     restart: unless-stopped
 
   nginx:
@@ -71,6 +61,3 @@ services:
     profiles:
       - production
     restart: unless-stopped
-
-volumes:
-  redis_data:

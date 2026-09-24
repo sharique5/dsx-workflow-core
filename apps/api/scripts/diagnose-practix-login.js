@@ -5,10 +5,10 @@
  */
 
 const { PrismaClient } = require('@prisma/client');
-const Redis = require('ioredis');
+const { Redis } = require('@upstash/redis');
 
 const prisma = new PrismaClient();
-const redis = new Redis(process.env.REDIS_URL);
+const redis = Redis.fromEnv();
 
 async function diagnose() {
   console.log('\n🔍 Diagnosing Practix Login Issues\n');
@@ -80,7 +80,7 @@ async function diagnose() {
       }
     } catch (err) {
       console.error('   ❌ Redis connection failed:', err.message);
-      console.log('   💡 Fix: Check REDIS_URL environment variable');
+      console.log('   💡 Fix: Check UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN environment variables');
     }
 
     // 4. Check Email Configuration
@@ -139,7 +139,6 @@ async function diagnose() {
     console.error('\n❌ Error during diagnosis:', error);
   } finally {
     await prisma.$disconnect();
-    redis.disconnect();
   }
 }
 
